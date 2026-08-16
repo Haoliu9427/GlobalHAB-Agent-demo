@@ -8,6 +8,7 @@ from itertools import product
 from pathlib import Path
 
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 
@@ -17,9 +18,11 @@ sys.path.insert(0, str(ROOT / "src"))
 from globalhab_demo import (  # noqa: E402
     ExperimentAction,
     HypothesisAgent,
+    SCENARIO_PRESETS,
     evaluate_action,
     evaluate_seasonal_baseline,
     generate_demo_data,
+    project_synthetic_scenario,
 )
 from globalhab_demo.data import REGIONS  # noqa: E402
 
@@ -39,6 +42,9 @@ st.markdown(
         border-radius:10px; padding:0.65rem 0.8rem;}
     .demo-note {background:#fff8e8; border-left:4px solid #e39a2f;
         padding:0.75rem 1rem; border-radius:6px; color:#493820;}
+    .map-summary {background:linear-gradient(105deg,#eef8f7,#f6fbfd);
+        border:1px solid #cfe3e5; border-radius:10px; padding:0.75rem 1rem;
+        margin-bottom:0.4rem; color:#173e45;}
     </style>
     """,
     unsafe_allow_html=True,
@@ -131,7 +137,7 @@ with st.sidebar:
     )
     seed = st.number_input("固定随机种子", min_value=1, max_value=9999, value=42)
     run_clicked = st.button("运行 Agent 探索", type="primary", use_container_width=True)
-    st.caption("参考设置运行约3–8秒，具体取决于云端负载。")
+    st.caption("首次打开自动准备默认结果；修改试跑设置后请点击按钮更新。")
 
 st.markdown("### 科学变量与固定规则")
 rule_a, rule_b, rule_c = st.columns(3)
@@ -139,16 +145,13 @@ rule_a.info("**MHW强度**\n\n超过日历日p90阈值时：SST − 季节气候
 rule_b.info("**营养背景**\n\nNitrate、Phosphate和Silicate分别进入模型")
 rule_c.info("**微塑料角色**\n\n仅代理输运、停留与汇聚背景，用于路径加权")
 
-if not run_clicked and "demo_result" not in st.session_state:
-    st.markdown("#### 演示流程")
-    st.write(
-        "点击左侧“运行 Agent 探索”。Agent将在固定预算内比较局地/沿流、"
-        "7/14/30天滞后和两类轻量模型，并使用前向时间＋留一地区验证反馈更新实验顺序。"
+if run_clicked or "demo_result" not in st.session_state:
+    spinner_text = (
+        "正在生成合成观测、执行阻断验证并更新Agent探索日志……"
+        if run_clicked
+        else "正在准备默认试跑和情景预警地图……"
     )
-    st.stop()
-
-if run_clicked:
-    with st.spinner("正在生成合成观测、执行阻断验证并更新Agent探索日志……"):
+    with st.spinner(spinner_text):
         st.session_state["demo_result"] = run_agent_demo(
             days, int(seed), budget, holdout_region, test_fraction
         )
@@ -164,8 +167,174 @@ m3.metric("Brier", f"{float(best['brier']):.3f}")
 m4.metric("Top 20%召回", f"{float(best['recall_at_top20']):.1%}")
 m5.metric("恢复预设14天信号", "是" if recovered else "否")
 
+st.markdown("### 情景化空间预警展示")
+st.caption(
+    "选择一种复合环境情景，查看未来7/14/30天五个演示海区的HAB风险位置、时间和相对强度。"
+    "海区坐标和指数均用于界面演示，不代表真实业务预报。"
+)
+
+scenario_controls, scenario_map = st.columns([1.0, 2.25], gap="large")
+with scenario_controls:
+    preset_name = st.selectbox("复合环境情景", list(SCENARIO_PRESETS), index=0)
+    preset = SCENARIO_PRESETS[preset_name]
+    preset_index = list(SCENARIO_PRESETS).index(preset_name)
+    issue_date = st.date_input("情景起报日期", value=pd.Timestamp.today().date())
+    horizon_days = st.radio(
+        "预警提前量",
+        options=[7, 14, 30],
+        index=1,
+        horizontal=True,
+        format_func=lambda value: f"{value}天",
+    )
+    mhw_intensity = st.slider(
+        "海洋热浪强度（°C）",
+        0.0,
+        4.5,
+        float(preset["mhw_intensity_c"]),
+        0.1,
+        key=f"scenario_mhw_{preset_index}",
+        help="超过日历日p90阈值时，SST相对季节气候平均值的正异常。",
+    )
+    nitrate = st.slider(
+        "Nitrate（mmol m⁻³）",
+        0.0,
+        10.0,
+        float(preset["nitrate_mmol_m3"]),
+        0.1,
+        key=f"scenario_no3_{preset_index}",
+    )
+    phosphate = st.slider(
+        "Phosphate（mmol m⁻³）",
+        0.0,
+        1.5,
+        float(preset["phosphate_mmol_m3"]),
+        0.05,
+        key=f"scenario_po4_{preset_index}",
+    )
+    silicate = st.slider(
+        "Silicate（mmol m⁻³）",
+        0.0,
+        12.0,
+        float(preset["silicate_mmol_m3"]),
+        0.1,
+        key=f"scenario_sio3_{preset_index}",
+    )
+    transport_proxy = st.slider(
+        "输运／停留／汇聚代理",
+        0.0,
+        1.0,
+        float(preset["transport_proxy"]),
+        0.05,
+        key=f"scenario_transport_{preset_index}",
+        help="由合成微塑料浓度映射的状态代理，不表示真实海流速度或方向。",
+    )
+
+scenario_result = project_synthetic_scenario(
+    issue_date=issue_date,
+    horizon_days=horizon_days,
+    mhw_intensity_c=mhw_intensity,
+    nitrate_mmol_m3=nitrate,
+    phosphate_mmol_m3=phosphate,
+    silicate_mmol_m3=silicate,
+    transport_proxy=transport_proxy,
+)
+top_zone = scenario_result.iloc[0]
+
+with scenario_map:
+    st.markdown(
+        '<div class="map-summary">当前情景下，最高候选风险位于'
+        f'<b>{top_zone["候选海区"]}</b>；预计时间约为'
+        f'<b>{top_zone["预计时间"]}</b>，综合风险指数'
+        f'<b>{top_zone["综合风险指数"]:.1f}/100</b>，预计藻华强度指数'
+        f'<b>{top_zone["预计藻华强度指数"]:.1f}/100</b>。</div>',
+        unsafe_allow_html=True,
+    )
+    map_figure = px.scatter_geo(
+        scenario_result,
+        lat="latitude",
+        lon="longitude",
+        text="候选海区",
+        hover_name="候选海区",
+        size="预计藻华强度指数",
+        color="综合风险指数",
+        range_color=[0, 100],
+        size_max=38,
+        color_continuous_scale=[
+            [0.00, "#2b83ba"],
+            [0.30, "#63b995"],
+            [0.50, "#f2cf5b"],
+            [0.70, "#f28e46"],
+            [1.00, "#c9363e"],
+        ],
+        custom_data=["综合风险指数", "预计藻华强度指数", "风险等级", "预计窗口"],
+    )
+    map_figure.update_traces(
+        textposition="top center",
+        textfont=dict(family="Microsoft YaHei, Arial, sans-serif", size=12, color="#18353d"),
+        marker=dict(line=dict(width=1.2, color="#ffffff"), opacity=0.90),
+        hovertemplate=(
+            "<b>%{hovertext}</b><br>"
+            "综合风险指数：%{customdata[0]:.1f}/100<br>"
+            "预计藻华强度：%{customdata[1]:.1f}/100<br>"
+            "风险等级：%{customdata[2]}<br>"
+            "预计窗口：%{customdata[3]}<extra></extra>"
+        ),
+    )
+    map_figure.update_geos(
+        projection_type="natural earth",
+        showland=True,
+        landcolor="#e8ecea",
+        showocean=True,
+        oceancolor="#dceff3",
+        showlakes=True,
+        lakecolor="#dceff3",
+        showcountries=True,
+        countrycolor="#ffffff",
+        showcoastlines=True,
+        coastlinecolor="#78939b",
+        coastlinewidth=0.8,
+        lataxis_range=[-58, 78],
+        bgcolor="#ffffff",
+    )
+    map_figure.update_layout(
+        height=500,
+        margin=dict(l=0, r=0, t=10, b=0),
+        font=dict(family="Microsoft YaHei, Arial, sans-serif", size=12, color="#18353d"),
+        coloraxis_colorbar=dict(title="风险指数", len=0.62, thickness=14),
+        paper_bgcolor="#ffffff",
+    )
+    st.plotly_chart(
+        map_figure,
+        use_container_width=True,
+        config={"displayModeBar": False, "scrollZoom": False},
+    )
+    st.caption("圆点颜色表示综合风险，圆点大小表示预计相对强度；鼠标悬停可查看时间窗口。")
+
+st.markdown(
+    f"**当前输入条件：** MHW强度 {mhw_intensity:.1f} °C；Nitrate {nitrate:.1f}、"
+    f"Phosphate {phosphate:.2f}、Silicate {silicate:.1f} mmol m⁻³；"
+    f"输运／停留／汇聚代理 {transport_proxy:.2f}。"
+)
+st.dataframe(
+    scenario_result[[
+        "候选海区", "风险等级", "综合风险指数", "预计藻华强度指数", "预计窗口"
+    ]],
+    use_container_width=True,
+    hide_index=True,
+)
+st.download_button(
+    "下载本次情景地图结果 CSV",
+    scenario_result.to_csv(index=False).encode("utf-8-sig"),
+    file_name="synthetic_scenario_map.csv",
+    mime="text/csv",
+)
+st.info(
+    "读图边界：该图回答的是“如果出现这组假设条件，系统将怎样呈现候选风险”。"
+    "强度为无量纲演示指数，不是藻细胞密度、叶绿素或毒素浓度；真实预警必须接入实时观测并经现场复核。"
+)
+
 tab_data, tab_agent, tab_risk, tab_card = st.tabs(
-    ["多源合成观测", "Agent探索日志", "风险输出", "发现卡与边界"]
+    ["多源合成观测", "Agent探索日志", "阻断验证风险序列", "发现卡与边界"]
 )
 
 with tab_data:
@@ -241,7 +410,6 @@ with tab_card:
 
 st.divider()
 st.caption(
-    "GlobalHAB-Agent v2.2 Web Demo · Synthetic software verification only · "
+    "GlobalHAB-Agent v2.3 Scenario Map Demo · Synthetic software verification only · "
     "No operational or causal claim"
 )
-

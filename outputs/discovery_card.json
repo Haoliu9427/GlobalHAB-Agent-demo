@@ -1,0 +1,57 @@
+{
+  "demo_status": "synthetic_software_verification_only",
+  "baseline": {
+    "pr_auc": 0.1084420854924983,
+    "brier": 0.321849124414763,
+    "recall_at_top20": 0.07692307692307693,
+    "alert_rate": 0.2
+  },
+  "best_candidate": {
+    "route": "downstream",
+    "lag_days": 14,
+    "model": "logistic",
+    "pr_auc": 0.6368598346034052,
+    "brier": 0.10517766677191584,
+    "recall_at_top20": 0.7692307692307693,
+    "alert_rate": 0.2033898305084746,
+    "pr_auc_gain": 0.5284177491109069,
+    "utility": 0.5126410990951196,
+    "train_rows": 1587,
+    "test_rows": 177,
+    "cut_date": "2025-06-27",
+    "step": 5,
+    "budget_remaining": 3,
+    "action_id": "downstream__14d__logistic"
+  },
+  "synthetic_ground_truth": {
+    "route": "downstream",
+    "lag_days": 14,
+    "recovered_by_agent": true
+  },
+  "validation": {
+    "time_block": "last 25% of dates",
+    "spatial_block": "Synthetic_Region_D",
+    "random_split_used": false
+  },
+  "interpretation": "The selected action is a candidate signal found in deterministic synthetic data; it is not evidence of real-world HAB predictive skill or mechanism.",
+  "applicability_boundary": [
+    "synthetic four-region dataset",
+    "discrete upstream relation rather than physical current trajectories",
+    "binary event label without species or toxin confirmation"
+  ],
+  "scientific_variable_rules": {
+    "mhw_intensity": "SST minus seasonal climatological mean on synthetic p90 exceedance days",
+    "nutrients": [
+      "nitrate",
+      "phosphate",
+      "silicate"
+    ],
+    "microplastics": "proxy for transport/residence/convergence setting only; not a direct HAB driver"
+  },
+  "excluded_research_modules": [
+    "full multiscale anomaly detector",
+    "deep adaptive router",
+    "TE/CTE significance network",
+    "spatial multiplier impact decomposition"
+  ]
+}

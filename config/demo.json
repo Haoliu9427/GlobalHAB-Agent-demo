@@ -1,0 +1,10 @@
+{
+  "seed": 42,
+  "days": 720,
+  "budget": 8,
+  "holdout_region": "Synthetic_Region_D",
+  "test_fraction": 0.25,
+  "lags": [7, 14, 30],
+  "routes": ["local", "downstream"],
+  "models": ["logistic", "random_forest"]
+}

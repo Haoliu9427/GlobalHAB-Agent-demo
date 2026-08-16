@@ -1,18 +1,5 @@
 # GlobalHAB-Agent：初赛最小可运行示例
 
-当前版本：`2.2-web-demo`。版本识别信息见`VERSION.md`。
-
-## 在线网页Demo
-
-本工程已包含`app.py`，可直接部署为Streamlit HTTPS网页。部署说明见`DEPLOY_STREAMLIT.md`。
-
-本地预览：
-
-```bash
-python -m pip install -r requirements.txt
-python -m streamlit run app.py
-```
-
 本仓库用于展示“观察—提出假设—执行实验—获取反馈—更新搜索—形成发现卡”的最小闭环。它使用具有海洋科学约束的确定性合成数据，不声称已经获得真实全球有害藻华预测性能，也不用于业务预警。
 
 ## 30 秒运行
@@ -45,10 +32,6 @@ python run_demo.py --config config/demo.json
 - 该示例不包含完整多尺度异常检测、深度自适应路由、TE/CTE 网络和空间乘数影响分解；
 - 真实项目仍需接入卫星、再分析、毒素、物种、闭港及监测努力数据，并进行独立事件复核。
 
-## 代码与知识产权边界
-
-本压缩包仅开放初赛演示代码和合成数据生成器。未随包分发的研究级模块通过接口边界说明，不应从本示例推断其完整实现。提交公开仓库前，应由申请人所在单位和专利代理人确认专利申请状态、职务成果归属及许可方案。详见 `OPEN_SOURCE_BOUNDARY.md`。
-
 ## 目录
 
 ```text
@@ -77,4 +60,4 @@ docker build -t globalhab-demo .
 docker run --rm -p 8501:8501 globalhab-demo
 ```
 
-随后访问`http://localhost:8501`。该地址仅用于本机预览，比赛Demo仍应使用部署后的HTTPS地址。
+访问`http://localhost:8501`。该地址仅用于本机预览。

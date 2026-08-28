@@ -11,7 +11,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo import (  # noqa: E402
+    build_norway_replay,
     build_sa_replay,
+    global_evidence_frame,
+    load_norway_real_case,
     load_sa_real_case,
     project_aquaculture_risk,
     project_real_aquaculture_priority,
@@ -55,6 +58,9 @@ def test_cli_runs_and_writes_auditable_outputs(tmp_path):
         "sa_real_replay_timeline.csv", "sa_real_site_summary.csv",
         "sa_real_species_summary.csv", "sa_real_router_trace.csv",
         "sa_real_aquaculture_priority.csv", "sa_real_replay_card.json",
+        "norway_real_replay_timeline.csv", "norway_real_station_summary.csv",
+        "norway_real_taxa_summary.csv", "norway_real_replay_card.json",
+        "global_nature_evidence_cases.csv",
     ]:
         assert (tmp_path / name).exists(), name
 
@@ -148,3 +154,26 @@ def test_real_sa_replay_uses_bundled_qpcr_and_defers_unsupported_models():
         replay["sites"], "贝类（牡蛎/贻贝）", 0.80
     )
     assert priority["verification_priority_index"].between(0, 100).all()
+
+
+def test_norway_real_monitoring_replay_and_global_evidence_are_auditable():
+    observations, provenance = load_norway_real_case(ROOT / "data")
+    assert len(observations) == 5919
+    assert observations["sample_date"].nunique() == 868
+    assert observations["region"].nunique() == 35
+    assert provenance["license"] == "CC BY 4.0"
+
+    replay = build_norway_replay(
+        observations, observations["sample_date"].min(), observations["sample_date"].max()
+    )
+    card = replay["card"]
+    assert card["target_event_observations"] == 139
+    assert card["peak_a_tamarense"] == {
+        "date": "2012-07-02", "region": "Tromsø", "cells_l": 3600.0
+    }
+    assert card["peak_d_acuta"] == {
+        "date": "2011-09-29", "region": "Risør", "cells_l": 9632.0
+    }
+    cases = global_evidence_frame()
+    assert len(cases) == 4
+    assert (cases["product_status"] == "完整观测回放").sum() == 2

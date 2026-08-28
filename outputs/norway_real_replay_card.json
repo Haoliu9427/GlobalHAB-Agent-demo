@@ -1,0 +1,24 @@
+{
+  "mode": "real_monitoring_replay_not_new_model_training",
+  "event": "Norwegian coast toxic algae monitoring, 2006-2019",
+  "observations": 5919,
+  "sampling_dates": 868,
+  "regions": 35,
+  "date_range": [
+    "2006-04-03",
+    "2019-10-28"
+  ],
+  "target_event_observations": 139,
+  "study_threshold_cells_l": 200.0,
+  "peak_a_tamarense": {
+    "date": "2012-07-02",
+    "region": "Tromsø",
+    "cells_l": 3600.0
+  },
+  "peak_d_acuta": {
+    "date": "2011-09-29",
+    "region": "Risør",
+    "cells_l": 9632.0
+  },
+  "interpretation": "Replay of public weekly monitoring observations and study-defined event flags. Percentages describe this monitoring table, not population prevalence."
+}

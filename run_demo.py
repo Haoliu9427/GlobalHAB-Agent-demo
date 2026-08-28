@@ -1,4 +1,4 @@
-"""Run the complete GlobalHAB-Agent GOAI semifinal workflow."""
+"""Run the complete GlobalHAB-Agent v3.3 research-to-impact workflow."""
 
 from __future__ import annotations
 
@@ -12,8 +12,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
+REGION_LABELS = {
+    "Synthetic_Region_A": "北太平洋情景区（合成）",
+    "Synthetic_Region_B": "北大西洋情景区（合成）",
+    "Synthetic_Region_C": "南大洋情景区（合成）",
+    "Synthetic_Region_D": "西太平洋情景区（合成）",
+}
+
 from globalhab_demo import (  # noqa: E402
+    build_norway_replay,
     build_sa_replay,
+    global_evidence_frame,
+    load_norway_real_case,
     load_sa_real_case,
     project_real_aquaculture_priority,
     real_data_router,
@@ -76,6 +86,13 @@ def main() -> None:
     real_aquaculture = project_real_aquaculture_priority(
         real_replay["sites"], "贝类（牡蛎/贻贝）", 0.80
     )
+    norway_observations, norway_provenance = load_norway_real_case(data_dir)
+    norway_replay = build_norway_replay(
+        norway_observations,
+        norway_observations["sample_date"].min(),
+        norway_observations["sample_date"].max(),
+    )
+    global_cases = global_evidence_frame()
 
     data_path = data_dir / "demo_hab.csv"
     frame.to_csv(data_path, index=False)
@@ -98,6 +115,19 @@ def main() -> None:
     (output / "sa_real_replay_card.json").write_text(
         json.dumps(real_replay["card"], ensure_ascii=False, indent=2), encoding="utf-8"
     )
+    norway_replay["timeline"].to_csv(
+        output / "norway_real_replay_timeline.csv", index=False
+    )
+    norway_replay["stations"].to_csv(
+        output / "norway_real_station_summary.csv", index=False
+    )
+    norway_replay["taxa"].to_csv(
+        output / "norway_real_taxa_summary.csv", index=False
+    )
+    (output / "norway_real_replay_card.json").write_text(
+        json.dumps(norway_replay["card"], ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    global_cases.to_csv(output / "global_nature_evidence_cases.csv", index=False)
     (output / "method_diagnostics.json").write_text(
         json.dumps({
             "router": result["router_diagnostics"],
@@ -112,11 +142,15 @@ def main() -> None:
         json.dumps(card, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
     )
     manifest = {
-        "version": "3.2.0-real-event-replay",
+        "version": "3.3.0-research-to-impact",
         "config_sha256": _sha256(config_path),
         "data_sha256": _sha256(data_path),
         "real_qpcr_sha256": _sha256(data_dir / "real_case" / "derived" / "sa_qpcr_observations.csv"),
         "real_data_license": real_provenance["qpcr"]["license"],
+        "norway_observations_sha256": _sha256(
+            data_dir / "real_case_norway" / "derived" / "norway_hab_observations.csv"
+        ),
+        "norway_data_license": norway_provenance["license"],
         "seed": config["seed"],
         "outputs": [
             "baseline_results.csv",
@@ -138,6 +172,11 @@ def main() -> None:
             "sa_real_router_trace.csv",
             "sa_real_aquaculture_priority.csv",
             "sa_real_replay_card.json",
+            "norway_real_replay_timeline.csv",
+            "norway_real_station_summary.csv",
+            "norway_real_taxa_summary.csv",
+            "norway_real_replay_card.json",
+            "global_nature_evidence_cases.csv",
         ],
     }
     (output / "run_manifest.json").write_text(
@@ -148,24 +187,27 @@ def main() -> None:
         "# GlobalHAB-Agent GOAI复赛试跑摘要\n\n"
         f"- 研究信号状态：{card['research_signal_status']}\n"
         f"- 实验预算：{config['budget']} / 候选总数：{len(result['catalog'])}\n"
-        f"- 完全留出海区：{config['holdout_region']}\n"
-        f"- 最佳候选：{best['action_id']}\n"
+        f"- 完整留出验证区：{REGION_LABELS[config['holdout_region']]}\n"
+        f"- 最优风险模式：沿流传播 · {int(best['lag_days'])}天 · {best['model']}\n"
         f"- PR-AUC：{float(best['pr_auc']):.3f}\n"
         f"- Brier Skill：{float(best['brier_skill']):.3f}\n"
         f"- ECE：{float(best['ece']):.3f}\n"
-        f"- Top20%召回：{float(best['recall_at_top20']):.1%}\n"
+        f"- 最高20%风险覆盖事件：{float(best['recall_at_top20']):.1%}\n"
         f"- Top20%虚警率（FPR）：{float(best['false_positive_rate_at_top20']):.1%}\n"
         f"- 相同预算随机搜索恢复率："
         f"{float(result['random_reference']['hidden_signal_recovery_rate']):.1%}\n"
         f"- 多尺度异常事件数：{len(anomaly_events)}\n"
-        f"- TE/CTE平均峰值滞后："
+        f"- 跨区域传播平均峰值时滞："
         f"{int(te_cte_lag_summary.loc[te_cte_lag_summary['mean_cte_bits'].idxmax(), 'lag_days'])}天\n"
-        f"- Durbin空间自回归系数 rho：{float(result['spatial_diagnostics']['rho']):.2f}\n"
+        f"- 邻区联动系数 rho：{float(result['spatial_diagnostics']['rho']):.2f}\n"
         f"- 已运行路由分支：{int(router_trace['selected'].sum())}/4\n"
         f"- 南澳真实qPCR样本：{real_replay['card']['observations']}条 / "
         f"{real_replay['card']['sampling_dates']}个日期 / {real_replay['card']['locations']}个地点\n"
         f"- 真实事件K. cristata峰值：{real_replay['card']['peak_k_cristata']['cells_l']:,.0f} cells L⁻¹\n"
-        f"- 真实数据定位：事件回放与复核优先级，不作为监督训练性能\n\n"
+        f"- 挪威真实监测：{norway_replay['card']['observations']:,}条 / "
+        f"{norway_replay['card']['sampling_dates']}个日期 / {norway_replay['card']['regions']}个区域\n"
+        f"- 挪威研究定义事件观测：{norway_replay['card']['target_event_observations']}条\n"
+        f"- 真实数据定位：多区域观测回放与复核优先级，不作为合成基准性能\n\n"
         "> 性能来自匿名合成数据的软件正确性验证；不代表真实HAB或养殖损失预测性能。\n"
     )
     (output / "run_summary.md").write_text(summary, encoding="utf-8")

@@ -29,6 +29,12 @@ from .real_replay import (
     project_real_aquaculture_priority,
     real_data_router,
 )
+from .global_cases import (
+    GLOBAL_EVIDENCE_CASES,
+    build_norway_replay,
+    global_evidence_frame,
+    load_norway_real_case,
+)
 
 __all__ = [
     "ExperimentAction",
@@ -59,4 +65,8 @@ __all__ = [
     "load_sa_real_case",
     "project_real_aquaculture_priority",
     "real_data_router",
+    "GLOBAL_EVIDENCE_CASES",
+    "build_norway_replay",
+    "global_evidence_frame",
+    "load_norway_real_case",
 ]

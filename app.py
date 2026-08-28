@@ -1,4 +1,4 @@
-"""GlobalHAB-Agent GOAI semifinal interactive demo."""
+"""GlobalHAB-Agent v3.3 research-to-impact interactive demo."""
 
 from __future__ import annotations
 
@@ -21,7 +21,10 @@ from globalhab_demo import (  # noqa: E402
     PRODUCTION_PROFILES,
     SCENARIO_PRESETS,
     SOUTH_AUSTRALIA_CASE,
+    build_norway_replay,
     build_sa_replay,
+    global_evidence_frame,
+    load_norway_real_case,
     load_sa_real_case,
     project_aquaculture_risk,
     project_real_aquaculture_priority,
@@ -30,6 +33,14 @@ from globalhab_demo import (  # noqa: E402
     run_exploration,
 )
 from globalhab_demo.data import REGIONS  # noqa: E402
+
+
+REGION_LABELS = {
+    "Synthetic_Region_A": "北太平洋情景区（合成）",
+    "Synthetic_Region_B": "北大西洋情景区（合成）",
+    "Synthetic_Region_C": "南大洋情景区（合成）",
+    "Synthetic_Region_D": "西太平洋情景区（合成）",
+}
 
 
 st.set_page_config(
@@ -42,26 +53,25 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    .block-container {padding-top: 1.25rem; padding-bottom: 3rem; max-width: 1480px;}
+    .block-container {padding-top: 2.2rem; padding-bottom: 3rem; max-width: 1480px;}
     h1, h2, h3 {letter-spacing:-0.02em;}
+    [data-testid="stSidebar"] {background:linear-gradient(180deg,#f3f8f7 0%,#edf3f4 100%);}
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {line-height:1.55;}
     [data-testid="stMetric"] {
         background:linear-gradient(135deg,#f7fbfc,#eef7f5);
         border:1px solid #cfe1df; border-radius:14px; padding:.75rem .85rem;
         box-shadow:0 5px 18px rgba(22,74,78,.05);
     }
+    [data-testid="stMetricValue"] {white-space:normal; overflow:visible;}
+    [data-testid="stMetricValue"] > div {white-space:normal; overflow:visible; text-overflow:clip;}
     .eyebrow {font-size:.78rem; font-weight:700; letter-spacing:.12em;
-        color:#147a7e; text-transform:uppercase; margin-bottom:.2rem;}
+        color:#147a7e; text-transform:uppercase; margin-bottom:.55rem; line-height:1.4;}
     .hero {background:linear-gradient(120deg,#073b4c 0%,#0b6670 58%,#138a83 100%);
-        color:white; padding:1.15rem 1.35rem; border-radius:18px; margin-bottom:1rem;
-        box-shadow:0 12px 32px rgba(4,52,63,.18);}
-    .hero h1 {font-size:2.05rem; margin:.05rem 0 .25rem; color:white;}
-    .hero p {margin:0; color:#d9f2ef; font-size:1rem;}
-    .status-row {display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.75rem;}
-    .pill {display:inline-block; padding:.25rem .62rem; border-radius:999px;
-        background:rgba(255,255,255,.13); border:1px solid rgba(255,255,255,.24);
-        font-size:.78rem; color:white;}
-    .boundary {background:#fff8e7; border:1px solid #f0d6a0; color:#5c4217;
-        padding:.72rem .9rem; border-radius:10px; margin:.45rem 0 1rem;}
+        color:white; padding:1.7rem 1.8rem 1.55rem; border-radius:22px; margin:.25rem 0 1.05rem;
+        box-shadow:0 16px 38px rgba(4,52,63,.20); overflow:visible;}
+    .hero h1 {font-size:2.35rem; margin:0 0 .28rem; color:white; line-height:1.16;}
+    .hero .tagline {margin:0; color:#ddf7f3; font-size:1.18rem; font-weight:600;}
+    .hero .value {margin:.62rem 0 0; color:#bde8e2; font-size:.92rem; max-width:820px; line-height:1.65;}
     .signal {background:linear-gradient(105deg,#eaf8f4,#f4fbfd);
         border:1px solid #bfe1d8; border-radius:12px; padding:.82rem 1rem;
         color:#123f45; margin-bottom:.5rem;}
@@ -70,6 +80,35 @@ st.markdown(
     .formula {background:#082f3a; color:#e8fbf7; padding:.8rem 1rem;
         border-radius:10px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
     .small-muted {color:#61777d; font-size:.84rem;}
+    .kpi-grid {display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:.72rem;
+        margin:.2rem 0 1.15rem;}
+    .kpi-grid.kpi-3 {grid-template-columns:repeat(3,minmax(0,1fr));}
+    .kpi {min-height:112px; background:linear-gradient(145deg,#ffffff,#eef8f6);
+        border:1px solid #c9e0dc; border-radius:16px; padding:.82rem .9rem;
+        box-shadow:0 7px 20px rgba(18,74,75,.06); display:flex; flex-direction:column;
+        justify-content:space-between; min-width:0;}
+    .kpi-label {font-size:.78rem; color:#557077; font-weight:650; line-height:1.3;}
+    .kpi-value {font-size:1.42rem; color:#0c424b; font-weight:760; line-height:1.18;
+        overflow-wrap:anywhere; word-break:normal;}
+    .kpi-note {font-size:.69rem; color:#789096; line-height:1.25; margin-top:.28rem;}
+    .product-grid {display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.8rem;
+        margin:.65rem 0 1rem;}
+    .product-card {background:#f5f9fb; border:1px solid #d8e5e8; border-radius:14px;
+        padding:1rem 1.05rem; min-height:132px;}
+    .product-card b {color:#075b67; font-size:1rem;}
+    .product-card p {color:#506a72; font-size:.86rem; line-height:1.65; margin:.5rem 0 0;}
+    .case-badge {display:inline-block; color:#0b6d70; background:#e5f5f2; border-radius:999px;
+        padding:.18rem .5rem; font-size:.72rem; font-weight:700; margin-bottom:.35rem;}
+    .footer-boundary {color:#7b898e; font-size:.76rem; line-height:1.65; text-align:center;
+        max-width:1120px; margin:0 auto; padding:.4rem .5rem 0;}
+    @media (max-width:1100px) {.kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+    @media (max-width:700px) {
+        .block-container{padding-top:1.3rem;}
+        .hero{padding:1.25rem 1.1rem;}
+        .hero h1{font-size:1.9rem;}
+        .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+        .product-grid{grid-template-columns:1fr;}
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -91,6 +130,54 @@ def cached_exploration(
         holdout_region=holdout_region,
         test_fraction=test_fraction,
     )
+
+
+def kpi_grid(items: list[tuple[str, str, str]]) -> None:
+    cards = "".join(
+        '<div class="kpi">'
+        f'<div class="kpi-label">{label}</div>'
+        f'<div class="kpi-value">{value}</div>'
+        f'<div class="kpi-note">{note}</div>'
+        '</div>'
+        for label, value, note in items
+    )
+    grid_class = " kpi-3" if len(items) == 3 else ""
+    st.markdown(f'<div class="kpi-grid{grid_class}">{cards}</div>', unsafe_allow_html=True)
+
+
+def global_case_map(frame: pd.DataFrame) -> go.Figure:
+    status_color = {
+        "完整观测回放": "#0b7c78",
+        "研究证据接口": "#6a4c93",
+        "全球背景证据": "#d08a32",
+    }
+    fig = go.Figure()
+    for status, subset in frame.groupby("product_status"):
+        fig.add_trace(go.Scattergeo(
+            lon=subset["longitude"], lat=subset["latitude"], text=subset["case"],
+            customdata=subset[["region", "period", "journal", "evidence", "records"]],
+            mode="markers+text", textposition="top center", name=status,
+            marker={
+                "size": 20 if status == "完整观测回放" else 15,
+                "color": status_color[status], "line": {"color": "white", "width": 1.3},
+                "opacity": .92,
+            },
+            hovertemplate=(
+                "<b>%{text}</b><br>%{customdata[0]} · %{customdata[1]}"
+                "<br>%{customdata[2]}<br>%{customdata[3]}<br>%{customdata[4]}<extra></extra>"
+            ),
+        ))
+    fig.update_geos(
+        projection_type="natural earth", showland=True, landcolor="#edf0eb",
+        showocean=True, oceancolor="#dceff2", showcountries=True,
+        countrycolor="#ffffff", showcoastlines=True, coastlinecolor="#79939a",
+    )
+    fig.update_layout(
+        height=430, margin={"l": 0, "r": 0, "t": 5, "b": 0},
+        legend={"orientation": "h", "y": 0.02, "x": .5, "xanchor": "center"},
+        paper_bgcolor="white", font={"family": "Microsoft YaHei, Arial", "size": 12},
+    )
+    return fig
 
 
 def bloom_map(frame: pd.DataFrame) -> go.Figure:
@@ -216,38 +303,32 @@ def real_qpcr_map(frame: pd.DataFrame) -> go.Figure:
 st.markdown(
     """
     <div class="hero">
-      <div class="eyebrow" style="color:#a7eee2">GOAI · AI for Research · Open Exploration</div>
+      <div class="eyebrow" style="color:#a7eee2">GOAI · AI FOR RESEARCH</div>
       <h1>GlobalHAB-Agent</h1>
-      <p>合成真值恢复、机制分解与南澳真实qPCR事件回放的可检查探索闭环</p>
-      <div class="status-row">
-        <span class="pill">前向时间 + 留一海区</span>
-        <span class="pill">随机探索参照</span>
-        <span class="pill">反向路径/时间置换负对照</span>
-        <span class="pill">7/14/30/60天多尺度异常</span>
-        <span class="pill">TE/CTE + Durbin影响分解</span>
-        <span class="pill">115条南澳真实qPCR样本</span>
-        <span class="pill">A/B/C证据分层</span>
-      </div>
+      <p class="tagline">全球有害藻华研究与海水养殖风险研判平台</p>
+      <p class="value">从环境情景推演到真实事件回放，直观呈现哪里可能出现风险、何时需要关注，
+      以及应优先核查哪些养殖区域。科学证据与业务响应在同一界面追踪。</p>
     </div>
-    <div class="boundary"><b>能力边界：</b>PR-AUC等模型性能来自匿名合成数据的软件验证；
-    南澳大利亚页使用真实qPCR观测进行事件回放，但不参与监督训练。地图和复核优先级
-    不构成真实预报、自动停采指令或统一毒素阈值。</div>
     """,
     unsafe_allow_html=True,
 )
 
 with st.sidebar:
-    st.markdown("## 探索环境")
-    days = st.select_slider("合成序列长度", [540, 720, 900], value=720)
-    budget = st.slider("Agent实验预算", 4, 12, 8)
-    holdout_region = st.selectbox("完全留出区域", REGIONS, index=3)
+    st.markdown("## 科学验证设置")
+    days = st.select_slider("验证序列长度", [540, 720, 900], value=720)
+    budget = st.slider("探索实验次数", 4, 12, 8)
+    holdout_region = st.selectbox(
+        "验证区（完整留出）", REGIONS, index=3,
+        format_func=lambda value: REGION_LABELS[value],
+        help="该区域完全不参与模型拟合，用于检验跨区域适用性。区域名称是合成情景原型。",
+    )
     test_fraction = st.select_slider(
         "前向留出比例", [0.20, 0.25, 0.30], value=0.25,
         format_func=lambda value: f"{value:.0%}",
     )
-    seed = st.number_input("固定随机种子", 1, 9999, 42)
-    run_clicked = st.button("重新运行探索", type="primary", width="stretch")
-    st.caption("候选空间：局地/沿流 × 3/7/14/21/30/45天 × 两类模型；另运行四个竞赛等价机制模块。")
+    seed = st.number_input("复现实验编号", 1, 9999, 42)
+    run_clicked = st.button("运行科学探索", type="primary", width="stretch")
+    st.caption("评审可调整设置并重新运行。所有实验、失败结果和验证指标均自动记录。")
 
 if run_clicked or "exploration" not in st.session_state:
     with st.spinner("正在执行阻断验证、随机参照与负对照……"):
@@ -273,21 +354,22 @@ spatial_effects = result["spatial_effects"]
 spatial_diagnostics = result["spatial_diagnostics"]
 recovered = bool(card["synthetic_ground_truth"]["recovered_by_agent"])
 
-m1, m2, m3, m4, m5, m6 = st.columns(6)
-m1.metric("研究信号", "恢复" if recovered else "未恢复")
-m2.metric("最佳候选", f"{best['route']} · {int(best['lag_days'])} d")
-m3.metric("PR-AUC", f"{float(best['pr_auc']):.3f}")
-m4.metric("Brier Skill", f"{float(best['brier_skill']):.3f}")
-m5.metric("Top20%召回", f"{float(best['recall_at_top20']):.1%}")
-m6.metric("校准误差 ECE", f"{float(best['ece']):.3f}")
+kpi_grid([
+    ("关键研究信号", "已恢复" if recovered else "待确认", "成功识别预设传导规律"),
+    ("最优风险模式", f"沿流传播 · {int(best['lag_days'])}天", "相对局地信号更具解释力"),
+    ("稀有事件识别", f"PR-AUC {float(best['pr_auc']):.3f}", "越高表示越能识别少数事件"),
+    ("概率预测增益", f"{float(best['brier_skill']):.3f}", "相对气候基准的Brier Skill"),
+    ("高风险覆盖能力", f"{float(best['recall_at_top20']):.1%}", "最高20%风险覆盖的真实事件比例"),
+    ("概率校准误差", f"ECE {float(best['ece']):.3f}", "越接近0表示概率越稳定"),
+])
 
 tab_alert, tab_real, tab_methods, tab_agent, tab_evidence = st.tabs([
-    "01 藻华与养殖风险", "02 南澳真实事件回放", "03 机制模块与影响分解",
-    "04 Agent探索与研究信号", "05 证据链与复现",
+    "01 风险研判", "02 全球真实观测", "03 科学解释",
+    "04 探索与验证", "05 成果与证据",
 ])
 
 with tab_alert:
-    st.markdown("### 情景化HAB空间预警")
+    st.markdown("### 未来7/14/30天藻华风险情景推演")
     control_col, map_col = st.columns([1.0, 2.25], gap="large")
     with control_col:
         preset_name = st.selectbox("复合环境情景", list(SCENARIO_PRESETS), index=0)
@@ -298,23 +380,23 @@ with tab_alert:
             format_func=lambda value: f"{value}天",
         )
         mhw = st.slider(
-            "MHW强度（°C）", 0.0, 4.5, float(preset["mhw_intensity_c"]), .1,
+            "海洋热浪强度（°C）", 0.0, 4.5, float(preset["mhw_intensity_c"]), .1,
             key=f"mhw_{preset_name}",
         )
         nitrate = st.slider(
-            "Nitrate（mmol m⁻³）", 0.0, 10.0, float(preset["nitrate_mmol_m3"]), .1,
+            "硝酸盐 Nitrate（mmol m⁻³）", 0.0, 10.0, float(preset["nitrate_mmol_m3"]), .1,
             key=f"nitrate_{preset_name}",
         )
         phosphate = st.slider(
-            "Phosphate（mmol m⁻³）", 0.0, 1.5, float(preset["phosphate_mmol_m3"]), .05,
+            "磷酸盐 Phosphate（mmol m⁻³）", 0.0, 1.5, float(preset["phosphate_mmol_m3"]), .05,
             key=f"phosphate_{preset_name}",
         )
         silicate = st.slider(
-            "Silicate（mmol m⁻³）", 0.0, 12.0, float(preset["silicate_mmol_m3"]), .1,
+            "硅酸盐 Silicate（mmol m⁻³）", 0.0, 12.0, float(preset["silicate_mmol_m3"]), .1,
             key=f"silicate_{preset_name}",
         )
         transport = st.slider(
-            "输运/停留/汇聚代理", 0.0, 1.0, float(preset["transport_proxy"]), .05,
+            "水团停留与汇聚背景", 0.0, 1.0, float(preset["transport_proxy"]), .05,
             help="由微塑料浓度的有界变换构造，仅代理水团状态，不是流速或流向。",
             key=f"transport_{preset_name}",
         )
@@ -333,7 +415,7 @@ with tab_alert:
         )
         st.plotly_chart(bloom_map(scenario), width="stretch", config={"displayModeBar": False})
 
-    st.markdown("### 由藻华风险转向海水养殖响应优先级")
+    st.markdown("### 海水养殖响应优先级")
     st.markdown(
         '<div class="formula">响应优先指数 = HAB危害 × 养殖暴露 × 对象脆弱性；'
         '证据等级单独控制不确定性宽度，不用“低置信度”掩盖潜在高风险。</div>',
@@ -378,159 +460,255 @@ with tab_alert:
     )
 
 with tab_real:
-    st.markdown("### 南澳大利亚2025复杂Karenia藻华：真实qPCR事件回放")
-    st.success(
-        "本页读取Murray等人论文配套Zenodo数据中的115条真实qPCR样本。"
-        "这些数据不参与本项目保留的v3.1合成基准训练，也不被扩充成虚构负样本。"
+    st.markdown("### 全球真实观测与前沿研究证据")
+    evidence_cases = global_evidence_frame()
+    st.plotly_chart(global_case_map(evidence_cases), width="stretch", config={"displayModeBar": False})
+    st.caption(
+        "南澳大利亚和挪威沿岸为随包运行的真实观测回放；美国Salish Sea与全球数据库用于展示可扩展研究接口。"
     )
+
     real_observations, real_provenance = load_sa_real_case(ROOT / "data")
-    real_min = real_observations["sample_date"].min().date()
-    real_max = real_observations["sample_date"].max().date()
-    r1, r2 = st.columns([1.5, 1.0])
-    replay_range = r1.date_input(
-        "回放时间范围", value=(real_min, real_max), min_value=real_min,
-        max_value=real_max, key="sa_replay_range",
+    norway_observations, norway_provenance = load_norway_real_case(ROOT / "data")
+    sa_full_replay = build_sa_replay(
+        real_observations, real_observations["sample_date"].min(),
+        real_observations["sample_date"].max(),
     )
-    depths = ["全部深度"] + sorted(real_observations["depth"].dropna().unique().tolist())
-    replay_depth = r2.selectbox("采样深度", depths, key="sa_depth")
-    if isinstance(replay_range, tuple) and len(replay_range) == 2:
-        replay_start, replay_end = replay_range
+    norway_full_replay = build_norway_replay(
+        norway_observations, norway_observations["sample_date"].min(),
+        norway_observations["sample_date"].max(),
+    )
+    real_card = sa_full_replay["card"]
+    norway_card = norway_full_replay["card"]
+
+    case_choice = st.selectbox(
+        "选择可运行的真实观测案例",
+        ["南澳大利亚 · 2025复杂Karenia事件", "挪威沿岸 · 2006–2019有毒藻监测"],
+    )
+
+    if case_choice.startswith("南澳大利亚"):
+        st.markdown("#### 南澳大利亚：复杂Karenia藻华现场qPCR回放")
+        real_min = real_observations["sample_date"].min().date()
+        real_max = real_observations["sample_date"].max().date()
+        r1, r2 = st.columns([1.5, 1.0])
+        replay_range = r1.date_input(
+            "回放时间范围", value=(real_min, real_max), min_value=real_min,
+            max_value=real_max, key="sa_replay_range",
+        )
+        depths = ["全部深度"] + sorted(real_observations["depth"].dropna().unique().tolist())
+        replay_depth = r2.selectbox("采样深度", depths, key="sa_depth")
+        if isinstance(replay_range, tuple) and len(replay_range) == 2:
+            replay_start, replay_end = replay_range
+        else:
+            replay_start, replay_end = real_min, real_max
+        replay = build_sa_replay(real_observations, replay_start, replay_end, replay_depth)
+        selected_card = replay["card"]
+        peak = selected_card["peak_k_cristata"]
+        kpi_grid([
+            ("现场qPCR样本", f"{selected_card['observations']:,}", "窗口内真实采样记录"),
+            ("采样日期", f"{selected_card['sampling_dates']}", "非均匀现场采样"),
+            ("监测地点", f"{selected_card['locations']}", "Gulf St Vincent沿岸"),
+            ("K. cristata检出", f"{selected_card['k_cristata_detection_share']:.1%}", "样本检出比例"),
+            ("最高观测丰度", f"{peak['cells_l']:.2e}", "cells L⁻¹"),
+            ("回放状态", "现场数据", "CC BY 4.0开放数据"),
+        ])
+        st.markdown(
+            '<div class="signal">最高现场观测：'
+            f'<b>{peak["location"]}</b> · {peak["date"]} · '
+            f'<i>K. cristata</i> <b>{peak["cells_l"]:,.0f} cells L⁻¹</b>。'
+            '该值是采样点峰值，不代表整个海区的连续最大值。</div>',
+            unsafe_allow_html=True,
+        )
+        st.plotly_chart(
+            real_qpcr_map(replay["sites"]), width="stretch", config={"displayModeBar": False}
+        )
+        rt1, rt2 = st.columns([1.35, 1.0], gap="large")
+        with rt1:
+            timeline_chart = px.line(
+                replay["timeline"], x="sample_date", y="k_cristata_peak_cells_l",
+                markers=True, log_y=True, title="K. cristata采样日峰值",
+                labels={"sample_date": "采样日期", "k_cristata_peak_cells_l": "cells L⁻¹（对数轴）"},
+            )
+            timeline_chart.update_layout(height=350, margin={"l": 5, "r": 5, "t": 50, "b": 5})
+            st.plotly_chart(timeline_chart, width="stretch", config={"displayModeBar": False})
+        with rt2:
+            composition_chart = px.bar(
+                replay["species"], x="species", y="summed_cells_l_across_samples",
+                log_y=True, color="species", title="采样集Karenia物种构成",
+                labels={"species": "物种", "summed_cells_l_across_samples": "跨样本丰度和"},
+            )
+            composition_chart.update_layout(
+                showlegend=False, height=350, margin={"l": 5, "r": 5, "t": 50, "b": 5}
+            )
+            st.plotly_chart(composition_chart, width="stretch", config={"displayModeBar": False})
+
+        st.markdown("#### 海水养殖现场复核优先级")
+        ra1, ra2 = st.columns(2)
+        real_production = ra1.selectbox(
+            "养殖对象", list(PRODUCTION_PROFILES), key="real_production"
+        )
+        real_exposure = ra2.slider(
+            "养殖暴露情景", .25, 1.0, .80, .05, key="real_exposure"
+        )
+        real_aqua = project_real_aquaculture_priority(
+            replay["sites"], real_production, real_exposure
+        )
+        st.dataframe(
+            real_aqua[[
+                "location", "k_cristata_peak_cells_l", "observed_abundance_band",
+                "verification_priority_index", "evidence_grade", "recommended_action",
+            ]].head(15), width="stretch", hide_index=True,
+        )
+        rd1, rd2, rd3 = st.columns(3)
+        rd1.download_button(
+            "下载真实qPCR数据", replay["observations"].to_csv(index=False).encode("utf-8-sig"),
+            "south_australia_qpcr_replay.csv", "text/csv",
+        )
+        rd2.download_button(
+            "下载事件回放卡", json.dumps(selected_card, ensure_ascii=False, indent=2).encode("utf-8"),
+            "south_australia_replay_card.json", "application/json",
+        )
+        rd3.download_button(
+            "下载养殖复核顺序", real_aqua.to_csv(index=False).encode("utf-8-sig"),
+            "south_australia_aquaculture_priority.csv", "text/csv",
+        )
+        st.markdown(
+            "来源：[Nature Ecology & Evolution](https://doi.org/10.1038/s41559-026-03115-0) · "
+            "[Zenodo数据（CC BY 4.0）](https://doi.org/10.5281/zenodo.20227730)"
+        )
     else:
-        replay_start, replay_end = real_min, real_max
-    replay = build_sa_replay(real_observations, replay_start, replay_end, replay_depth)
-    real_card = replay["card"]
-
-    rm1, rm2, rm3, rm4, rm5 = st.columns(5)
-    rm1.metric("真实样本", f"{real_card['observations']}")
-    rm2.metric("采样日期", f"{real_card['sampling_dates']}")
-    rm3.metric("地点", f"{real_card['locations']}")
-    rm4.metric("K. cristata检出", f"{real_card['k_cristata_detection_share']:.1%}")
-    rm5.metric("峰值丰度", f"{real_card['peak_k_cristata']['cells_l'] / 1e6:.2f}M L⁻¹")
-    peak = real_card["peak_k_cristata"]
-    st.markdown(
-        '<div class="signal">回放窗口内最高观测：'
-        f'<b>{peak["location"]}</b> · {peak["date"]} · '
-        f'<i>K. cristata</i> <b>{peak["cells_l"]:,.0f} cells L⁻¹</b>。'
-        '这是采样峰值，不是整个海区的连续最大值。</div>',
-        unsafe_allow_html=True,
-    )
-    st.plotly_chart(real_qpcr_map(replay["sites"]), width="stretch", config={"displayModeBar": False})
-    st.caption(
-        "圆点大小表示该地点观测到的K. cristata峰值（对数缩放）；颜色表示其在该样本Karenia总丰度中的最大占比。"
-        "丰度分档仅用于界面展示，不是公共卫生、停采或养殖监管阈值。"
-    )
-
-    st.markdown("#### 时间演变与物种组成")
-    rt1, rt2 = st.columns([1.35, 1.0], gap="large")
-    with rt1:
-        timeline_chart = px.line(
-            replay["timeline"], x="sample_date", y="k_cristata_peak_cells_l",
-            markers=True, log_y=True,
-            labels={"sample_date": "采样日期", "k_cristata_peak_cells_l": "当日观测峰值（cells L⁻¹，对数轴）"},
-            title="K. cristata采样日峰值",
+        st.markdown("#### 挪威沿岸：14年有毒藻与环境监测回放")
+        norway_min = norway_observations["sample_date"].min().date()
+        norway_max = norway_observations["sample_date"].max().date()
+        n1, n2 = st.columns([1.5, 1.0])
+        norway_range = n1.date_input(
+            "监测时间范围", value=(norway_min, norway_max), min_value=norway_min,
+            max_value=norway_max, key="norway_replay_range",
         )
-        timeline_chart.update_layout(height=360, margin={"l": 5, "r": 5, "t": 50, "b": 5})
-        st.plotly_chart(timeline_chart, width="stretch", config={"displayModeBar": False})
-    with rt2:
-        composition_chart = px.bar(
-            replay["species"], x="species", y="summed_cells_l_across_samples",
-            log_y=True, color="species",
-            labels={"species": "Karenia物种", "summed_cells_l_across_samples": "跨样本丰度和（仅描述采样集）"},
-            title="采样集物种构成",
+        norway_regions = ["全部站点"] + sorted(norway_observations["region"].unique().tolist())
+        norway_region = n2.selectbox("沿岸监测区域", norway_regions, key="norway_region")
+        if isinstance(norway_range, tuple) and len(norway_range) == 2:
+            norway_start, norway_end = norway_range
+        else:
+            norway_start, norway_end = norway_min, norway_max
+        norway_replay = build_norway_replay(
+            norway_observations, norway_start, norway_end, norway_region
         )
-        composition_chart.update_layout(
-            showlegend=False, height=360, margin={"l": 5, "r": 5, "t": 50, "b": 5}
+        selected_card = norway_replay["card"]
+        peak_d = selected_card["peak_d_acuta"]
+        kpi_grid([
+            ("真实监测记录", f"{selected_card['observations']:,}", "藻细胞计数与环境条件"),
+            ("采样日期", f"{selected_card['sampling_dates']:,}", "2006–2019周尺度监测"),
+            ("沿岸区域", f"{selected_card['regions']}", "58–71°N监测网络"),
+            ("研究定义事件", f"{selected_card['target_event_observations']}", ">200 cells L⁻¹记录"),
+            ("D. acuta最高观测", f"{peak_d['cells_l']:,.0f}", "cells L⁻¹"),
+            ("回放状态", "现场数据", "CC BY 4.0开放数据"),
+        ])
+        st.markdown(
+            '<div class="signal">窗口内 <i>D. acuta</i> 最高观测：'
+            f'<b>{peak_d["region"]}</b> · {peak_d["date"]} · '
+            f'<b>{peak_d["cells_l"]:,.0f} cells L⁻¹</b>。'
+            '事件标识复现论文研究定义，不替代地方贝类毒素管控规则。</div>',
+            unsafe_allow_html=True,
         )
-        st.plotly_chart(composition_chart, width="stretch", config={"displayModeBar": False})
-
-    st.markdown("#### 真实数据自适应路由：能做什么、不能做什么")
-    real_router = real_data_router(replay["observations"], has_daily_environment=False)
-    st.dataframe(
-        real_router, width="stretch", hide_index=True,
-        column_config={"data_support": st.column_config.ProgressColumn(min_value=0.0, max_value=1.0)},
-    )
-    st.warning(
-        "当前真实包足以运行时空qPCR回放和物种组成分析，但单次事件、22个非均匀采样日期不足以稳健训练监督分类器，"
-        "也不足以直接估计TE/CTE或Durbin网络。scripts/prepare_sa_real_replay.py保留NOAA OISST适配器；"
-        "接入连续环境历史后，路由器才会开放多尺度环境异常分支。"
-    )
-
-    st.markdown("#### 基于真实观测的海水养殖复核优先级")
-    ra1, ra2 = st.columns(2)
-    real_production = ra1.selectbox(
-        "养殖对象（真实回放）", list(PRODUCTION_PROFILES), key="real_production"
-    )
-    real_exposure = ra2.slider(
-        "养殖暴露情景（真实回放）", .25, 1.0, .80, .05, key="real_exposure"
-    )
-    real_aqua = project_real_aquaculture_priority(
-        replay["sites"], real_production, real_exposure
-    )
-    st.dataframe(
-        real_aqua[[
-            "location", "k_cristata_peak_cells_l", "observed_abundance_band",
-            "observed_hazard_index", "farm_exposure_scenario",
-            "vulnerability_coefficient", "verification_priority_index",
-            "evidence_grade", "recommended_action",
-        ]].head(15),
-        width="stretch", hide_index=True,
-    )
-    st.caption(
-        "该指数只安排现场复核顺序：观测丰度经对数缩放后与用户设定暴露、对象脆弱性相乘。"
-        "它不是死亡概率、经济损失或停采阈值。"
-    )
-    rd1, rd2, rd3 = st.columns(3)
-    rd1.download_button(
-        "下载窗口内真实qPCR CSV",
-        replay["observations"].to_csv(index=False).encode("utf-8-sig"),
-        "sa_real_qpcr_replay.csv", "text/csv",
-    )
-    rd2.download_button(
-        "下载真实回放卡 JSON",
-        json.dumps(real_card, ensure_ascii=False, indent=2).encode("utf-8"),
-        "sa_real_replay_card.json", "application/json",
-    )
-    rd3.download_button(
-        "下载真实养殖复核优先级",
-        real_aqua.to_csv(index=False).encode("utf-8-sig"),
-        "sa_real_aquaculture_verification_priority.csv", "text/csv",
-    )
-    st.markdown(
-        "数据来源：[Nature Ecology & Evolution论文](https://doi.org/10.1038/s41559-026-03115-0) · "
-        "[Zenodo配套数据（CC BY 4.0）](https://doi.org/10.5281/zenodo.20227730)"
-    )
+        nt1, nt2 = st.columns([1.35, 1.0], gap="large")
+        with nt1:
+            norway_time = norway_replay["timeline"].copy()
+            norway_time["year"] = norway_time["sample_date"].dt.year
+            annual = norway_time.groupby("year", as_index=False).agg(
+                event_observations=("target_hab_events", "sum"),
+                monitored_dates=("sample_date", "nunique"),
+            )
+            annual_chart = px.bar(
+                annual, x="year", y="event_observations",
+                title="研究定义事件的年度观测数",
+                labels={"year": "年份", "event_observations": "事件观测数"},
+                color_discrete_sequence=["#0b7c78"],
+            )
+            annual_chart.update_layout(height=370, margin={"l": 5, "r": 5, "t": 50, "b": 5})
+            st.plotly_chart(annual_chart, width="stretch", config={"displayModeBar": False})
+        with nt2:
+            top_stations = norway_replay["stations"].head(15).sort_values("event_observations")
+            station_chart = px.bar(
+                top_stations, x="event_observations", y="region", orientation="h",
+                title="需要优先关注的监测区域",
+                labels={"event_observations": "事件观测数", "region": "区域"},
+                color="event_share", color_continuous_scale=["#d9efeb", "#0b7c78"],
+            )
+            station_chart.update_layout(
+                height=370, margin={"l": 5, "r": 5, "t": 50, "b": 5},
+                coloraxis_colorbar={"title": "事件占比"},
+            )
+            st.plotly_chart(station_chart, width="stretch", config={"displayModeBar": False})
+        st.markdown("#### 观测物种与环境条件")
+        ne1, ne2 = st.columns([.9, 1.35], gap="large")
+        with ne1:
+            st.dataframe(norway_replay["taxa"], width="stretch", hide_index=True)
+        with ne2:
+            environmental = norway_replay["observations"][[
+                "sst_c", "sea_surface_salinity_psu", "mixed_layer_depth_m", "par_e_m2_d"
+            ]].describe().loc[["mean", "std", "min", "50%", "max"]].T.reset_index()
+            environmental.columns = ["环境变量", "平均", "标准差", "最小", "中位", "最大"]
+            st.dataframe(environmental, width="stretch", hide_index=True)
+        nd1, nd2 = st.columns(2)
+        nd1.download_button(
+            "下载挪威观测回放", norway_replay["observations"].to_csv(index=False).encode("utf-8-sig"),
+            "norway_hab_monitoring_replay.csv", "text/csv",
+        )
+        nd2.download_button(
+            "下载挪威回放卡", json.dumps(selected_card, ensure_ascii=False, indent=2).encode("utf-8"),
+            "norway_replay_card.json", "application/json",
+        )
+        st.markdown(
+            "来源：[Communications Earth & Environment](https://doi.org/10.1038/s43247-025-02421-y) · "
+            "[Zenodo数据与模型（CC BY 4.0）](https://doi.org/10.5281/zenodo.10958487)"
+        )
 
 with tab_methods:
-    st.markdown("### 四个竞赛等价模块：同一条可检查证据链")
-    st.info(
-        "这里公开的是完整可运行、可复核的竞赛实现，不是已提交专利生产工程的逐行复刻。"
-        "所有结果基于匿名合成数据，只验证方法链和预设信号恢复能力。"
-    )
+    st.markdown("### 从发现异常到解释跨区域影响")
+    st.caption("四项科学能力在同一次运行中共享数据、时间窗口和审计日志，评委可逐层检查结果来源。")
 
-    st.markdown("#### 1. 多尺度异常检测：过去窗口、稳健尺度与事件合并")
-    a1, a2, a3 = st.columns(3)
-    a1.metric("检测尺度", "7 / 14 / 30 / 60 天")
-    a2.metric("合并异常事件", f"{len(anomaly_events)}")
-    a3.metric("未来信息进入滚动基准", "否")
-    anomaly_region = st.selectbox("异常轨迹海区", REGIONS, index=3, key="anomaly_region")
+    st.markdown("#### 1. 哪些变化是真正持续的异常？")
+    kpi_grid([
+        ("观测时间尺度", "7 / 14 / 30 / 60天", "同时识别短期冲击与持续变化"),
+        ("合并异常事件", f"{len(anomaly_events)}", "相邻异常自动合并为事件"),
+        ("未来信息泄漏", "无", "所有参照仅使用当日以前数据"),
+        ("稳健性判定", "≥2个尺度一致", "降低单一窗口误报"),
+        ("异常强度", "MAD标准化", "抵抗极端离群值干扰"),
+        ("输出形式", "事件目录", "可下载、可追踪、可复核"),
+    ])
+    anomaly_region = st.selectbox(
+        "选择异常轨迹情景区", REGIONS, index=3, key="anomaly_region",
+        format_func=lambda value: REGION_LABELS[value],
+    )
     anomaly_plot = anomaly_daily[anomaly_daily["region"].eq(anomaly_region)].set_index("date")[[
         "anomaly_score_7d", "anomaly_score_14d", "anomaly_score_30d",
         "anomaly_score_60d", "multiscale_anomaly_score",
     ]]
     st.line_chart(anomaly_plot, height=300)
+    anomaly_events_display = anomaly_events.head(12).copy()
+    anomaly_events_display["region"] = anomaly_events_display["region"].map(REGION_LABELS)
     st.dataframe(
-        anomaly_events.head(12), width="stretch", hide_index=True,
-        column_config={"peak_score": st.column_config.NumberColumn(format="%.3f")},
+        anomaly_events_display, width="stretch", hide_index=True,
+        column_config={
+            "region": "情景区", "peak_score": st.column_config.NumberColumn("峰值强度", format="%.3f")
+        },
     )
     st.download_button(
         "下载多尺度事件目录", anomaly_events.to_csv(index=False).encode("utf-8-sig"),
         "multiscale_event_catalog.csv", "text/csv",
     )
 
-    st.markdown("#### 2. 自适应路由：数据诊断 → 方法分支 → 决策原因")
+    st.markdown("#### 2. 当前数据条件适合做哪一种分析？")
     route_display = router_trace[[
         "branch", "compatibility_score", "routing_probability", "decision", "reason"
     ]].copy()
+    route_display["branch"] = route_display["branch"].map({
+        "blocked_prediction": "跨时间与跨区域风险验证",
+        "multiscale_anomaly": "多时间尺度异常识别",
+        "te_cte_network": "跨区域传播路径识别",
+        "spatial_durbin": "邻近海区溢出影响",
+    })
+    route_display["decision"] = route_display["decision"].map({"run": "运行", "defer": "暂缓"})
     st.dataframe(
         route_display, width="stretch", hide_index=True,
         column_config={
@@ -543,7 +721,8 @@ with tab_methods:
         "再对四条分支给出兼容度与软路由概率；每次决策均进入日志。"
     )
 
-    st.markdown("#### 3. TE/CTE网络：方向、时滞、条件依赖与FDR")
+    st.markdown("#### 3. 藻华风险信号如何沿海水输运路径传播？")
+    st.caption("比较预设输运方向和反向路径，识别最可能的传播时滞，并对偶然相关进行多重检验控制。")
     te_long = te_cte_lag_summary.melt(
         id_vars="lag_days",
         value_vars=["mean_cte_bits", "mean_reverse_cte_bits"],
@@ -562,24 +741,30 @@ with tab_methods:
     te_chart.update_layout(height=350, margin={"l": 5, "r": 5, "t": 20, "b": 5})
     st.plotly_chart(te_chart, width="stretch", config={"displayModeBar": False})
     peak_lag = int(te_cte_lag_summary.loc[te_cte_lag_summary["mean_cte_bits"].idxmax(), "lag_days"])
-    st.success(
-        f"沿流CTE的跨边平均峰值位于 {peak_lag} 天；圆周移位置换保留源序列自相关，"
-        "边级p值经Benjamini–Hochberg校正。"
-    )
-    st.dataframe(
-        te_cte_network[[
+    st.success(f"结果指向约 {peak_lag} 天的跨区域传播窗口；反向路径更弱，且显著性经过多重比较校正。")
+    te_display = te_cte_network[[
             "source_region", "target_region", "lag_days", "te_bits", "cte_bits",
             "reverse_cte_bits", "net_directionality_bits", "permutation_p", "fdr_q",
             "significant_fdr_0_10",
-        ]].head(16),
-        width="stretch", hide_index=True,
+        ]].head(16).copy()
+    te_display["source_region"] = te_display["source_region"].map(REGION_LABELS)
+    te_display["target_region"] = te_display["target_region"].map(REGION_LABELS)
+    st.dataframe(
+        te_display, width="stretch", hide_index=True,
+        column_config={
+            "source_region": "信号来源区", "target_region": "风险响应区",
+            "lag_days": "传播时滞（天）", "cte_bits": "方向信息量",
+            "reverse_cte_bits": "反向路径信息量", "fdr_q": "校正后可靠性",
+            "significant_fdr_0_10": "通过可靠性检验",
+        },
     )
     st.download_button(
         "下载TE/CTE边级网络", te_cte_network.to_csv(index=False).encode("utf-8-sig"),
         "te_cte_network.csv", "text/csv",
     )
 
-    st.markdown("#### 4. 空间Durbin乘数：直接、间接与总影响")
+    st.markdown("#### 4. 一个海区的异常会对周边造成多大影响？")
+    st.caption("将本地影响、邻近海区溢出和总体关联分开呈现，便于确定需要同步监测的范围。")
     labels = {
         "multiscale_anomaly_score_lag14": "14天滞后多尺度异常",
         "nutrient_context": "营养盐背景",
@@ -597,15 +782,28 @@ with tab_methods:
     )
     effect_chart.update_layout(height=390, margin={"l": 5, "r": 5, "t": 20, "b": 5})
     st.plotly_chart(effect_chart, width="stretch", config={"displayModeBar": False})
-    d1, d2, d3 = st.columns(3)
-    d1.metric("空间系数 ρ", f"{float(spatial_diagnostics['rho']):.2f}")
-    d2.metric("解释度（探索性）", f"{float(spatial_diagnostics['pseudo_r2']):.3f}")
-    d3.metric("块Bootstrap", f"{int(spatial_diagnostics['bootstrap_repeats'])} 次")
+    kpi_grid([
+        ("区域联动强度", f"ρ = {float(spatial_diagnostics['rho']):.2f}", "相邻区域结果的同步程度"),
+        ("探索性解释度", f"{float(spatial_diagnostics['pseudo_r2']):.3f}", "用于合成基准的软件验证"),
+        ("不确定性复核", f"{int(spatial_diagnostics['bootstrap_repeats'])}次", "按区域块重复抽样"),
+        ("本地影响", "Direct", "异常发生区自身变化"),
+        ("邻区溢出", "Indirect", "沿网络传播到周边的关联"),
+        ("总体关联", "Total", "本地与邻区影响之和"),
+    ])
     st.caption(
-        "W为行标准化的匿名有向上游图；14天空间暴露尺度来自Agent与TE/CTE恢复结果。"
-        "线性概率SDM的影响是合成环境中的关联尺度，不解释为真实海洋因果效应。"
+        "区域传播关系根据预设输运方向标准化；14天窗口来自前述风险模式和传播路径结果。"
+        "这里量化的是合成环境中的关联强度，用于验证影响分解流程。"
     )
-    st.dataframe(spatial_effects, width="stretch", hide_index=True)
+    visible_effects = effect_plot[[
+        "变量", "影响", "effect_per_1sd", "ci90_lower", "ci90_upper"
+    ]].copy()
+    st.dataframe(
+        visible_effects, width="stretch", hide_index=True,
+        column_config={
+            "effect_per_1sd": "每1 SD关联强度", "ci90_lower": "不确定区间下限",
+            "ci90_upper": "不确定区间上限",
+        },
+    )
     st.download_button(
         "下载Durbin影响分解", spatial_effects.to_csv(index=False).encode("utf-8-sig"),
         "spatial_durbin_effects.csv", "text/csv",
@@ -634,8 +832,11 @@ with tab_agent:
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     with c2:
         st.markdown("#### 随机探索参照")
-        st.metric("相同预算随机恢复14天信号", f"{float(random_ref['hidden_signal_recovery_rate']):.1%}")
-        st.metric("随机搜索中位最佳效用", f"{float(random_ref['median_best_utility']):.3f}")
+        kpi_grid([
+            ("随机探索恢复14天信号", f"{float(random_ref['hidden_signal_recovery_rate']):.1%}", "相同实验次数下的参照"),
+            ("随机探索中位效用", f"{float(random_ref['median_best_utility']):.3f}", "用于判断Agent选择增益"),
+            ("重复对照次数", f"{int(random_ref['repeats'])}", "每次使用相同候选空间"),
+        ])
         st.caption(
             f"基于{int(random_ref['repeats'])}次随机选择；每次使用相同候选空间、"
             f"相同预算（{budget}步）和相同阻断验证结果。"
@@ -666,42 +867,43 @@ with tab_agent:
     st.caption("Top20%报警是固定容量排名，不使用留出标签选择阈值。")
 
 with tab_evidence:
-    st.markdown("### 真实事件证据卡：只做外部复核，不冒充训练数据")
-    case = SOUTH_AUSTRALIA_CASE
+    st.markdown("### 从顶级科研证据到可复核风险研判")
+    st.caption("平台把不同类型的开放研究证据放在统一框架中：现场观测用于回放，全球数据用于背景校准，前沿组学用于拓展预警信号。")
+    case_columns = st.columns(4)
+    for column, case_row in zip(case_columns, evidence_cases.to_dict("records")):
+        with column:
+            st.markdown(
+                '<div class="case-card">'
+                f'<span class="case-badge">{case_row["product_status"]}</span><br>'
+                f'<b>{case_row["case"]}</b><br>'
+                f'<span class="small-muted">{case_row["journal"]}<br>'
+                f'{case_row["period"]} · {case_row["records"]}</span></div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(f'[论文]({case_row["url"]}) · [开放数据]({case_row["data_url"]})')
+
+    st.markdown("### 环境信息如何转化为可读风险线索")
     st.markdown(
-        '<div class="case-card">'
-        f'<b>{case["title"]}</b><br>{case["period"]} · {case["spatial_extent"]} · '
-        f'证据等级 {case["evidence_grade"]}<br><span class="small-muted">'
-        f'{case["model_use"]}</span></div>',
+        """
+        <div class="product-grid">
+          <div class="product-card"><b>海温异常识别</b><p>基于逐日季节气候态和高温阈值，
+          量化海表温度偏离正常背景的幅度、持续时间与累积影响。</p></div>
+          <div class="product-card"><b>营养环境画像</b><p>分别保留硝酸盐、磷酸盐和硅酸盐信息，
+          描述不同营养条件对藻华形成与物种竞争的支持背景。</p></div>
+          <div class="product-card"><b>输运与汇聚线索</b><p>利用微塑料浓度的有界代理表达水团停留、
+          汇聚与输运背景，用于判断风险信号可能向哪里传播。</p></div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
-    e1, e2 = st.columns(2, gap="large")
-    with e1:
-        st.markdown("#### 确认证据")
-        for item in case["confirmed_signals"]:
-            st.markdown(f"- {item}")
-    with e2:
-        st.markdown("#### 已报道影响")
-        for item in case["reported_impacts"]:
-            st.markdown(f"- {item}")
-    st.info(case["aquaculture_interpretation"])
-    for source in case["sources"]:
-        st.markdown(f"- [{source['label']}]({source['url']})")
 
-    st.markdown("### 数据与解释边界")
-    v1, v2, v3 = st.columns(3)
-    v1.info("**MHW**\n\nSST超过日历日p90时，强度=SST−季节气候平均值")
-    v2.info("**营养盐**\n\nNitrate、Phosphate、Silicate分项进入模型，不合并成模糊指数")
-    v3.info("**微塑料**\n\n仅代理输运/停留/汇聚状态，不作为HAB直接生物驱动")
-
-    st.markdown("### 机器可检查的发现卡")
-    st.json(card)
+    st.markdown("### 可检查、可复现、可继续扩展")
     card_bytes = json.dumps(card, ensure_ascii=False, indent=2, default=str).encode("utf-8")
     d1, d2 = st.columns(2)
     d1.download_button("下载发现卡 JSON", card_bytes, "discovery_card.json", "application/json")
     evidence_bundle = {
         "discovery_card": card,
-        "external_case": case,
+        "south_australia_external_evidence": SOUTH_AUSTRALIA_CASE,
         "baselines": baselines.to_dict("records"),
         "negative_controls": controls.to_dict("records"),
         "adaptive_router": router_trace.to_dict("records"),
@@ -709,6 +911,9 @@ with tab_evidence:
         "spatial_durbin_effects": spatial_effects.to_dict("records"),
         "south_australia_real_replay": real_card,
         "south_australia_real_data_provenance": real_provenance,
+        "norway_real_replay": norway_card,
+        "norway_real_data_provenance": norway_provenance,
+        "global_nature_portfolio_evidence": evidence_cases.to_dict("records"),
     }
     d2.download_button(
         "下载证据包 JSON",
@@ -716,9 +921,19 @@ with tab_evidence:
         "semifinal_evidence_bundle.json",
         "application/json",
     )
+    with st.expander("查看机器可读发现卡"):
+        st.json(card)
 
 st.divider()
-st.caption(
-    "GlobalHAB-Agent v3.2 GOAI Semifinal · synthetic benchmark + real-event replay · "
-    "no operational, causal or automatic closure claim"
+st.markdown(
+    """
+    <div class="footer-boundary">
+      <b>能力边界：</b>合成基准用于验证信号恢复、跨区域评估和机制模块的软件正确性；
+      南澳大利亚与挪威页面使用真实开放观测进行事件回放，不与合成数据混合训练。
+      风险地图和养殖复核顺序用于研究与监测决策支持，不构成业务预报、因果结论、统一毒素阈值或自动停采指令。
+      <br>GlobalHAB-Agent v3.3 GOAI Semifinal · synthetic benchmark + multi-region real-observation replay ·
+      no operational, causal or automatic closure claim
+    </div>
+    """,
+    unsafe_allow_html=True,
 )

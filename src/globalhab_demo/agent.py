@@ -27,9 +27,15 @@ class HypothesisAgent:
         self.log: list[dict[str, object]] = []
 
     def _priority(self, action: ExperimentAction) -> float:
+        # Operational horizons receive a small transparent prior; feedback and
+        # diversity still determine the subsequent order.
+        horizon_prior = {7: 0.08, 14: 0.07, 30: 0.06}.get(action.lag_days, 0.02)
         if not self.log:
-            # Start with the least complex auditable baseline.
-            return -0.01 * action.lag_days - (0.02 if action.model == "random_forest" else 0.0)
+            return (
+                horizon_prior
+                + (0.03 if action.route == "local" else 0.0)
+                - (0.02 if action.model == "random_forest" else 0.0)
+            )
         best = max(self.log, key=lambda row: float(row["utility"]))
         similarity = 0.0
         if action.route == best["route"]:
@@ -41,7 +47,7 @@ class HypothesisAgent:
         lag_count = sum(int(row["lag_days"]) == action.lag_days for row in self.log)
         model_count = sum(row["model"] == action.model for row in self.log)
         diversity = 0.20 / (1 + route_count) + 0.10 / (1 + lag_count) + 0.05 / (1 + model_count)
-        return similarity + diversity
+        return similarity + diversity + horizon_prior
 
     def next_action(self) -> ExperimentAction:
         if len(self.log) >= self.budget:
@@ -63,4 +69,3 @@ class HypothesisAgent:
         if not self.log:
             raise RuntimeError("no experiment has been observed")
         return max(self.log, key=lambda row: float(row["utility"]))
-

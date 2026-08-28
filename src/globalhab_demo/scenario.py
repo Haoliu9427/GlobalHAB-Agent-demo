@@ -89,6 +89,22 @@ DEMO_ZONES = (
         "nutrient_sensitivity": 0.76,
         "transport_sensitivity": 1.00,
     },
+    {
+        "zone": "中国南部近岸",
+        "latitude": 21.8,
+        "longitude": 113.4,
+        "heat_sensitivity": 0.86,
+        "nutrient_sensitivity": 0.94,
+        "transport_sensitivity": 0.88,
+    },
+    {
+        "zone": "南澳大利亚近岸",
+        "latitude": -35.2,
+        "longitude": 137.6,
+        "heat_sensitivity": 0.80,
+        "nutrient_sensitivity": 0.68,
+        "transport_sensitivity": 0.96,
+    },
 )
 
 
@@ -159,6 +175,7 @@ def project_synthetic_scenario(
             "综合风险指数": round(risk_score, 1),
             "预计藻华强度指数": round(intensity_index, 1),
             "风险等级": _risk_level(risk_score),
+            "情景证据等级": "C（环境条件候选）",
             "预计时间": center.isoformat(),
             "预计窗口": f"{window_start.isoformat()} 至 {window_end.isoformat()}",
         })

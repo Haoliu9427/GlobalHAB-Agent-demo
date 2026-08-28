@@ -4,7 +4,7 @@
   "budget": 8,
   "holdout_region": "Synthetic_Region_D",
   "test_fraction": 0.25,
-  "lags": [7, 14, 30],
+  "lags": [3, 7, 14, 21, 30, 45],
   "routes": ["local", "downstream"],
   "models": ["logistic", "random_forest"]
 }

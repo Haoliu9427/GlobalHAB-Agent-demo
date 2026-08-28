@@ -4,16 +4,29 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-
-sys.path.insert(0, str(ROOT / "src"))
-
-from globalhab_demo import project_synthetic_scenario
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from globalhab_demo import (  # noqa: E402
+    build_sa_replay,
+    load_sa_real_case,
+    project_aquaculture_risk,
+    project_real_aquaculture_priority,
+    project_synthetic_scenario,
+    real_data_router,
+    run_exploration,
+)
 
 
-def test_demo_runs_and_writes_auditable_outputs(tmp_path):
+@pytest.fixture(scope="session")
+def exploration_result():
+    return run_exploration(720, 42, 8, "Synthetic_Region_D", 0.25)
+
+
+def test_cli_runs_and_writes_auditable_outputs(tmp_path):
     subprocess.run(
         [
             sys.executable,
@@ -32,12 +45,60 @@ def test_demo_runs_and_writes_auditable_outputs(tmp_path):
     assert log["budget_remaining"].iloc[-1] == 0
     assert card["validation"]["random_split_used"] is False
     assert card["synthetic_ground_truth"]["recovered_by_agent"] is True
-    assert (tmp_path / "risk_predictions.csv").exists()
+    assert (tmp_path / "negative_controls.csv").exists()
+    assert (tmp_path / "run_manifest.json").exists()
+    for name in [
+        "multiscale_event_catalog.csv", "adaptive_router_trace.csv",
+        "te_cte_network.csv", "te_cte_lag_summary.csv",
+        "spatial_durbin_effects.csv", "spatial_weight_matrix.csv",
+        "method_diagnostics.json",
+        "sa_real_replay_timeline.csv", "sa_real_site_summary.csv",
+        "sa_real_species_summary.csv", "sa_real_router_trace.csv",
+        "sa_real_aquaculture_priority.csv", "sa_real_replay_card.json",
+    ]:
+        assert (tmp_path / name).exists(), name
 
 
-def test_synthetic_scenario_map_has_legible_spatial_output():
-    result = project_synthetic_scenario(
-        issue_date=pd.Timestamp("2026-08-16").date(),
+def test_exploration_has_baselines_controls_and_random_reference(exploration_result):
+    result = exploration_result
+    assert set(result["baselines"]["baseline"]) == {"季节气候态", "事件持续性"}
+    assert set(result["controls"]["control_name"]) == {"反向路径", "区内时间置换"}
+    assert 0 <= result["random_reference"]["hidden_signal_recovery_rate"] <= 1
+    assert result["card"]["minimum_references"]["negative_controls_lower_than_candidate"]
+
+
+def test_competition_equivalent_modules_are_auditable_and_recover_signal(exploration_result):
+    result = exploration_result
+    anomaly = result["anomaly_daily"]
+    assert {"anomaly_score_7d", "anomaly_score_14d", "anomaly_score_30d",
+            "anomaly_score_60d", "scale_agreement", "event_id"}.issubset(anomaly.columns)
+    assert len(result["anomaly_events"]) > 0
+
+    router = result["router_trace"]
+    assert set(router["branch"]) == {
+        "blocked_prediction", "multiscale_anomaly", "te_cte_network", "spatial_durbin"
+    }
+    assert router["selected"].all()
+
+    lag_summary = result["te_cte_lag_summary"]
+    peak_lag = int(lag_summary.loc[lag_summary["mean_cte_bits"].idxmax(), "lag_days"])
+    assert peak_lag == 14
+    at_14 = lag_summary[lag_summary["lag_days"].eq(14)].iloc[0]
+    assert at_14["mean_cte_bits"] > at_14["mean_reverse_cte_bits"]
+
+    effects = result["spatial_effects"]
+    assert set(effects["effect_type"]) == {"direct", "indirect", "total"}
+    spillover = effects[
+        effects["variable"].eq("multiscale_anomaly_score_lag14")
+        & effects["effect_type"].eq("indirect")
+    ].iloc[0]
+    assert spillover["effect_per_1sd"] > 0
+    assert spillover["ci90_lower"] > 0
+
+
+def test_scenario_and_aquaculture_outputs_are_bounded():
+    scenario = project_synthetic_scenario(
+        issue_date=pd.Timestamp("2026-08-28").date(),
         horizon_days=14,
         mhw_intensity_c=2.8,
         nitrate_mmol_m3=5.5,
@@ -45,8 +106,45 @@ def test_synthetic_scenario_map_has_legible_spatial_output():
         silicate_mmol_m3=7.0,
         transport_proxy=0.85,
     )
-    assert len(result) == 5
-    assert result["候选海区"].nunique() == 5
-    assert result["综合风险指数"].between(0, 100).all()
-    assert result["预计藻华强度指数"].between(0, 100).all()
-    assert result["预计时间"].eq("2026-08-30").all()
+    assert len(scenario) == 7
+    assert scenario["综合风险指数"].between(0, 100).all()
+    assert scenario["预计时间"].eq("2026-09-11").all()
+
+    aquaculture = project_aquaculture_risk(
+        scenario,
+        "贝类（牡蛎/贻贝）",
+        "toxigenic",
+        0.85,
+        "A：物种/毒素/危害确认",
+    )
+    assert len(aquaculture) == len(scenario)
+    assert aquaculture["养殖响应优先指数"].between(0, 100).all()
+    assert (aquaculture["不确定性下限"] <= aquaculture["养殖响应优先指数"]).all()
+    assert (aquaculture["不确定性上限"] >= aquaculture["养殖响应优先指数"]).all()
+
+
+def test_real_sa_replay_uses_bundled_qpcr_and_defers_unsupported_models():
+    observations, provenance = load_sa_real_case(ROOT / "data")
+    assert len(observations) == 115
+    assert observations["sample_date"].nunique() == 22
+    assert observations["location"].nunique() == 22
+    assert provenance["qpcr"]["license"] == "CC BY 4.0"
+
+    replay = build_sa_replay(
+        observations, observations["sample_date"].min(), observations["sample_date"].max()
+    )
+    peak = replay["card"]["peak_k_cristata"]
+    assert peak["date"] == "2025-07-07"
+    assert peak["location"] == "Stansbury (slick on water)"
+    assert abs(peak["cells_l"] - 15015439.54) < 0.01
+
+    router = real_data_router(observations, has_daily_environment=False)
+    decisions = dict(zip(router["branch"], router["decision"]))
+    assert decisions["spatiotemporal_qpcr_replay"] == "run"
+    assert decisions["supervised_hab_classifier"] == "defer"
+    assert decisions["te_cte_network"] == "defer"
+
+    priority = project_real_aquaculture_priority(
+        replay["sites"], "贝类（牡蛎/贻贝）", 0.80
+    )
+    assert priority["verification_priority_index"].between(0, 100).all()

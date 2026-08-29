@@ -1,4 +1,4 @@
-"""GlobalHAB-Agent v3.3 research-to-impact interactive demo."""
+"""GlobalHAB-Agent v3.3.1 research-to-impact interactive demo."""
 
 from __future__ import annotations
 
@@ -15,24 +15,30 @@ import streamlit as st
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from globalhab_demo import (  # noqa: E402
+from globalhab_demo.aquaculture import (  # noqa: E402
     EVIDENCE_CONFIDENCE,
     MECHANISM_LABELS,
     PRODUCTION_PROFILES,
-    SCENARIO_PRESETS,
-    SOUTH_AUSTRALIA_CASE,
-    build_norway_replay,
-    build_sa_replay,
-    global_evidence_frame,
-    load_norway_real_case,
-    load_sa_real_case,
     project_aquaculture_risk,
-    project_real_aquaculture_priority,
-    project_synthetic_scenario,
-    real_data_router,
-    run_exploration,
 )
 from globalhab_demo.data import REGIONS  # noqa: E402
+from globalhab_demo.evidence import SOUTH_AUSTRALIA_CASE  # noqa: E402
+from globalhab_demo.global_cases import (  # noqa: E402
+    build_norway_replay,
+    global_evidence_frame,
+    load_norway_real_case,
+)
+from globalhab_demo.real_replay import (  # noqa: E402
+    build_sa_replay,
+    load_sa_real_case,
+    project_real_aquaculture_priority,
+    real_data_router,
+)
+from globalhab_demo.scenario import (  # noqa: E402
+    SCENARIO_PRESETS,
+    project_synthetic_scenario,
+)
+from globalhab_demo.workflow import run_exploration  # noqa: E402
 
 
 REGION_LABELS = {
@@ -931,7 +937,7 @@ st.markdown(
       <b>能力边界：</b>合成基准用于验证信号恢复、跨区域评估和机制模块的软件正确性；
       南澳大利亚与挪威页面使用真实开放观测进行事件回放，不与合成数据混合训练。
       风险地图和养殖复核顺序用于研究与监测决策支持，不构成业务预报、因果结论、统一毒素阈值或自动停采指令。
-      <br>GlobalHAB-Agent v3.3 GOAI Semifinal · synthetic benchmark + multi-region real-observation replay ·
+      <br>GlobalHAB-Agent v3.3.1 GOAI Semifinal · synthetic benchmark + multi-region real-observation replay ·
       no operational, causal or automatic closure claim
     </div>
     """,

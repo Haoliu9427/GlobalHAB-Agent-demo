@@ -1,0 +1,21 @@
+{
+  "version": "1.0-qpcr",
+  "created_by": "scripts/prepare_sa_real_replay.py --qpcr-only",
+  "qpcr": {
+    "paper": "https://doi.org/10.1038/s41559-026-03115-0",
+    "record": "https://doi.org/10.5281/zenodo.20227730",
+    "license": "CC BY 4.0",
+    "raw_file": "Figure2_Final_qPCR_data_integrated.xlsx",
+    "raw_sha256": "391fd5d2f917cef07fad32f28af24e13a18dd93079e864a49e96d9d617d48c7c",
+    "rows": 115,
+    "sampling_dates": 22,
+    "locations": 22,
+    "derived_sha256": "6b64f3177dbcdfd08a45e6d229a8f56adb818f1cff47e2985e1b7c44ec122e06"
+  },
+  "sst": {
+    "status": "not_bundled_in_qpcr_only_build",
+    "expected_product": "NOAA/NCEI Optimum Interpolation SST v2.1",
+    "adapter": "run this script without --qpcr-only when ERDDAP is available"
+  },
+  "label_boundary": "Reported not-detected values are retained as assay results only. They are not interpreted as complete ecological negative labels."
+}

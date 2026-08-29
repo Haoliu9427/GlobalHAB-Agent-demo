@@ -1,4 +1,4 @@
-"""Run the complete GlobalHAB-Agent v3.4 real-evidence-to-risk workflow."""
+"""Run the complete GlobalHAB-Agent v3.5 biological-response workflow."""
 
 from __future__ import annotations
 
@@ -22,6 +22,10 @@ REGION_LABELS = {
 from globalhab_demo.event_risk import (  # noqa: E402
     build_norway_risk_translation,
     build_sa_risk_translation,
+)
+from globalhab_demo.bio_response import (  # noqa: E402
+    BIO_SCENARIO_PRESETS,
+    compare_interventions,
 )
 from globalhab_demo.global_cases import (  # noqa: E402
     build_norway_replay,
@@ -101,6 +105,16 @@ def main() -> None:
     norway_translation = build_norway_risk_translation(
         norway_replay["stations"], "贝类（牡蛎/贻贝）", 0.75
     )
+    bio_preset = BIO_SCENARIO_PRESETS["复合高压科研情景"]
+    bio_simulation = compare_interventions(
+        hab_pressure=bio_preset["hab_pressure"],
+        mhw_intensity_c=bio_preset["mhw_intensity_c"],
+        dissolved_oxygen_mg_l=bio_preset["dissolved_oxygen_mg_l"],
+        stocking_density_kg_m3=bio_preset["stocking_density_kg_m3"],
+        planned_feeding_pct=bio_preset["planned_feeding_pct"],
+        hab_duration_hours=bio_preset["hab_duration_hours"],
+        horizon_hours=72,
+    )
     global_cases = global_evidence_frame()
 
     data_path = data_dir / "demo_hab.csv"
@@ -142,6 +156,21 @@ def main() -> None:
     norway_translation["evidence"].to_csv(
         output / "norway_real_risk_evidence_matrix.csv", index=False
     )
+    bio_simulation["trajectories"].to_csv(
+        output / "cage_fish_response_trajectories.csv", index=False
+    )
+    bio_simulation["summary"].to_csv(
+        output / "cage_fish_intervention_comparison.csv", index=False
+    )
+    bio_simulation["parameters"].to_csv(
+        output / "cage_fish_sandbox_parameters.csv", index=False
+    )
+    (output / "cage_fish_sandbox_card.json").write_text(
+        json.dumps(
+            bio_simulation["scenario_card"], ensure_ascii=False, indent=2
+        ),
+        encoding="utf-8",
+    )
     (output / "norway_real_replay_card.json").write_text(
         json.dumps(norway_replay["card"], ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -160,7 +189,7 @@ def main() -> None:
         json.dumps(card, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
     )
     manifest = {
-        "version": "3.4.0-real-evidence-to-risk",
+        "version": "3.5.0-biological-response-sandbox",
         "config_sha256": _sha256(config_path),
         "data_sha256": _sha256(data_path),
         "real_qpcr_sha256": _sha256(data_dir / "real_case" / "derived" / "sa_qpcr_observations.csv"),
@@ -197,6 +226,10 @@ def main() -> None:
             "norway_real_aquaculture_priority.csv",
             "norway_real_risk_evidence_matrix.csv",
             "norway_real_replay_card.json",
+            "cage_fish_response_trajectories.csv",
+            "cage_fish_intervention_comparison.csv",
+            "cage_fish_sandbox_parameters.csv",
+            "cage_fish_sandbox_card.json",
             "global_nature_evidence_cases.csv",
         ],
     }
@@ -230,6 +263,9 @@ def main() -> None:
         f"- 挪威研究定义事件观测：{norway_replay['card']['target_event_observations']}条\n"
         f"- 南澳现场复核最高优先级：{sa_translation['summary']['priority']}\n"
         f"- 挪威加密监测最高优先级：{norway_translation['summary']['priority']}\n"
+        f"- 网箱鱼沙盘干预情景：{len(bio_simulation['summary'])}项\n"
+        f"- 沙盘中累计压力最低方案："
+        f"{bio_simulation['scenario_card']['lowest_pressure_scenario']}（非自动建议）\n"
         f"- 真实数据定位：危害证据回放与复核优先级，不作为合成基准性能\n\n"
         "> 性能来自匿名合成数据的软件正确性验证；不代表真实HAB或养殖损失预测性能。\n"
     )

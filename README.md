@@ -2,9 +2,9 @@
 
 GlobalHAB-Agent 将复杂海洋场景转化为可计算、可验证、可复现的开放探索任务：Agent 在固定预算内比较局地/沿流路径、3–45天响应时滞与轻量模型，使用前向时间+完全留一海区验证，根据反馈继续、修正或停止假设，并保留正结果、负结果、参照与发现卡。
 
-四个竞赛等价实现的模块，对应“风险研判—全球真实观测—科学解释—探索验证—成果证据”的科研成果转化界面。真实模块现包含南澳大利亚2025复杂Karenia事件的115条qPCR样本，以及挪威沿岸2006–2019年的5,919条有毒藻与环境监测记录；全球证据地图进一步连接Nature Communications和Communications Earth & Environment的开放研究资源。v3.4把两个真实回放统一接入“观测—危害—暴露—脆弱性—行动”链路，使真实数据不再只是展示，而是作为可追踪的危害证据参与现场复核和加密监测排序。
+四个竞赛等价研究模块对应“风险研判—真实事件回放—生物响应沙盘—科学解释—探索验证—成果证据”六个工作区。真实模块包含南澳大利亚2025复杂Karenia事件的115条qPCR样本，以及挪威沿岸2006–2019年的5,919条有毒藻与环境监测记录。v3.5进一步加入网箱鱼生物响应沙盘，将HAB、高温、溶解氧、养殖密度与投喂情景连接到相对生理压力，并比较降低投喂、增氧和转移准备等干预路径。
 
-> 重要边界：PR-AUC等预测性能只来自合成基准。南澳大利亚和挪威开放观测用于真实事件回放，不与合成数据混合训练。本仓库提供研究与监测决策支持，不提供自动停采或真实业务预报。
+> 重要边界：PR-AUC等预测性能只来自合成基准。南澳大利亚和挪威开放观测用于真实事件回放，不与合成数据混合训练。生物响应沙盘使用公开但未经鱼种/场站标定的原型参数，不输出死亡率、生物量损失、真实毒素或自动运营指令。
 
 ## 在线页面能展示什么
 
@@ -19,6 +19,8 @@ GlobalHAB-Agent 将复杂海洋场景转化为可计算、可验证、可复现�
 - 如何复核：完整探索日志、发现卡、运行清单、固定随机种子和自动测试。
 - 真实观测：南澳qPCR空间回放，以及挪威14年有毒藻、SST、盐度、混合层深度和光照监测回放；
 - 真实事件风险转译：两个回放均逐项显示已观测证据、情景假设、参数设定和待补数据，并输出现场复核/加密监测优先级；
+- 网箱鱼生物响应：模拟HAB、高温、DO、密度和投喂的复合压力，比较五项干预的48/72/96小时轨迹；
+- 干预权衡：同时展示压力缓解、摄食机会、有效DO和准备响应时间，不用单一“最优方案”替代现场判断；
 - 全球证据：南澳、挪威、美国Salish Sea和全球HAEDAT/OBIS研究资源的统一证据地图。
 
 ## 30秒命令行试跑
@@ -55,6 +57,10 @@ GlobalHAB-Agent 将复杂海洋场景转化为可计算、可验证、可复现�
 - 'outputs/norway_real_taxa_summary.csv'：A. tamarense complex与D. acuta摘要；
 - 'outputs/norway_real_aquaculture_priority.csv'：挪威监测区域的加密监测优先级；
 - 'outputs/norway_real_risk_evidence_matrix.csv'：挪威回放的风险研判证据属性与数据缺口；
+- 'outputs/cage_fish_response_trajectories.csv'：五项干预的逐小时相对生理压力轨迹；
+- 'outputs/cage_fish_intervention_comparison.csv'：峰值压力、敏感性包络、摄食机会和准备时间；
+- 'outputs/cage_fish_sandbox_parameters.csv'：全部公开原型参数及解释边界；
+- 'outputs/cage_fish_sandbox_card.json'：沙盘输入、最低压力情景和排除性声明；
 - 'outputs/norway_real_replay_card.json'：挪威真实观测回放卡；
 - 'outputs/global_nature_evidence_cases.csv'：Nature Portfolio全球证据接口清单。
 
@@ -80,13 +86,14 @@ GlobalHAB-Agent 将复杂海洋场景转化为可计算、可验证、可复现�
 
     streamlit run app.py
 
-网页包含五个工作区：
+网页包含六个工作区：
 
 1. 风险研判：情景地图、养殖对象、危害机制、证据等级和响应优先级；
-2. 全球真实观测：全球证据地图、南澳qPCR回放和挪威14年监测回放；
-3. 科学解释：持续异常、方法选择、跨区域传播和邻区溢出；
-4. 探索与验证：基线、随机参照、负对照、完整探索轨迹和风险序列；
-5. 成果与证据：开放来源、成果转化信息体系、发现卡与证据包下载。
+2. 真实事件回放：全球证据地图、南澳qPCR回放和挪威14年监测回放；
+3. 生物响应沙盘：网箱鱼复合压力、五项干预轨迹、敏感性和运营权衡；
+4. 科学解释：持续异常、方法选择、跨区域传播和邻区溢出；
+5. 探索与验证：基线、随机参照、负对照、完整探索轨迹和风险序列；
+6. 成果与证据：开放来源、成果转化信息体系、发现卡与证据包下载。
 
 Streamlit Community Cloud 部署见 'DEPLOY_STREAMLIT.md'。
 
@@ -100,13 +107,15 @@ Streamlit Community Cloud 部署见 'DEPLOY_STREAMLIT.md'。
 - 报警：使用Top20%固定容量排名，不用留出标签反向调阈值；
 - 发现：必须优于平凡解，并接受随机搜索和负对照检查；
 - 养殖风险：只输出响应优先级；真实决策必须接入物种、毒素、溶解氧、现场生物反应和当地规则。
+- 生物响应：0–100压力状态、有效DO和摄食机会均为透明过程代理；展示分档不是死亡、福利或监管阈值。
+- 干预对照：转移准备在未执行前不得降低生理压力；降低投喂和增氧均保留机会成本或设备能力边界。
 - 多尺度异常：所有滚动参考只用当日以前数据，以MAD稳健标准化并要求至少两个尺度一致；
 - TE/CTE：离散条件互信息以bit计量，圆周移位置换保留源序列自相关，边级检验执行BH-FDR；
 - Durbin：W为匿名行标准化有向图，14天空间暴露尺度由Agent/TE-CTE结果固定，输出为关联尺度而非因果效应。
 
 ## 目录
 
-    globalhab_agent_v34/
+    globalhab_agent_v35/
     ├── app.py
     ├── run_demo.py
     ├── config/demo.json
@@ -121,6 +130,7 @@ Streamlit Community Cloud 部署见 'DEPLOY_STREAMLIT.md'。
     │   ├── workflow.py
     │   ├── scenario.py
     │   ├── aquaculture.py
+    │   ├── bio_response.py
     │   ├── evidence.py
     │   ├── multiscale.py
     │   ├── router.py
@@ -154,6 +164,8 @@ Streamlit Community Cloud 部署见 'DEPLOY_STREAMLIT.md'。
 - 配套开放数据：https://doi.org/10.5281/zenodo.20227730
 - Silva, E. et al. Communications Earth & Environment (2025). https://doi.org/10.1038/s43247-025-02421-y
 - 挪威开放数据与模型：https://doi.org/10.5281/zenodo.10958487
+- Føre et al. Digital Twins in intensive aquaculture — Challenges, opportunities and future prospects. Computers and Electronics in Agriculture (2024). https://doi.org/10.1016/j.compag.2024.108676
+- Lima et al. Digital twins for land-based aquaculture: A case study for rainbow trout. Open Research Europe (2023). https://open-research-europe.ec.europa.eu/articles/2-16
 - Ruvindy, R. et al. Environmental Science & Technology (2024). https://doi.org/10.1021/acs.est.3c10502
 
 ## 开源

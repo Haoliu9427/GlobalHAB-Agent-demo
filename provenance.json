@@ -1,0 +1,28 @@
+{
+  "version": "1.0-observed-replay",
+  "article": "https://doi.org/10.1038/s43247-025-02421-y",
+  "record": "https://doi.org/10.5281/zenodo.10958487",
+  "license": "CC BY 4.0",
+  "source_archive_md5": "502fc865c6324cf7526230aaceab6979",
+  "raw_file": "norway_hab_observations.csv",
+  "raw_sha256": "875b4f7d302ace95ee21795743be6b265954919a1602d50dbc5b3d900b6a82a2",
+  "derived_file": "norway_hab_observations.csv",
+  "derived_sha256": "dd4a2ac7e28720b153dc6cf7273e05c8198c7fc4ea747aca4707e31d1b66a450",
+  "observations": 5919,
+  "sampling_dates": 868,
+  "regions": 35,
+  "date_range": [
+    "2006-04-03",
+    "2019-10-28"
+  ],
+  "event_definition": {
+    "taxa": [
+      "A. tamarense complex",
+      "D. acuta"
+    ],
+    "threshold_cells_l": 200.0,
+    "operator": ">",
+    "basis": "Silva et al. (2025) study definition"
+  },
+  "boundary": "Rows are monitoring observations. Event flags reproduce the paper's study definition and are not universal harvesting or health thresholds."
+}

@@ -99,3 +99,22 @@
 - `sa_real_router_trace.csv`：真实数据支持或暂缓各分析分支的原因；
 - `sa_real_aquaculture_priority.csv`：观测丰度×情景暴露×对象脆弱性的现场复核顺序；
 - `sa_real_replay_card.json`：来源、范围、峰值和解释边界。
+
+## 网箱鱼生物响应沙盘输出
+
+| 字段 | 含义 |
+|---|---|
+| `hour` | 沙盘模拟小时，默认0–72 h |
+| `intervention` | 维持监测、降低投喂、启动增氧、转移准备或联合干预 |
+| `relative_physiological_pressure` | 0–100相对生理压力状态；无量纲且未经物种标定 |
+| `compound_challenge` | HAB、热异常、低氧、密度和交互项形成的0–100综合挑战 |
+| `effective_do_mg_l` | 基线DO加情景增氧、减密度/摄食耗氧代理后的演示值 |
+| `feeding_opportunity_pct` | 相对计划投喂的摄食机会代理，不是实际摄食量或生长率 |
+| `response_readiness_hours` | 情景设定的响应准备时间，不代表行动已经执行 |
+| `peak_pressure_lower/upper` | 综合挑战参数±15%时的峰值压力敏感性包络 |
+| `pressure_load_reduction_vs_baseline_pct` | 相对“维持监测”的累计压力变化 |
+
+- `cage_fish_response_trajectories.csv`：五项干预的逐小时状态；
+- `cage_fish_intervention_comparison.csv`：峰值、累计压力、摄食机会、DO和准备时间对照；
+- `cage_fish_sandbox_parameters.csv`：全部公开原型参数与解释边界；
+- `cage_fish_sandbox_card.json`：输入、最低压力情景和明确排除的结论类型。

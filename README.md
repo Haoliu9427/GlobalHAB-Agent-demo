@@ -2,7 +2,7 @@
 
 GlobalHAB-Agent 将复杂海洋场景转化为可计算、可验证、可复现的开放探索任务：Agent 在固定预算内比较局地/沿流路径、3–45天响应时滞与轻量模型，使用前向时间+完全留一海区验证，根据反馈继续、修正或停止假设，并保留正结果、负结果、参照与发现卡。
 
-四个竞赛等价实现的模块，对应“风险研判—全球真实观测—科学解释—探索验证—成果证据”的科研成果转化界面。真实模块现包含南澳大利亚2025复杂Karenia事件的115条qPCR样本，以及挪威沿岸2006–2019年的5,919条有毒藻与环境监测记录；全球证据地图进一步连接Nature Communications和Communications Earth & Environment的开放研究资源。
+四个竞赛等价实现的模块，对应“风险研判—全球真实观测—科学解释—探索验证—成果证据”的科研成果转化界面。真实模块现包含南澳大利亚2025复杂Karenia事件的115条qPCR样本，以及挪威沿岸2006–2019年的5,919条有毒藻与环境监测记录；全球证据地图进一步连接Nature Communications和Communications Earth & Environment的开放研究资源。v3.4把两个真实回放统一接入“观测—危害—暴露—脆弱性—行动”链路，使真实数据不再只是展示，而是作为可追踪的危害证据参与现场复核和加密监测排序。
 
 > 重要边界：PR-AUC等预测性能只来自合成基准。南澳大利亚和挪威开放观测用于真实事件回放，不与合成数据混合训练。本仓库提供研究与监测决策支持，不提供自动停采或真实业务预报。
 
@@ -18,6 +18,7 @@ GlobalHAB-Agent 将复杂海洋场景转化为可计算、可验证、可复现�
 - 影响如何传播：Durbin直接、间接和总影响及90%块Bootstrap区间；
 - 如何复核：完整探索日志、发现卡、运行清单、固定随机种子和自动测试。
 - 真实观测：南澳qPCR空间回放，以及挪威14年有毒藻、SST、盐度、混合层深度和光照监测回放；
+- 真实事件风险转译：两个回放均逐项显示已观测证据、情景假设、参数设定和待补数据，并输出现场复核/加密监测优先级；
 - 全球证据：南澳、挪威、美国Salish Sea和全球HAEDAT/OBIS研究资源的统一证据地图。
 
 ## 30秒命令行试跑
@@ -47,10 +48,13 @@ GlobalHAB-Agent 将复杂海洋场景转化为可计算、可验证、可复现�
 - 'outputs/sa_real_species_summary.csv'：7种Karenia采样集组成；
 - 'outputs/sa_real_router_trace.csv'：真实数据条件下run/defer及原因；
 - 'outputs/sa_real_aquaculture_priority.csv'：基于观测丰度的养殖复核优先级；
+- 'outputs/sa_real_risk_evidence_matrix.csv'：南澳回放的风险研判证据属性与数据缺口；
 - 'outputs/sa_real_replay_card.json'：机器可检查的真实事件卡。
 - 'outputs/norway_real_replay_timeline.csv'：挪威沿岸真实监测时间线；
 - 'outputs/norway_real_station_summary.csv'：35个沿岸区域的观测与事件摘要；
 - 'outputs/norway_real_taxa_summary.csv'：A. tamarense complex与D. acuta摘要；
+- 'outputs/norway_real_aquaculture_priority.csv'：挪威监测区域的加密监测优先级；
+- 'outputs/norway_real_risk_evidence_matrix.csv'：挪威回放的风险研判证据属性与数据缺口；
 - 'outputs/norway_real_replay_card.json'：挪威真实观测回放卡；
 - 'outputs/global_nature_evidence_cases.csv'：Nature Portfolio全球证据接口清单。
 
@@ -102,7 +106,7 @@ Streamlit Community Cloud 部署见 'DEPLOY_STREAMLIT.md'。
 
 ## 目录
 
-    globalhab_agent_v33/
+    globalhab_agent_v34/
     ├── app.py
     ├── run_demo.py
     ├── config/demo.json

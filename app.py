@@ -1,8 +1,9 @@
-"""GlobalHAB-Agent v3.3.1 research-to-impact interactive demo."""
+"""GlobalHAB-Agent v3.4.0 real-evidence-to-risk interactive demo."""
 
 from __future__ import annotations
 
 import json
+import html
 import sys
 from pathlib import Path
 
@@ -23,6 +24,10 @@ from globalhab_demo.aquaculture import (  # noqa: E402
 )
 from globalhab_demo.data import REGIONS  # noqa: E402
 from globalhab_demo.evidence import SOUTH_AUSTRALIA_CASE  # noqa: E402
+from globalhab_demo.event_risk import (  # noqa: E402
+    build_norway_risk_translation,
+    build_sa_risk_translation,
+)
 from globalhab_demo.global_cases import (  # noqa: E402
     build_norway_replay,
     global_evidence_frame,
@@ -31,7 +36,6 @@ from globalhab_demo.global_cases import (  # noqa: E402
 from globalhab_demo.real_replay import (  # noqa: E402
     build_sa_replay,
     load_sa_real_case,
-    project_real_aquaculture_priority,
     real_data_router,
 )
 from globalhab_demo.scenario import (  # noqa: E402
@@ -105,6 +109,28 @@ st.markdown(
     .product-card p {color:#506a72; font-size:.86rem; line-height:1.65; margin:.5rem 0 0;}
     .case-badge {display:inline-block; color:#0b6d70; background:#e5f5f2; border-radius:999px;
         padding:.18rem .5rem; font-size:.72rem; font-weight:700; margin-bottom:.35rem;}
+    .risk-bridge {background:linear-gradient(120deg,#f7fbfa,#eef7f6); border:1px solid #c7dfdb;
+        border-radius:18px; padding:1rem 1.05rem .9rem; margin:.7rem 0 1rem;
+        box-shadow:0 8px 24px rgba(18,74,75,.06);}
+    .risk-bridge-title {font-size:1.05rem; color:#073f48; font-weight:780; margin-bottom:.18rem;}
+    .risk-bridge-subtitle {font-size:.81rem; color:#647b81; line-height:1.55; margin-bottom:.78rem;}
+    .risk-chain {display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:.58rem;}
+    .risk-step {background:white; border:1px solid #d5e5e2; border-radius:13px; padding:.72rem .76rem;
+        min-height:118px; position:relative;}
+    .risk-step:not(:last-child)::after {content:'›'; position:absolute; right:-.48rem; top:42%;
+        color:#66a8a4; font-size:1.35rem; font-weight:800; z-index:2;}
+    .risk-step-no {font-size:.68rem; color:#719095; font-weight:750; letter-spacing:.04em;}
+    .risk-step-title {font-size:.86rem; color:#0c5058; font-weight:750; margin:.23rem 0 .28rem;}
+    .risk-step-value {font-size:.76rem; color:#405d63; line-height:1.46; overflow-wrap:anywhere;}
+    .evidence-tag {display:inline-block; border-radius:999px; padding:.13rem .42rem; font-size:.65rem;
+        font-weight:750; margin-top:.42rem;}
+    .tag-observed {background:#dff4eb; color:#11644f;}
+    .tag-literature {background:#e5eefc; color:#315e91;}
+    .tag-assumed {background:#fff0d7; color:#8a5b12;}
+    .tag-output {background:#e9e3f6; color:#5d3d86;}
+    .action-strip {background:#073f48; color:#edf9f7; border-radius:12px; padding:.76rem .9rem;
+        margin:.75rem 0 .2rem; line-height:1.55; font-size:.82rem;}
+    .action-strip b {color:white;}
     .footer-boundary {color:#7b898e; font-size:.76rem; line-height:1.65; text-align:center;
         max-width:1120px; margin:0 auto; padding:.4rem .5rem 0;}
     @media (max-width:1100px) {.kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
@@ -114,6 +140,8 @@ st.markdown(
         .hero h1{font-size:1.9rem;}
         .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
         .product-grid{grid-template-columns:1fr;}
+        .risk-chain{grid-template-columns:1fr;}
+        .risk-step:not(:last-child)::after{content:'⌄'; right:49%; top:auto; bottom:-.72rem;}
     }
     </style>
     """,
@@ -149,6 +177,50 @@ def kpi_grid(items: list[tuple[str, str, str]]) -> None:
     )
     grid_class = " kpi-3" if len(items) == 3 else ""
     st.markdown(f'<div class="kpi-grid{grid_class}">{cards}</div>', unsafe_allow_html=True)
+
+
+def risk_translation_panel(summary: dict[str, object], evidence: pd.DataFrame) -> None:
+    """Show how a real observation becomes a bounded monitoring decision."""
+    steps = [
+        ("01", "现场观测", str(summary["observation"]), "真实观测", "tag-observed"),
+        ("02", "危害证据", str(summary["hazard"]), "事件/文献证据", "tag-literature"),
+        ("03", "养殖暴露", str(summary["exposure"]), "情景假设", "tag-assumed"),
+        ("04", "对象脆弱性", str(summary["vulnerability"]), "参数设定", "tag-assumed"),
+        ("05", "复核优先级", str(summary["priority"]), "决策支持输出", "tag-output"),
+    ]
+    cards = "".join(
+        '<div class="risk-step">'
+        f'<div class="risk-step-no">STEP {html.escape(number)}</div>'
+        f'<div class="risk-step-title">{html.escape(title)}</div>'
+        f'<div class="risk-step-value">{html.escape(value)}</div>'
+        f'<span class="evidence-tag {tag_class}">{html.escape(tag)}</span>'
+        '</div>'
+        for number, title, value, tag, tag_class in steps
+    )
+    st.markdown(
+        '<div class="risk-bridge">'
+        '<div class="risk-bridge-title">这组真实观测如何进入风险研判？</div>'
+        '<div class="risk-bridge-subtitle">真实数据提供危害证据；养殖暴露和对象脆弱性保持独立、'
+        '可检查。当前未接入真实养殖场空间图层，因此只输出复核/加密监测顺序。</div>'
+        f'<div class="risk-chain">{cards}</div>'
+        '<div class="action-strip"><b>建议行动：</b>'
+        f'{html.escape(str(summary["action"]))}<br><b>结论边界：</b>'
+        f'{html.escape(str(summary["boundary"]))}</div></div>',
+        unsafe_allow_html=True,
+    )
+    with st.expander("查看研判证据清单：哪些已观测、哪些是假设、哪些仍缺失"):
+        evidence_display = evidence[["研判输入", "当前证据", "证据属性", "如何影响研判"]]
+        st.dataframe(
+            evidence_display,
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "研判输入": st.column_config.TextColumn("研判输入", width="small"),
+                "当前证据": st.column_config.TextColumn("当前证据", width="large"),
+                "证据属性": st.column_config.TextColumn("属性", width="small"),
+                "如何影响研判": st.column_config.TextColumn("研判作用", width="large"),
+            },
+        )
 
 
 def global_case_map(frame: pd.DataFrame) -> go.Figure:
@@ -467,6 +539,12 @@ with tab_alert:
 
 with tab_real:
     st.markdown("### 全球真实观测与前沿研究证据")
+    st.markdown(
+        '<div class="signal"><b>真实回放的作用：</b>不是把历史事件当作新的训练成绩，'
+        '而是把真实藻种、丰度、时间和位置作为危害证据，进一步判断哪些养殖对象与区域应优先复核。'
+        '暴露或监管证据缺失时，系统会明确降级为“情景假设/待补数据”。</div>',
+        unsafe_allow_html=True,
+    )
     evidence_cases = global_evidence_frame()
     st.plotly_chart(global_case_map(evidence_cases), width="stretch", config={"displayModeBar": False})
     st.caption(
@@ -509,6 +587,20 @@ with tab_real:
         replay = build_sa_replay(real_observations, replay_start, replay_end, replay_depth)
         selected_card = replay["card"]
         peak = selected_card["peak_k_cristata"]
+        st.markdown("##### 选择需要研判的养殖对象")
+        ra1, ra2 = st.columns(2)
+        real_production = ra1.selectbox(
+            "主要养殖对象", list(PRODUCTION_PROFILES), key="real_production",
+            help="对象选择只改变脆弱性与复核内容，不改变真实qPCR观测。",
+        )
+        real_exposure = ra2.slider(
+            "养殖暴露情景（演示）", .25, 1.0, .80, .05, key="real_exposure",
+            help="当前尚未接入真实养殖场坐标和养殖密度。该系数仅演示暴露变化如何影响复核顺序。",
+        )
+        sa_translation = build_sa_risk_translation(
+            replay["sites"], real_production, real_exposure
+        )
+        real_aqua = sa_translation["priority"]
         kpi_grid([
             ("现场qPCR样本", f"{selected_card['observations']:,}", "窗口内真实采样记录"),
             ("采样日期", f"{selected_card['sampling_dates']}", "非均匀现场采样"),
@@ -517,6 +609,7 @@ with tab_real:
             ("最高观测丰度", f"{peak['cells_l']:.2e}", "cells L⁻¹"),
             ("回放状态", "现场数据", "CC BY 4.0开放数据"),
         ])
+        risk_translation_panel(sa_translation["summary"], sa_translation["evidence"])
         st.markdown(
             '<div class="signal">最高现场观测：'
             f'<b>{peak["location"]}</b> · {peak["date"]} · '
@@ -547,22 +640,29 @@ with tab_real:
             )
             st.plotly_chart(composition_chart, width="stretch", config={"displayModeBar": False})
 
-        st.markdown("#### 海水养殖现场复核优先级")
-        ra1, ra2 = st.columns(2)
-        real_production = ra1.selectbox(
-            "养殖对象", list(PRODUCTION_PROFILES), key="real_production"
-        )
-        real_exposure = ra2.slider(
-            "养殖暴露情景", .25, 1.0, .80, .05, key="real_exposure"
-        )
-        real_aqua = project_real_aquaculture_priority(
-            replay["sites"], real_production, real_exposure
+        st.markdown("#### 基于真实危害证据的区域复核顺序")
+        st.caption(
+            "排序使用真实qPCR相对丰度，但养殖暴露仍为演示情景；优先级不是死亡率、经济损失率或停采阈值。"
         )
         st.dataframe(
             real_aqua[[
                 "location", "k_cristata_peak_cells_l", "observed_abundance_band",
-                "verification_priority_index", "evidence_grade", "recommended_action",
+                "verification_priority_index", "priority_level", "evidence_grade",
+                "recommended_action",
             ]].head(15), width="stretch", hide_index=True,
+            column_config={
+                "location": "监测地点",
+                "k_cristata_peak_cells_l": st.column_config.NumberColumn(
+                    "K. cristata峰值（cells L⁻¹）", format="%.0f"
+                ),
+                "observed_abundance_band": "现场丰度分档",
+                "verification_priority_index": st.column_config.ProgressColumn(
+                    "复核优先指数", min_value=0, max_value=100, format="%.1f"
+                ),
+                "priority_level": "建议响应",
+                "evidence_grade": "证据等级",
+                "recommended_action": st.column_config.TextColumn("建议行动", width="large"),
+            },
         )
         rd1, rd2, rd3 = st.columns(3)
         rd1.download_button(
@@ -601,6 +701,20 @@ with tab_real:
         )
         selected_card = norway_replay["card"]
         peak_d = selected_card["peak_d_acuta"]
+        st.markdown("##### 选择需要研判的养殖对象")
+        nr1, nr2 = st.columns(2)
+        norway_production = nr1.selectbox(
+            "主要养殖对象", list(PRODUCTION_PROFILES), key="norway_production",
+            help="对象选择只改变脆弱性与复核内容，不改变真实监测计数。",
+        )
+        norway_exposure = nr2.slider(
+            "养殖暴露情景（演示）", .25, 1.0, .75, .05, key="norway_exposure",
+            help="当前尚未接入真实养殖场坐标和养殖密度。该系数仅演示暴露变化如何影响监测顺序。",
+        )
+        norway_translation = build_norway_risk_translation(
+            norway_replay["stations"], norway_production, norway_exposure
+        )
+        norway_aqua = norway_translation["priority"]
         kpi_grid([
             ("真实监测记录", f"{selected_card['observations']:,}", "藻细胞计数与环境条件"),
             ("采样日期", f"{selected_card['sampling_dates']:,}", "2006–2019周尺度监测"),
@@ -609,6 +723,9 @@ with tab_real:
             ("D. acuta最高观测", f"{peak_d['cells_l']:,.0f}", "cells L⁻¹"),
             ("回放状态", "现场数据", "CC BY 4.0开放数据"),
         ])
+        risk_translation_panel(
+            norway_translation["summary"], norway_translation["evidence"]
+        )
         st.markdown(
             '<div class="signal">窗口内 <i>D. acuta</i> 最高观测：'
             f'<b>{peak_d["region"]}</b> · {peak_d["date"]} · '
@@ -655,7 +772,33 @@ with tab_real:
             ]].describe().loc[["mean", "std", "min", "50%", "max"]].T.reset_index()
             environmental.columns = ["环境变量", "平均", "标准差", "最小", "中位", "最大"]
             st.dataframe(environmental, width="stretch", hide_index=True)
-        nd1, nd2 = st.columns(2)
+        st.markdown("#### 基于真实藻细胞计数的区域加密监测顺序")
+        st.caption(
+            "相对危害指数仅比较当前回放窗口内各区域的对数丰度，不是地方毒素阈值；养殖暴露仍为演示情景。"
+        )
+        st.dataframe(
+            norway_aqua[[
+                "region", "target_peak_cells_l", "event_observations",
+                "verification_priority_index", "priority_level", "evidence_grade",
+                "recommended_action",
+            ]].head(15),
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "region": "监测区域",
+                "target_peak_cells_l": st.column_config.NumberColumn(
+                    "目标藻最高计数（cells L⁻¹）", format="%.0f"
+                ),
+                "event_observations": "论文定义事件观测数",
+                "verification_priority_index": st.column_config.ProgressColumn(
+                    "加密监测优先指数", min_value=0, max_value=100, format="%.1f"
+                ),
+                "priority_level": "建议响应",
+                "evidence_grade": "证据等级",
+                "recommended_action": st.column_config.TextColumn("建议行动", width="large"),
+            },
+        )
+        nd1, nd2, nd3 = st.columns(3)
         nd1.download_button(
             "下载挪威观测回放", norway_replay["observations"].to_csv(index=False).encode("utf-8-sig"),
             "norway_hab_monitoring_replay.csv", "text/csv",
@@ -663,6 +806,10 @@ with tab_real:
         nd2.download_button(
             "下载挪威回放卡", json.dumps(selected_card, ensure_ascii=False, indent=2).encode("utf-8"),
             "norway_replay_card.json", "application/json",
+        )
+        nd3.download_button(
+            "下载养殖监测顺序", norway_aqua.to_csv(index=False).encode("utf-8-sig"),
+            "norway_aquaculture_monitoring_priority.csv", "text/csv",
         )
         st.markdown(
             "来源：[Communications Earth & Environment](https://doi.org/10.1038/s43247-025-02421-y) · "
@@ -937,7 +1084,7 @@ st.markdown(
       <b>能力边界：</b>合成基准用于验证信号恢复、跨区域评估和机制模块的软件正确性；
       南澳大利亚与挪威页面使用真实开放观测进行事件回放，不与合成数据混合训练。
       风险地图和养殖复核顺序用于研究与监测决策支持，不构成业务预报、因果结论、统一毒素阈值或自动停采指令。
-      <br>GlobalHAB-Agent v3.3.1 GOAI Semifinal · synthetic benchmark + multi-region real-observation replay ·
+      <br>GlobalHAB-Agent v3.4.0 GOAI Semifinal · synthetic benchmark + real-evidence-to-risk replay ·
       no operational, causal or automatic closure claim
     </div>
     """,

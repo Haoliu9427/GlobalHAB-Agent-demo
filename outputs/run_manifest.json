@@ -1,5 +1,5 @@
 {
-  "version": "3.3.0-research-to-impact",
+  "version": "3.4.0-real-evidence-to-risk",
   "config_sha256": "69e812611f5d31c0cd4934767b41384f7a3c74a33512b4fe4c62ea9a567f42df",
   "data_sha256": "b63f828b0350afe172d7485e192dfa0ac024e0606b1c809d0867714522cbe2d5",
   "real_qpcr_sha256": "6b64f3177dbcdfd08a45e6d229a8f56adb818f1cff47e2985e1b7c44ec122e06",
@@ -26,10 +26,13 @@
     "sa_real_species_summary.csv",
     "sa_real_router_trace.csv",
     "sa_real_aquaculture_priority.csv",
+    "sa_real_risk_evidence_matrix.csv",
     "sa_real_replay_card.json",
     "norway_real_replay_timeline.csv",
     "norway_real_station_summary.csv",
     "norway_real_taxa_summary.csv",
+    "norway_real_aquaculture_priority.csv",
+    "norway_real_risk_evidence_matrix.csv",
     "norway_real_replay_card.json",
     "global_nature_evidence_cases.csv"
   ]

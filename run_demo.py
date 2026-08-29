@@ -1,4 +1,4 @@
-"""Run the complete GlobalHAB-Agent v3.3 research-to-impact workflow."""
+"""Run the complete GlobalHAB-Agent v3.4 real-evidence-to-risk workflow."""
 
 from __future__ import annotations
 
@@ -19,16 +19,21 @@ REGION_LABELS = {
     "Synthetic_Region_D": "西太平洋情景区（合成）",
 }
 
-from globalhab_demo import (  # noqa: E402
+from globalhab_demo.event_risk import (  # noqa: E402
+    build_norway_risk_translation,
+    build_sa_risk_translation,
+)
+from globalhab_demo.global_cases import (  # noqa: E402
     build_norway_replay,
-    build_sa_replay,
     global_evidence_frame,
     load_norway_real_case,
-    load_sa_real_case,
-    project_real_aquaculture_priority,
-    real_data_router,
-    run_exploration,
 )
+from globalhab_demo.real_replay import (  # noqa: E402
+    build_sa_replay,
+    load_sa_real_case,
+    real_data_router,
+)
+from globalhab_demo.workflow import run_exploration  # noqa: E402
 
 
 def _sha256(path: Path) -> str:
@@ -83,14 +88,18 @@ def main() -> None:
         real_observations["sample_date"].max(),
     )
     real_router = real_data_router(real_replay["observations"], has_daily_environment=False)
-    real_aquaculture = project_real_aquaculture_priority(
+    sa_translation = build_sa_risk_translation(
         real_replay["sites"], "贝类（牡蛎/贻贝）", 0.80
     )
+    real_aquaculture = sa_translation["priority"]
     norway_observations, norway_provenance = load_norway_real_case(data_dir)
     norway_replay = build_norway_replay(
         norway_observations,
         norway_observations["sample_date"].min(),
         norway_observations["sample_date"].max(),
+    )
+    norway_translation = build_norway_risk_translation(
+        norway_replay["stations"], "贝类（牡蛎/贻贝）", 0.75
     )
     global_cases = global_evidence_frame()
 
@@ -112,6 +121,9 @@ def main() -> None:
     real_replay["species"].to_csv(output / "sa_real_species_summary.csv", index=False)
     real_router.to_csv(output / "sa_real_router_trace.csv", index=False)
     real_aquaculture.to_csv(output / "sa_real_aquaculture_priority.csv", index=False)
+    sa_translation["evidence"].to_csv(
+        output / "sa_real_risk_evidence_matrix.csv", index=False
+    )
     (output / "sa_real_replay_card.json").write_text(
         json.dumps(real_replay["card"], ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -123,6 +135,12 @@ def main() -> None:
     )
     norway_replay["taxa"].to_csv(
         output / "norway_real_taxa_summary.csv", index=False
+    )
+    norway_translation["priority"].to_csv(
+        output / "norway_real_aquaculture_priority.csv", index=False
+    )
+    norway_translation["evidence"].to_csv(
+        output / "norway_real_risk_evidence_matrix.csv", index=False
     )
     (output / "norway_real_replay_card.json").write_text(
         json.dumps(norway_replay["card"], ensure_ascii=False, indent=2), encoding="utf-8"
@@ -142,7 +160,7 @@ def main() -> None:
         json.dumps(card, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
     )
     manifest = {
-        "version": "3.3.0-research-to-impact",
+        "version": "3.4.0-real-evidence-to-risk",
         "config_sha256": _sha256(config_path),
         "data_sha256": _sha256(data_path),
         "real_qpcr_sha256": _sha256(data_dir / "real_case" / "derived" / "sa_qpcr_observations.csv"),
@@ -171,10 +189,13 @@ def main() -> None:
             "sa_real_species_summary.csv",
             "sa_real_router_trace.csv",
             "sa_real_aquaculture_priority.csv",
+            "sa_real_risk_evidence_matrix.csv",
             "sa_real_replay_card.json",
             "norway_real_replay_timeline.csv",
             "norway_real_station_summary.csv",
             "norway_real_taxa_summary.csv",
+            "norway_real_aquaculture_priority.csv",
+            "norway_real_risk_evidence_matrix.csv",
             "norway_real_replay_card.json",
             "global_nature_evidence_cases.csv",
         ],
@@ -207,7 +228,9 @@ def main() -> None:
         f"- 挪威真实监测：{norway_replay['card']['observations']:,}条 / "
         f"{norway_replay['card']['sampling_dates']}个日期 / {norway_replay['card']['regions']}个区域\n"
         f"- 挪威研究定义事件观测：{norway_replay['card']['target_event_observations']}条\n"
-        f"- 真实数据定位：多区域观测回放与复核优先级，不作为合成基准性能\n\n"
+        f"- 南澳现场复核最高优先级：{sa_translation['summary']['priority']}\n"
+        f"- 挪威加密监测最高优先级：{norway_translation['summary']['priority']}\n"
+        f"- 真实数据定位：危害证据回放与复核优先级，不作为合成基准性能\n\n"
         "> 性能来自匿名合成数据的软件正确性验证；不代表真实HAB或养殖损失预测性能。\n"
     )
     (output / "run_summary.md").write_text(summary, encoding="utf-8")

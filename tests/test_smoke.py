@@ -10,18 +10,24 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from globalhab_demo import (  # noqa: E402
+from globalhab_demo.aquaculture import project_aquaculture_risk  # noqa: E402
+from globalhab_demo.event_risk import (  # noqa: E402
+    build_norway_risk_translation,
+    build_sa_risk_translation,
+)
+from globalhab_demo.global_cases import (  # noqa: E402
     build_norway_replay,
-    build_sa_replay,
     global_evidence_frame,
     load_norway_real_case,
-    load_sa_real_case,
-    project_aquaculture_risk,
-    project_real_aquaculture_priority,
-    project_synthetic_scenario,
-    real_data_router,
-    run_exploration,
 )
+from globalhab_demo.real_replay import (  # noqa: E402
+    build_sa_replay,
+    load_sa_real_case,
+    project_real_aquaculture_priority,
+    real_data_router,
+)
+from globalhab_demo.scenario import project_synthetic_scenario  # noqa: E402
+from globalhab_demo.workflow import run_exploration  # noqa: E402
 
 
 @pytest.fixture(scope="session")
@@ -57,9 +63,11 @@ def test_cli_runs_and_writes_auditable_outputs(tmp_path):
         "method_diagnostics.json",
         "sa_real_replay_timeline.csv", "sa_real_site_summary.csv",
         "sa_real_species_summary.csv", "sa_real_router_trace.csv",
-        "sa_real_aquaculture_priority.csv", "sa_real_replay_card.json",
+        "sa_real_aquaculture_priority.csv", "sa_real_risk_evidence_matrix.csv",
+        "sa_real_replay_card.json",
         "norway_real_replay_timeline.csv", "norway_real_station_summary.csv",
-        "norway_real_taxa_summary.csv", "norway_real_replay_card.json",
+        "norway_real_taxa_summary.csv", "norway_real_aquaculture_priority.csv",
+        "norway_real_risk_evidence_matrix.csv", "norway_real_replay_card.json",
         "global_nature_evidence_cases.csv",
     ]:
         assert (tmp_path / name).exists(), name
@@ -154,6 +162,14 @@ def test_real_sa_replay_uses_bundled_qpcr_and_defers_unsupported_models():
         replay["sites"], "贝类（牡蛎/贻贝）", 0.80
     )
     assert priority["verification_priority_index"].between(0, 100).all()
+    translation = build_sa_risk_translation(
+        replay["sites"], "贝类（牡蛎/贻贝）", 0.80
+    )
+    assert translation["priority"]["verification_priority_index"].between(0, 100).all()
+    assert set(translation["evidence"]["证据属性"]) == {
+        "真实观测", "事件/文献证据", "情景假设", "参数设定", "待补数据"
+    }
+    assert "不是损失概率" in translation["summary"]["boundary"]
 
 
 def test_norway_real_monitoring_replay_and_global_evidence_are_auditable():
@@ -174,6 +190,12 @@ def test_norway_real_monitoring_replay_and_global_evidence_are_auditable():
     assert card["peak_d_acuta"] == {
         "date": "2011-09-29", "region": "Risør", "cells_l": 9632.0
     }
+    translation = build_norway_risk_translation(
+        replay["stations"], "贝类（牡蛎/贻贝）", 0.75
+    )
+    assert translation["priority"]["verification_priority_index"].between(0, 100).all()
+    assert translation["priority"].iloc[0]["region"] == "Risør"
+    assert "不是损失概率" in translation["summary"]["boundary"]
     cases = global_evidence_frame()
     assert len(cases) == 4
     assert (cases["product_status"] == "完整观测回放").sum() == 2

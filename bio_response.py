@@ -374,3 +374,111 @@ def compare_interventions(
         "scenario_card": scenario_card,
     }
 
+
+def evaluate_intervention_robustness(
+    hab_pressure: float,
+    mhw_intensity_c: float,
+    dissolved_oxygen_mg_l: float,
+    stocking_density_kg_m3: float,
+    planned_feeding_pct: float,
+    hab_duration_hours: int,
+    horizon_hours: int = 72,
+) -> dict[str, pd.DataFrame | dict[str, object]]:
+    """Stress-test intervention trade-offs across 81 nearby input scenarios.
+
+    The grid perturbs four uncertain scenario inputs.  It does not turn the
+    prototype into a calibrated fish model; it checks whether conclusions are
+    artefacts of a single slider setting.
+    """
+    perturbations = {
+        "hab_multiplier": (0.90, 1.00, 1.10),
+        "mhw_delta_c": (-0.40, 0.00, 0.40),
+        "do_delta_mg_l": (-0.50, 0.00, 0.50),
+        "density_multiplier": (0.90, 1.00, 1.10),
+    }
+    rows: list[dict[str, object]] = []
+    scenario_id = 0
+    for hab_multiplier in perturbations["hab_multiplier"]:
+        for mhw_delta in perturbations["mhw_delta_c"]:
+            for do_delta in perturbations["do_delta_mg_l"]:
+                for density_multiplier in perturbations["density_multiplier"]:
+                    scenario_id += 1
+                    scenario_rows: list[dict[str, object]] = []
+                    for intervention in INTERVENTIONS:
+                        trajectory = simulate_cage_fish_response(
+                            hab_pressure=float(np.clip(hab_pressure * hab_multiplier, 0, 100)),
+                            mhw_intensity_c=float(np.clip(mhw_intensity_c + mhw_delta, 0, 6)),
+                            dissolved_oxygen_mg_l=float(np.clip(dissolved_oxygen_mg_l + do_delta, 0, 14)),
+                            stocking_density_kg_m3=float(np.clip(
+                                stocking_density_kg_m3 * density_multiplier, 1, 60
+                            )),
+                            planned_feeding_pct=planned_feeding_pct,
+                            hab_duration_hours=hab_duration_hours,
+                            intervention=intervention,
+                            horizon_hours=horizon_hours,
+                        )
+                        summary = _summarise(trajectory)
+                        summary.update({
+                            "scenario_id": scenario_id,
+                            "hab_multiplier": hab_multiplier,
+                            "mhw_delta_c": mhw_delta,
+                            "do_delta_mg_l": do_delta,
+                            "density_multiplier": density_multiplier,
+                        })
+                        scenario_rows.append(summary)
+                    scenario_frame = pd.DataFrame(scenario_rows)
+                    baseline_load = float(scenario_frame.loc[
+                        scenario_frame["intervention"].eq("维持监测"),
+                        "pressure_load_index_hours",
+                    ].iloc[0])
+                    scenario_frame["pressure_load_reduction_pct"] = 100.0 * (
+                        baseline_load - scenario_frame["pressure_load_index_hours"]
+                    ) / max(baseline_load, 1e-9)
+                    best_load = float(scenario_frame["pressure_load_index_hours"].min())
+                    scenario_frame["lowest_pressure"] = np.isclose(
+                        scenario_frame["pressure_load_index_hours"], best_load
+                    )
+                    pareto = []
+                    for _, candidate in scenario_frame.iterrows():
+                        dominated = (
+                            (scenario_frame["pressure_load_index_hours"] <= candidate["pressure_load_index_hours"])
+                            & (scenario_frame["mean_feeding_opportunity_pct"] >= candidate["mean_feeding_opportunity_pct"])
+                            & (
+                                (scenario_frame["pressure_load_index_hours"] < candidate["pressure_load_index_hours"])
+                                | (scenario_frame["mean_feeding_opportunity_pct"] > candidate["mean_feeding_opportunity_pct"])
+                            )
+                        ).any()
+                        pareto.append(not bool(dominated))
+                    scenario_frame["pareto_efficient"] = pareto
+                    rows.extend(scenario_frame.to_dict(orient="records"))
+
+    detail = pd.DataFrame(rows)
+    summary = detail.groupby("intervention", as_index=False).agg(
+        scenarios=("scenario_id", "nunique"),
+        median_pressure_reduction_pct=("pressure_load_reduction_pct", "median"),
+        worst_case_pressure_reduction_pct=("pressure_load_reduction_pct", "min"),
+        best_case_pressure_reduction_pct=("pressure_load_reduction_pct", "max"),
+        median_feeding_opportunity_pct=("mean_feeding_opportunity_pct", "median"),
+        lowest_pressure_frequency=("lowest_pressure", "mean"),
+        pareto_frequency=("pareto_efficient", "mean"),
+    )
+    summary["lowest_pressure_frequency"] *= 100.0
+    summary["pareto_frequency"] *= 100.0
+    summary = summary.sort_values(
+        ["pareto_frequency", "median_pressure_reduction_pct"],
+        ascending=False,
+        ignore_index=True,
+    )
+    card = {
+        "scenario_count": int(detail["scenario_id"].nunique()),
+        "perturbed_inputs": perturbations,
+        "interpretation": (
+            "Pareto frequency reports how often an intervention was not dominated on "
+            "both pressure load and feeding opportunity across nearby input scenarios."
+        ),
+        "boundary": (
+            "Input robustness check for a dimensionless prototype; not evidence of "
+            "field efficacy, mortality reduction or economic benefit."
+        ),
+    }
+    return {"detail": detail, "summary": summary, "card": card}

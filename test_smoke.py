@@ -14,6 +14,7 @@ from globalhab_demo.aquaculture import project_aquaculture_risk  # noqa: E402
 from globalhab_demo.bio_response import (  # noqa: E402
     INTERVENTIONS,
     compare_interventions,
+    evaluate_intervention_robustness,
 )
 from globalhab_demo.event_risk import (  # noqa: E402
     build_norway_risk_translation,
@@ -30,6 +31,7 @@ from globalhab_demo.real_replay import (  # noqa: E402
     project_real_aquaculture_priority,
     real_data_router,
 )
+from globalhab_demo.real_benchmark import run_forward_monitoring_benchmark  # noqa: E402
 from globalhab_demo.scenario import project_synthetic_scenario  # noqa: E402
 from globalhab_demo.workflow import run_exploration  # noqa: E402
 
@@ -72,9 +74,16 @@ def test_cli_runs_and_writes_auditable_outputs(tmp_path):
         "norway_real_replay_timeline.csv", "norway_real_station_summary.csv",
         "norway_real_taxa_summary.csv", "norway_real_aquaculture_priority.csv",
         "norway_real_risk_evidence_matrix.csv", "norway_real_replay_card.json",
+        "norway_forward_benchmark_predictions.csv",
+        "norway_forward_benchmark_folds.csv",
+        "norway_forward_benchmark_permutation.csv",
+        "norway_forward_benchmark_card.json",
         "cage_fish_response_trajectories.csv",
         "cage_fish_intervention_comparison.csv",
         "cage_fish_sandbox_parameters.csv", "cage_fish_sandbox_card.json",
+        "cage_fish_intervention_robustness.csv",
+        "cage_fish_intervention_robustness_summary.csv",
+        "cage_fish_robustness_card.json",
         "global_nature_evidence_cases.csv",
     ]:
         assert (tmp_path / name).exists(), name
@@ -208,6 +217,32 @@ def test_norway_real_monitoring_replay_and_global_evidence_are_auditable():
     assert (cases["product_status"] == "完整观测回放").sum() == 2
 
 
+def test_norway_forward_benchmark_is_temporal_and_beats_seasonal_reference():
+    observations, _ = load_norway_real_case(ROOT / "data")
+    benchmark = run_forward_monitoring_benchmark(observations)
+    summary = benchmark["summary"]
+    predictions = benchmark["predictions"]
+    assert summary["valid_folds"] == 4
+    assert summary["samples"] == len(predictions)
+    assert summary["events"] >= 60
+    assert summary["metric_name"].startswith("Average Precision")
+    assert summary["model_average_precision"] > summary["reference_average_precision"]
+    assert summary["model_average_precision"] > summary["seasonal_average_precision"]
+    assert summary["relative_improvement_over_reference"] > 0.20
+    assert summary["model_brier"] < summary["seasonal_brier"]
+    assert summary["top10_recall"] >= 0.40
+    assert summary["top10_precision"] > summary["event_rate"]
+    assert summary["top10_precision_lift"] > 4.0
+    assert summary["top10_selected"] == 364
+    assert summary["top10_true_positives"] + summary["top10_false_positives"] == 364
+    assert summary["permutation_p"] <= 0.01
+    assert set(benchmark["folds"]["selected_model"]) == {
+        "reference_logistic", "eco_weight5", "eco_weight10"
+    }
+    assert (predictions["sample_date"] < predictions["next_sample_date"]).all()
+    assert predictions["gap_days"].between(1, 14).all()
+
+
 def test_cage_fish_sandbox_is_bounded_and_interventions_are_honest():
     simulation = compare_interventions(
         hab_pressure=80.0,
@@ -249,3 +284,17 @@ def test_cage_fish_sandbox_is_bounded_and_interventions_are_honest():
         "维持监测", "mean_feeding_opportunity_pct"
     ]
     assert "mortality prediction" in simulation["scenario_card"]["excluded_claims"]
+
+    robustness = evaluate_intervention_robustness(
+        hab_pressure=80.0,
+        mhw_intensity_c=2.8,
+        dissolved_oxygen_mg_l=4.5,
+        stocking_density_kg_m3=25.0,
+        planned_feeding_pct=100.0,
+        hab_duration_hours=48,
+        horizon_hours=72,
+    )
+    assert robustness["card"]["scenario_count"] == 81
+    assert set(robustness["summary"]["intervention"]) == set(INTERVENTIONS)
+    assert robustness["summary"]["pareto_frequency"].between(0, 100).all()
+    assert robustness["summary"]["lowest_pressure_frequency"].between(0, 100).all()

@@ -1,4 +1,4 @@
-"""GlobalHAB-Agent v3.5.0 biological-response sandbox demo."""
+"""GlobalHAB-Agent v3.7.0 rare-event interpretability demo."""
 
 from __future__ import annotations
 
@@ -26,6 +26,7 @@ from globalhab_demo.bio_response import (  # noqa: E402
     BIO_SCENARIO_PRESETS,
     INTERVENTIONS,
     compare_interventions,
+    evaluate_intervention_robustness,
 )
 from globalhab_demo.data import REGIONS  # noqa: E402
 from globalhab_demo.evidence import SOUTH_AUSTRALIA_CASE  # noqa: E402
@@ -42,6 +43,9 @@ from globalhab_demo.real_replay import (  # noqa: E402
     build_sa_replay,
     load_sa_real_case,
     real_data_router,
+)
+from globalhab_demo.real_benchmark import (  # noqa: E402
+    run_forward_monitoring_benchmark,
 )
 from globalhab_demo.scenario import (  # noqa: E402
     SCENARIO_PRESETS,
@@ -169,6 +173,11 @@ def cached_exploration(
         holdout_region=holdout_region,
         test_fraction=test_fraction,
     )
+
+
+@st.cache_data(show_spinner=False)
+def cached_norway_benchmark(observations: pd.DataFrame):
+    return run_forward_monitoring_benchmark(observations)
 
 
 def kpi_grid(items: list[tuple[str, str, str]]) -> None:
@@ -388,9 +397,10 @@ st.markdown(
     <div class="hero">
       <div class="eyebrow" style="color:#a7eee2">GOAI · AI FOR RESEARCH</div>
       <h1>GlobalHAB-Agent</h1>
-      <p class="tagline">全球有害藻华研究与海水养殖生物响应平台</p>
-      <p class="value">从环境情景推演、真实事件回放到网箱鱼生物响应沙盘，直观呈现哪里可能出现风险、
-      哪些养殖区域应优先核查，以及不同干预情景如何改变相对生理压力。</p>
+      <p class="tagline">让Agent发现跨区域藻华信号，并把证据转化为可复核的养殖响应</p>
+      <p class="value"><b>核心科学问题：</b>在事件稀有、观测稀疏且证据异质的条件下，
+      Agent能否识别具有时间方向的HAB传播信号，并在不越过证据边界的前提下，
+      形成可检查的风险研判与网箱鱼干预对照？</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -438,13 +448,30 @@ spatial_diagnostics = result["spatial_diagnostics"]
 recovered = bool(card["synthetic_ground_truth"]["recovered_by_agent"])
 
 kpi_grid([
-    ("关键研究信号", "已恢复" if recovered else "待确认", "成功识别预设传导规律"),
-    ("最优风险模式", f"沿流传播 · {int(best['lag_days'])}天", "相对局地信号更具解释力"),
-    ("稀有事件识别", f"PR-AUC {float(best['pr_auc']):.3f}", "越高表示越能识别少数事件"),
-    ("概率预测增益", f"{float(best['brier_skill']):.3f}", "相对气候基准的Brier Skill"),
-    ("高风险覆盖能力", f"{float(best['recall_at_top20']):.1%}", "最高20%风险覆盖的真实事件比例"),
-    ("概率校准误差", f"ECE {float(best['ece']):.3f}", "越接近0表示概率越稳定"),
+    ("合成真值恢复", "通过" if recovered else "待确认", "是否找回预设的跨区传导信号"),
+    ("恢复的风险模式", f"沿流传播 · {int(best['lag_days'])}天", "完整留区与前向阻断验证"),
+    ("合成基准 · AP", f"{float(best['pr_auc']):.3f}", "Average Precision；仅验证合成真值恢复"),
+    ("合成基准 · Brier Skill", f"{float(best['brier_skill']):.3f}", "相对气候概率基准的改进"),
+    ("合成基准 · Top20覆盖", f"{float(best['recall_at_top20']):.1%}", "最高20%风险容量覆盖的事件比例"),
+    ("合成基准 · 校准误差", f"{float(best['ece']):.3f}", "ECE越接近0越稳定"),
 ])
+
+st.markdown(
+    """
+    <div class="risk-bridge">
+      <div class="risk-bridge-title">评委90秒验收路径</div>
+      <div class="risk-bridge-subtitle">不是看功能数量，而是检查一条完整证据链。</div>
+      <div class="risk-chain">
+        <div class="risk-step"><div class="risk-step-no">01</div><div class="risk-step-title">问题可证伪</div><div class="risk-step-value">预先锁定候选空间、预算、成功与失败标准</div></div>
+        <div class="risk-step"><div class="risk-step-no">02</div><div class="risk-step-title">Agent真探索</div><div class="risk-step-value">观察—选择实验—读取反馈—更新下一步</div></div>
+        <div class="risk-step"><div class="risk-step-no">03</div><div class="risk-step-title">双层现实证据</div><div class="risk-step-value">真实事件回放 + 挪威前向回顾基准</div></div>
+        <div class="risk-step"><div class="risk-step-no">04</div><div class="risk-step-title">改变研判流程</div><div class="risk-step-value">危害—暴露—脆弱性—现场复核优先级</div></div>
+        <div class="risk-step"><div class="risk-step-no">05</div><div class="risk-step-title">可继续验证</div><div class="risk-step-value">日志、负结果、哈希、模型卡与下载证据包</div></div>
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 tab_alert, tab_real, tab_bio, tab_methods, tab_agent, tab_evidence = st.tabs([
     "01 风险研判", "02 真实事件回放", "03 生物响应沙盘",
@@ -545,9 +572,9 @@ with tab_alert:
 with tab_real:
     st.markdown("### 全球真实观测与前沿研究证据")
     st.markdown(
-        '<div class="signal"><b>真实回放的作用：</b>不是把历史事件当作新的训练成绩，'
-        '而是把真实藻种、丰度、时间和位置作为危害证据，进一步判断哪些养殖对象与区域应优先复核。'
-        '暴露或监管证据缺失时，系统会明确降级为“情景假设/待补数据”。</div>',
+        '<div class="signal"><b>两类真实证据分层使用：</b>南澳qPCR用于事件回放，不参与训练；'
+        '挪威长期监测除回放外，另设严格前向的“下一次观测样本”回顾基准。'
+        '两者都不与合成基准混合，暴露或监管证据缺失时明确降级为“情景假设/待补数据”。</div>',
         unsafe_allow_html=True,
     )
     evidence_cases = global_evidence_frame()
@@ -558,6 +585,7 @@ with tab_real:
 
     real_observations, real_provenance = load_sa_real_case(ROOT / "data")
     norway_observations, norway_provenance = load_norway_real_case(ROOT / "data")
+    norway_benchmark = cached_norway_benchmark(norway_observations)
     sa_full_replay = build_sa_replay(
         real_observations, real_observations["sample_date"].min(),
         real_observations["sample_date"].max(),
@@ -777,6 +805,97 @@ with tab_real:
             ]].describe().loc[["mean", "std", "min", "50%", "max"]].T.reset_index()
             environmental.columns = ["环境变量", "平均", "标准差", "最小", "中位", "最大"]
             st.dataframe(environmental, width="stretch", hide_index=True)
+
+        st.markdown("#### 真实数据前向回顾基准：环境状态能否提前排出下一次监测优先级？")
+        benchmark_summary = norway_benchmark["summary"]
+        st.markdown(
+            '<div class="signal"><b>任务定义：</b>仅使用当前采样时已经可见的SST、PAR、混合层深度、'
+            '盐度、季节和区域，排序同一区域未来1–14天内的“下一次实际采样”是否达到论文事件定义。'
+            '当前藻细胞计数、未来环境值和超过14天的采样空档均不进入模型。</div>',
+            unsafe_allow_html=True,
+        )
+        kpi_grid([
+            ("最高风险10% · 事件覆盖", f"{benchmark_summary['top10_recall']:.1%}",
+             f"命中 {benchmark_summary['top10_true_positives']}/{benchmark_summary['events']} 个留出事件"),
+            ("Top10% · 命中率", f"{benchmark_summary['top10_precision']:.1%}",
+             f"事件率 {benchmark_summary['event_rate']:.2%} 的 {benchmark_summary['top10_precision_lift']:.1f} 倍"),
+            ("Average Precision", f"{benchmark_summary['model_average_precision']:.3f}",
+             "严格前向留出；越高越好"),
+            ("v3.6参考模型", f"{benchmark_summary['reference_average_precision']:.3f}",
+             f"v3.7 AP 提升 {benchmark_summary['relative_improvement_over_reference']:.1%}"),
+            ("季节基线 AP", f"{benchmark_summary['seasonal_average_precision']:.3f}",
+             "仅使用训练期月份概率"),
+            ("留出事件率", f"{benchmark_summary['event_rate']:.2%}",
+             f"{benchmark_summary['events']} / {benchmark_summary['samples']:,} 个样本"),
+        ])
+        st.markdown(
+            f'<div class="signal"><b>把指标翻译成监测容量：</b>若只复核模型排序最高的10%样本，'
+            f'需要检查 <b>{benchmark_summary["top10_selected"]}</b> 个样本，命中 '
+            f'<b>{benchmark_summary["top10_true_positives"]}</b> 个事件，同时包含 '
+            f'<b>{benchmark_summary["top10_false_positives"]}</b> 个非事件。'
+            '这可用于比较加密监测顺序，但误报代价仍高，不能直接作为养殖场报警。</div>',
+            unsafe_allow_html=True,
+        )
+        rb1, rb2 = st.columns([1.15, 1.0], gap="large")
+        with rb1:
+            fold_chart_data = norway_benchmark["folds"].melt(
+                id_vars=["test_window", "test_events"],
+                value_vars=["model_average_precision", "reference_average_precision",
+                            "seasonal_average_precision"],
+                var_name="method", value_name="average_precision",
+            )
+            fold_chart_data["method"] = fold_chart_data["method"].map({
+                "model_average_precision": "v3.7内层选择模型",
+                "reference_average_precision": "v3.6参考模型",
+                "seasonal_average_precision": "季节基线",
+            })
+            fold_chart = px.bar(
+                fold_chart_data, x="test_window", y="average_precision", color="method",
+                barmode="group", title="四个前向时间窗：改进是否稳定？",
+                labels={"test_window": "测试年份", "average_precision": "Average Precision（AP）", "method": "方法"},
+                color_discrete_map={"v3.7内层选择模型": "#0b7c78",
+                                    "v3.6参考模型": "#d9a441", "季节基线": "#b8c8cc"},
+                hover_data={"test_events": True},
+            )
+            fold_chart.update_layout(height=360, margin={"l": 5, "r": 5, "t": 55, "b": 5})
+            st.plotly_chart(fold_chart, width="stretch", config={"displayModeBar": False})
+        with rb2:
+            st.markdown("##### 评审应如何解读")
+            st.markdown(
+                f"""
+                - v3.7使用生态交互、稀有事件权重和时间衰减候选，但只在训练期内部选择；
+                  外层测试窗从不参与调参。
+                - 合并前向AP为 **{benchmark_summary['model_average_precision']:.3f}**，95%自助区间为
+                  **{benchmark_summary['model_average_precision_ci95'][0]:.3f}–{benchmark_summary['model_average_precision_ci95'][1]:.3f}**；
+                  相比v3.6参考模型提升 **{benchmark_summary['relative_improvement_over_reference']:.1%}**。
+                - 模型在 **{benchmark_summary['folds_beating_seasonal_average_precision']}/{benchmark_summary['valid_folds']}**
+                  个时间窗高于季节基线；标签置换参照 *p* = **{benchmark_summary['permutation_p']:.3f}**。
+                - Brier误差为 **{benchmark_summary['model_brier']:.4f}**，季节基线为
+                  **{benchmark_summary['seasonal_brier']:.4f}**。
+                - 最弱时间窗是 **{benchmark_summary['weakest_fold']}**（AP
+                  **{benchmark_summary['weakest_fold_average_precision']:.3f}**），说明跨时期稳定性仍不足。
+                - AP绝对值仍属初步研究信号；这是回顾性“下一次已观测样本”排序，不是连续14天业务预报。
+                """
+            )
+            with st.expander("检查四项防泄漏规则"):
+                for rule in benchmark_summary["leakage_controls"]:
+                    st.markdown(f"- {rule}")
+        rbd1, rbd2, rbd3 = st.columns(3)
+        rbd1.download_button(
+            "下载前向预测明细",
+            norway_benchmark["predictions"].to_csv(index=False).encode("utf-8-sig"),
+            "norway_forward_benchmark_predictions.csv", "text/csv",
+        )
+        rbd2.download_button(
+            "下载时间窗指标",
+            norway_benchmark["folds"].to_csv(index=False).encode("utf-8-sig"),
+            "norway_forward_benchmark_folds.csv", "text/csv",
+        )
+        rbd3.download_button(
+            "下载基准审计卡",
+            json.dumps(benchmark_summary, ensure_ascii=False, indent=2).encode("utf-8"),
+            "norway_forward_benchmark_card.json", "application/json",
+        )
         st.markdown("#### 基于真实藻细胞计数的区域加密监测顺序")
         st.caption(
             "相对危害指数仅比较当前回放窗口内各区域的对数丰度，不是地方毒素阈值；养殖暴露仍为演示情景。"
@@ -876,6 +995,15 @@ with tab_bio:
         st.caption(str(bio_preset["source_note"]))
 
     bio_simulation = compare_interventions(
+        hab_pressure=hab_pressure,
+        mhw_intensity_c=bio_mhw,
+        dissolved_oxygen_mg_l=bio_do,
+        stocking_density_kg_m3=bio_density,
+        planned_feeding_pct=bio_feed,
+        hab_duration_hours=min(bio_duration, bio_horizon),
+        horizon_hours=bio_horizon,
+    )
+    bio_robustness = evaluate_intervention_robustness(
         hab_pressure=hab_pressure,
         mhw_intensity_c=bio_mhw,
         dissolved_oxygen_mg_l=bio_do,
@@ -1027,6 +1155,70 @@ with tab_bio:
         )
         st.plotly_chart(tradeoff_chart, width="stretch", config={"displayModeBar": False})
 
+    st.markdown("#### 结论会不会只是某一组滑块参数造成的？")
+    robustness_summary = bio_robustness["summary"]
+    robustness_card = bio_robustness["card"]
+    st.markdown(
+        '<div class="signal"><b>邻域压力测试：</b>系统自动组合HAB压力±10%、MHW±0.4°C、'
+        'DO±0.5 mg L⁻¹和密度±10%，形成81个邻近情景。报告帕累托出现率，'
+        '而不是强行给出一个“唯一最佳操作”。</div>',
+        unsafe_allow_html=True,
+    )
+    robustness_chart = px.scatter(
+        robustness_summary,
+        x="median_feeding_opportunity_pct",
+        y="median_pressure_reduction_pct",
+        size="pareto_frequency",
+        color="intervention",
+        title="81个邻近输入情景下的干预稳健性",
+        labels={
+            "median_feeding_opportunity_pct": "中位摄食机会保留（%）",
+            "median_pressure_reduction_pct": "中位累计压力降低（%）",
+            "pareto_frequency": "帕累托出现率（%）",
+            "intervention": "干预情景",
+        },
+        hover_data={
+            "worst_case_pressure_reduction_pct": ":.1f",
+            "best_case_pressure_reduction_pct": ":.1f",
+            "lowest_pressure_frequency": ":.1f",
+        },
+    )
+    robustness_chart.update_layout(
+        height=410, margin={"l": 5, "r": 5, "t": 55, "b": 5}, showlegend=False,
+    )
+    st.plotly_chart(robustness_chart, width="stretch", config={"displayModeBar": False})
+    st.dataframe(
+        robustness_summary,
+        width="stretch",
+        hide_index=True,
+        column_config={
+            "intervention": "干预情景",
+            "scenarios": "扰动情景数",
+            "median_pressure_reduction_pct": st.column_config.NumberColumn(
+                "中位压力降低（%）", format="%.1f"
+            ),
+            "worst_case_pressure_reduction_pct": st.column_config.NumberColumn(
+                "最弱情景变化（%）", format="%.1f"
+            ),
+            "best_case_pressure_reduction_pct": st.column_config.NumberColumn(
+                "最强情景变化（%）", format="%.1f"
+            ),
+            "median_feeding_opportunity_pct": st.column_config.NumberColumn(
+                "中位摄食机会（%）", format="%.1f"
+            ),
+            "lowest_pressure_frequency": st.column_config.NumberColumn(
+                "最低压力出现率（%）", format="%.1f"
+            ),
+            "pareto_frequency": st.column_config.ProgressColumn(
+                "帕累托出现率（%）", min_value=0, max_value=100, format="%.1f"
+            ),
+        },
+    )
+    st.caption(
+        "帕累托出现率高表示该方案在“降低相对压力”和“保留摄食机会”两个目标上较少被其他方案同时压过；"
+        "它不是现场有效率或推荐概率。"
+    )
+
     st.markdown("#### 干预情景对照表")
     bio_display = bio_summary[[
         "intervention", "peak_pressure_index", "peak_pressure_lower",
@@ -1106,6 +1298,11 @@ with tab_bio:
             bio_simulation["scenario_card"], ensure_ascii=False, indent=2
         ).encode("utf-8"),
         "cage_fish_sandbox_card.json", "application/json",
+    )
+    st.download_button(
+        "下载81情景稳健性结果",
+        bio_robustness["detail"].to_csv(index=False).encode("utf-8-sig"),
+        "cage_fish_intervention_robustness.csv", "text/csv",
     )
     st.warning(
         "能力边界：本模块不输出死亡率、真实生物量损失、毒素浓度或养殖场级预测；"
@@ -1280,7 +1477,7 @@ with tab_agent:
         ], ignore_index=True)
         fig = px.bar(
             comparison, x="方法", y="pr_auc", color="方法",
-            title="阻断验证PR-AUC：Agent候选 vs 平凡解",
+            title="阻断验证Average Precision（AP）：Agent候选 vs 平凡解",
             text_auto=".3f",
             color_discrete_sequence=["#8aa6a3", "#c7a76c", "#0d7f79"],
         )
@@ -1338,6 +1535,25 @@ with tab_evidence:
             )
             st.markdown(f'[论文]({case_row["url"]}) · [开放数据]({case_row["data_url"]})')
 
+    st.markdown("### 结论账本：每句话由什么证据支持？")
+    claim_ledger = pd.DataFrame([
+        ["Agent能恢复预设14天沿流信号", "匿名合成真值", "完整留区+前向阻断；随机搜索与时间置换", "软件正确性通过；不代表真实海洋性能"],
+        ["真实环境状态包含有限但可复核的下一次监测排序信号", "挪威2006–2019开放监测", "训练期内层选择；四个前向窗；AP区间；容量/误报分解", "AP绝对值与弱窗限制明显；不是业务报警"],
+        ["南澳事件危害证据可定位到时间、地点和藻种", "115条现场qPCR", "原始工作簿、派生表、哈希与事件卡", "采样峰值；不代表全海域连续最大值"],
+        ["真实危害可以转为现场复核顺序", "真实丰度+显式暴露/脆弱性假设", "证据矩阵逐项标注观测、假设和缺口", "不是损失概率、毒素阈值或监管指令"],
+        ["网箱鱼干预存在压力—摄食权衡", "公开方程的科研原型", "±15%参数包络+81个邻近输入情景", "尚无物种/场站标定，不预测死亡率"],
+        ["传播方向与邻区影响可被分解", "合成基准", "TE/CTE置换、BH-FDR与Durbin效应分解", "关联与传播线索，不宣称因果"],
+    ], columns=["可公开结论", "证据来源", "检查方式", "不能据此宣称"])
+    st.dataframe(
+        claim_ledger, width="stretch", hide_index=True,
+        column_config={
+            "可公开结论": st.column_config.TextColumn("可公开结论", width="large"),
+            "证据来源": st.column_config.TextColumn("证据来源", width="medium"),
+            "检查方式": st.column_config.TextColumn("检查方式", width="large"),
+            "不能据此宣称": st.column_config.TextColumn("不能据此宣称", width="large"),
+        },
+    )
+
     st.markdown("### 环境信息如何转化为可读风险线索")
     st.markdown(
         """
@@ -1369,6 +1585,10 @@ with tab_evidence:
         "south_australia_real_data_provenance": real_provenance,
         "norway_real_replay": norway_card,
         "norway_real_data_provenance": norway_provenance,
+        "norway_forward_benchmark": norway_benchmark["summary"],
+        "norway_forward_benchmark_folds": norway_benchmark["folds"].to_dict("records"),
+        "cage_fish_robustness": robustness_card,
+        "claim_ledger": claim_ledger.to_dict("records"),
         "global_nature_portfolio_evidence": evidence_cases.to_dict("records"),
     }
     d2.download_button(
@@ -1385,10 +1605,11 @@ st.markdown(
     """
     <div class="footer-boundary">
       <b>能力边界：</b>合成基准用于验证信号恢复、跨区域评估和机制模块的软件正确性；
-      南澳大利亚与挪威页面使用真实开放观测进行事件回放，不与合成数据混合训练。
+      南澳大利亚使用真实qPCR作事件回放；挪威长期监测另设严格前向的回顾性下一样本基准，
+      均不与合成数据混合。
       生物响应沙盘使用公开可检查但未经物种/场站标定的原型参数；风险地图、复核顺序和干预对照
       不构成死亡率或损失预测、业务预报、因果结论、统一毒素阈值或自动运营指令。
-      <br>GlobalHAB-Agent v3.5.0 GOAI Semifinal · synthetic benchmark + real-event replay + biological-response sandbox ·
+      <br>GlobalHAB-Agent v3.7.0 GOAI Semifinal · synthetic recovery + nested real forward benchmark + event replay + biological-response sandbox ·
       no mortality, operational, causal or automatic action claim
     </div>
     """,

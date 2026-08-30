@@ -1,5 +1,5 @@
 {
-  "version": "3.5.0-biological-response-sandbox",
+  "version": "3.7.0-rare-event-interpretability",
   "config_sha256": "69e812611f5d31c0cd4934767b41384f7a3c74a33512b4fe4c62ea9a567f42df",
   "data_sha256": "b63f828b0350afe172d7485e192dfa0ac024e0606b1c809d0867714522cbe2d5",
   "real_qpcr_sha256": "6b64f3177dbcdfd08a45e6d229a8f56adb818f1cff47e2985e1b7c44ec122e06",
@@ -34,10 +34,17 @@
     "norway_real_aquaculture_priority.csv",
     "norway_real_risk_evidence_matrix.csv",
     "norway_real_replay_card.json",
+    "norway_forward_benchmark_predictions.csv",
+    "norway_forward_benchmark_folds.csv",
+    "norway_forward_benchmark_permutation.csv",
+    "norway_forward_benchmark_card.json",
     "cage_fish_response_trajectories.csv",
     "cage_fish_intervention_comparison.csv",
     "cage_fish_sandbox_parameters.csv",
     "cage_fish_sandbox_card.json",
+    "cage_fish_intervention_robustness.csv",
+    "cage_fish_intervention_robustness_summary.csv",
+    "cage_fish_robustness_card.json",
     "global_nature_evidence_cases.csv"
   ]
 }

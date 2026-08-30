@@ -1,0 +1,22 @@
+{
+  "model_class": "dimensionless_competition_equivalent_biological_response_sandbox",
+  "demonstration_species": "generic marine cage fish",
+  "horizon_hours": 72,
+  "inputs": {
+    "hab_pressure": 80.0,
+    "mhw_intensity_c": 2.8,
+    "dissolved_oxygen_mg_l": 4.5,
+    "stocking_density_kg_m3": 25.0,
+    "planned_feeding_pct": 100.0,
+    "hab_duration_hours": 48
+  },
+  "lowest_pressure_scenario": "降低投喂+增氧",
+  "interpretation": "The lowest-pressure scenario is a sandbox comparison, not an automatic recommendation. Transfer preparation has no physiological benefit until a transfer is actually executed.",
+  "excluded_claims": [
+    "mortality prediction",
+    "biomass loss prediction",
+    "toxin prediction",
+    "farm-specific forecast",
+    "automatic feeding/aeration/transfer instruction"
+  ]
+}

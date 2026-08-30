@@ -1,4 +1,4 @@
-"""Run the complete GlobalHAB-Agent v3.7 rare-event workflow."""
+"""Run the complete GlobalHAB-Agent v3.7.1 rare-event workflow."""
 
 from __future__ import annotations
 
@@ -13,10 +13,10 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
 REGION_LABELS = {
-    "Synthetic_Region_A": "北太平洋情景区（合成）",
-    "Synthetic_Region_B": "北大西洋情景区（合成）",
-    "Synthetic_Region_C": "南大洋情景区（合成）",
-    "Synthetic_Region_D": "西太平洋情景区（合成）",
+    "Synthetic_Region_A": "北太平洋副热带海域（合成数据）",
+    "Synthetic_Region_B": "北大西洋副热带海域（合成数据）",
+    "Synthetic_Region_C": "南大洋锋面海域（合成数据）",
+    "Synthetic_Region_D": "西北太平洋黑潮延伸区（合成数据）",
 }
 
 from globalhab_demo.event_risk import (  # noqa: E402
@@ -224,7 +224,7 @@ def main() -> None:
         json.dumps(card, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
     )
     manifest = {
-        "version": "3.7.0-rare-event-interpretability",
+        "version": "3.7.1-product-facing-ui",
         "config_sha256": _sha256(config_path),
         "data_sha256": _sha256(data_path),
         "real_qpcr_sha256": _sha256(data_dir / "real_case" / "derived" / "sa_qpcr_observations.csv"),

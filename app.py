@@ -1,4 +1,4 @@
-"""GlobalHAB-Agent v3.7.0 rare-event interpretability demo."""
+"""GlobalHAB-Agent v3.7.1 product-facing demo."""
 
 from __future__ import annotations
 
@@ -55,10 +55,10 @@ from globalhab_demo.workflow import run_exploration  # noqa: E402
 
 
 REGION_LABELS = {
-    "Synthetic_Region_A": "北太平洋情景区（合成）",
-    "Synthetic_Region_B": "北大西洋情景区（合成）",
-    "Synthetic_Region_C": "南大洋情景区（合成）",
-    "Synthetic_Region_D": "西太平洋情景区（合成）",
+    "Synthetic_Region_A": "北太平洋副热带海域（合成数据）",
+    "Synthetic_Region_B": "北大西洋副热带海域（合成数据）",
+    "Synthetic_Region_C": "南大洋锋面海域（合成数据）",
+    "Synthetic_Region_D": "西北太平洋黑潮延伸区（合成数据）",
 }
 
 
@@ -128,15 +128,8 @@ st.markdown(
         min-height:118px; position:relative;}
     .risk-step:not(:last-child)::after {content:'›'; position:absolute; right:-.48rem; top:42%;
         color:#66a8a4; font-size:1.35rem; font-weight:800; z-index:2;}
-    .risk-step-no {font-size:.68rem; color:#719095; font-weight:750; letter-spacing:.04em;}
     .risk-step-title {font-size:.86rem; color:#0c5058; font-weight:750; margin:.23rem 0 .28rem;}
     .risk-step-value {font-size:.76rem; color:#405d63; line-height:1.46; overflow-wrap:anywhere;}
-    .evidence-tag {display:inline-block; border-radius:999px; padding:.13rem .42rem; font-size:.65rem;
-        font-weight:750; margin-top:.42rem;}
-    .tag-observed {background:#dff4eb; color:#11644f;}
-    .tag-literature {background:#e5eefc; color:#315e91;}
-    .tag-assumed {background:#fff0d7; color:#8a5b12;}
-    .tag-output {background:#e9e3f6; color:#5d3d86;}
     .action-strip {background:#073f48; color:#edf9f7; border-radius:12px; padding:.76rem .9rem;
         margin:.75rem 0 .2rem; line-height:1.55; font-size:.82rem;}
     .action-strip b {color:white;}
@@ -196,26 +189,24 @@ def kpi_grid(items: list[tuple[str, str, str]]) -> None:
 def risk_translation_panel(summary: dict[str, object], evidence: pd.DataFrame) -> None:
     """Show how a real observation becomes a bounded monitoring decision."""
     steps = [
-        ("01", "现场观测", str(summary["observation"]), "真实观测", "tag-observed"),
-        ("02", "危害证据", str(summary["hazard"]), "事件/文献证据", "tag-literature"),
-        ("03", "养殖暴露", str(summary["exposure"]), "情景假设", "tag-assumed"),
-        ("04", "对象脆弱性", str(summary["vulnerability"]), "参数设定", "tag-assumed"),
-        ("05", "复核优先级", str(summary["priority"]), "决策支持输出", "tag-output"),
+        ("现场观测", str(summary["observation"])),
+        ("危害证据", str(summary["hazard"])),
+        ("养殖暴露", str(summary["exposure"])),
+        ("对象脆弱性", str(summary["vulnerability"])),
+        ("复核优先级", str(summary["priority"])),
     ]
     cards = "".join(
         '<div class="risk-step">'
-        f'<div class="risk-step-no">STEP {html.escape(number)}</div>'
         f'<div class="risk-step-title">{html.escape(title)}</div>'
         f'<div class="risk-step-value">{html.escape(value)}</div>'
-        f'<span class="evidence-tag {tag_class}">{html.escape(tag)}</span>'
         '</div>'
-        for number, title, value, tag, tag_class in steps
+        for title, value in steps
     )
     st.markdown(
         '<div class="risk-bridge">'
-        '<div class="risk-bridge-title">这组真实观测如何进入风险研判？</div>'
-        '<div class="risk-bridge-subtitle">真实数据提供危害证据；养殖暴露和对象脆弱性保持独立、'
-        '可检查。当前未接入真实养殖场空间图层，因此只输出复核/加密监测顺序。</div>'
+        '<div class="risk-bridge-title">从观测到监测优先级</div>'
+        '<div class="risk-bridge-subtitle">将现场观测、危害证据、养殖暴露和对象脆弱性分开呈现，'
+        '最后给出可供现场复核的相对顺序。</div>'
         f'<div class="risk-chain">{cards}</div>'
         '<div class="action-strip"><b>建议行动：</b>'
         f'{html.escape(str(summary["action"]))}<br><b>结论边界：</b>'
@@ -398,30 +389,29 @@ st.markdown(
       <div class="eyebrow" style="color:#a7eee2">GOAI · AI FOR RESEARCH</div>
       <h1>GlobalHAB-Agent</h1>
       <p class="tagline">让Agent发现跨区域藻华信号，并把证据转化为可复核的养殖响应</p>
-      <p class="value"><b>核心科学问题：</b>在事件稀有、观测稀疏且证据异质的条件下，
-      Agent能否识别具有时间方向的HAB传播信号，并在不越过证据边界的前提下，
-      形成可检查的风险研判与网箱鱼干预对照？</p>
+      <p class="value"><b>研究目标：</b>在事件稀有、观测稀疏且证据异质的条件下，
+      识别具有时间方向的HAB传播信号，并将结果用于风险研判和网箱鱼干预情景比较。</p>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
 with st.sidebar:
-    st.markdown("## 科学验证设置")
-    days = st.select_slider("验证序列长度", [540, 720, 900], value=720)
-    budget = st.slider("探索实验次数", 4, 12, 8)
+    st.markdown("## 运行设置")
+    days = st.select_slider("数据序列长度", [540, 720, 900], value=720)
+    budget = st.slider("实验预算", 4, 12, 8)
     holdout_region = st.selectbox(
-        "验证区（完整留出）", REGIONS, index=3,
+        "留出区域", REGIONS, index=3,
         format_func=lambda value: REGION_LABELS[value],
-        help="该区域完全不参与模型拟合，用于检验跨区域适用性。区域名称是合成情景原型。",
+        help="该海域完全不参与模型拟合，用于检验跨区域适用性；名称对应合成数据中的匿名海域。",
     )
     test_fraction = st.select_slider(
-        "前向留出比例", [0.20, 0.25, 0.30], value=0.25,
+        "前向测试比例", [0.20, 0.25, 0.30], value=0.25,
         format_func=lambda value: f"{value:.0%}",
     )
-    seed = st.number_input("复现实验编号", 1, 9999, 42)
-    run_clicked = st.button("运行科学探索", type="primary", width="stretch")
-    st.caption("评审可调整设置并重新运行。所有实验、失败结果和验证指标均自动记录。")
+    seed = st.number_input("随机种子", 1, 9999, 42)
+    run_clicked = st.button("运行分析", type="primary", width="stretch")
+    st.caption("可调整设置并重新运行；实验结果和验证指标会自动记录。")
 
 if run_clicked or "exploration" not in st.session_state:
     with st.spinner("正在执行阻断验证、随机参照与负对照……"):
@@ -448,34 +438,17 @@ spatial_diagnostics = result["spatial_diagnostics"]
 recovered = bool(card["synthetic_ground_truth"]["recovered_by_agent"])
 
 kpi_grid([
-    ("合成真值恢复", "通过" if recovered else "待确认", "是否找回预设的跨区传导信号"),
-    ("恢复的风险模式", f"沿流传播 · {int(best['lag_days'])}天", "完整留区与前向阻断验证"),
-    ("合成基准 · AP", f"{float(best['pr_auc']):.3f}", "Average Precision；仅验证合成真值恢复"),
-    ("合成基准 · Brier Skill", f"{float(best['brier_skill']):.3f}", "相对气候概率基准的改进"),
-    ("合成基准 · Top20覆盖", f"{float(best['recall_at_top20']):.1%}", "最高20%风险容量覆盖的事件比例"),
-    ("合成基准 · 校准误差", f"{float(best['ece']):.3f}", "ECE越接近0越稳定"),
+    ("预设传播信号", "已恢复" if recovered else "待确认", "沿流方向与时间滞后"),
+    ("识别出的传播模式", f"沿流传播 · {int(best['lag_days'])}天", "留区与前向阻断结果"),
+    ("基准 · Average Precision", f"{float(best['pr_auc']):.3f}", "合成数据上的排序能力"),
+    ("基准 · Brier Skill", f"{float(best['brier_skill']):.3f}", "相对气候概率基准"),
+    ("高风险区事件覆盖", f"{float(best['recall_at_top20']):.1%}", "最高20%容量内的事件比例"),
+    ("基准 · 校准误差", f"{float(best['ece']):.3f}", "越接近0越稳定"),
 ])
 
-st.markdown(
-    """
-    <div class="risk-bridge">
-      <div class="risk-bridge-title">评委90秒验收路径</div>
-      <div class="risk-bridge-subtitle">不是看功能数量，而是检查一条完整证据链。</div>
-      <div class="risk-chain">
-        <div class="risk-step"><div class="risk-step-no">01</div><div class="risk-step-title">问题可证伪</div><div class="risk-step-value">预先锁定候选空间、预算、成功与失败标准</div></div>
-        <div class="risk-step"><div class="risk-step-no">02</div><div class="risk-step-title">Agent真探索</div><div class="risk-step-value">观察—选择实验—读取反馈—更新下一步</div></div>
-        <div class="risk-step"><div class="risk-step-no">03</div><div class="risk-step-title">双层现实证据</div><div class="risk-step-value">真实事件回放 + 挪威前向回顾基准</div></div>
-        <div class="risk-step"><div class="risk-step-no">04</div><div class="risk-step-title">改变研判流程</div><div class="risk-step-value">危害—暴露—脆弱性—现场复核优先级</div></div>
-        <div class="risk-step"><div class="risk-step-no">05</div><div class="risk-step-title">可继续验证</div><div class="risk-step-value">日志、负结果、哈希、模型卡与下载证据包</div></div>
-      </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
 tab_alert, tab_real, tab_bio, tab_methods, tab_agent, tab_evidence = st.tabs([
-    "01 风险研判", "02 真实事件回放", "03 生物响应沙盘",
-    "04 科学解释", "05 探索与验证", "06 成果与证据",
+    "风险研判", "真实事件回放", "生物响应沙盘",
+    "科学解释", "探索与验证", "数据来源与复核",
 ])
 
 with tab_alert:
@@ -620,7 +593,7 @@ with tab_real:
         replay = build_sa_replay(real_observations, replay_start, replay_end, replay_depth)
         selected_card = replay["card"]
         peak = selected_card["peak_k_cristata"]
-        st.markdown("##### 选择需要研判的养殖对象")
+        st.markdown("##### 养殖对象与暴露情景")
         ra1, ra2 = st.columns(2)
         real_production = ra1.selectbox(
             "主要养殖对象", list(PRODUCTION_PROFILES), key="real_production",
@@ -673,7 +646,7 @@ with tab_real:
             )
             st.plotly_chart(composition_chart, width="stretch", config={"displayModeBar": False})
 
-        st.markdown("#### 基于真实危害证据的区域复核顺序")
+        st.markdown("#### 监测区域排序")
         st.caption(
             "排序使用真实qPCR相对丰度，但养殖暴露仍为演示情景；优先级不是死亡率、经济损失率或停采阈值。"
         )
@@ -734,7 +707,7 @@ with tab_real:
         )
         selected_card = norway_replay["card"]
         peak_d = selected_card["peak_d_acuta"]
-        st.markdown("##### 选择需要研判的养殖对象")
+        st.markdown("##### 养殖对象与暴露情景")
         nr1, nr2 = st.columns(2)
         norway_production = nr1.selectbox(
             "主要养殖对象", list(PRODUCTION_PROFILES), key="norway_production",
@@ -860,7 +833,7 @@ with tab_real:
             fold_chart.update_layout(height=360, margin={"l": 5, "r": 5, "t": 55, "b": 5})
             st.plotly_chart(fold_chart, width="stretch", config={"displayModeBar": False})
         with rb2:
-            st.markdown("##### 评审应如何解读")
+            st.markdown("##### 结果如何解读")
             st.markdown(
                 f"""
                 - v3.7使用生态交互、稀有事件权重和时间衰减候选，但只在训练期内部选择；
@@ -896,7 +869,7 @@ with tab_real:
             json.dumps(benchmark_summary, ensure_ascii=False, indent=2).encode("utf-8"),
             "norway_forward_benchmark_card.json", "application/json",
         )
-        st.markdown("#### 基于真实藻细胞计数的区域加密监测顺序")
+        st.markdown("#### 监测区域排序")
         st.caption(
             "相对危害指数仅比较当前回放窗口内各区域的对数丰度，不是地方毒素阈值；养殖暴露仍为演示情景。"
         )
@@ -943,9 +916,9 @@ with tab_real:
 with tab_bio:
     st.markdown("### 网箱鱼生物响应沙盘")
     st.markdown(
-        '<div class="signal"><b>从“看见风险”到“比较行动”：</b>本沙盘将藻华、高温、溶解氧、'
+        '<div class="signal"><b>网箱鱼响应情景：</b>本沙盘将藻华、高温、溶解氧、'
         '养殖密度和计划投喂转化为网箱鱼的相对生理压力轨迹，并并列比较监测、降低投喂、增氧和'
-        '转移准备。模型是公开可检查的科研原型，不预测死亡率，也不自动下达运营指令。</div>',
+        '转移准备。参数用于情景比较，尚未按具体鱼种或场站进行标定。</div>',
         unsafe_allow_html=True,
     )
 
@@ -1038,7 +1011,7 @@ with tab_bio:
         else:
             anchor_text = "本情景全部输入均为可调整的科研演示值，不代表具体养殖场。"
         st.markdown(
-            f'<div class="case-card"><span class="case-badge">输入证据</span><br>'
+            f'<div class="case-card"><span class="case-badge">数据来源</span><br>'
             f'{html.escape(anchor_text)}</div>', unsafe_allow_html=True,
         )
         kpi_grid([
@@ -1051,23 +1024,22 @@ with tab_bio:
         ])
 
     bio_steps = [
-        ("01", "环境压力", f"HAB {hab_pressure:.0f} · MHW {bio_mhw:.1f}°C", "输入"),
-        ("02", "养殖条件", f"DO {bio_do:.1f} · 密度 {bio_density:.0f} kg m⁻³", "情景"),
-        ("03", "生物状态", "压力累积、恢复与摄食机会", "过程模型"),
-        ("04", "干预对照", "降投喂、增氧、转移准备", "可检查"),
-        ("05", "结果边界", "比较轨迹，不预测死亡率", "科研原型"),
+        ("环境条件", f"HAB {hab_pressure:.0f} · MHW {bio_mhw:.1f}°C"),
+        ("养殖条件", f"DO {bio_do:.1f} · 密度 {bio_density:.0f} kg m⁻³"),
+        ("生理响应", "压力累积、恢复与摄食机会"),
+        ("干预方案", "降投喂、增氧、转移准备"),
+        ("结果解读", "比较轨迹，不外推死亡率"),
     ]
     step_cards = "".join(
         '<div class="risk-step">'
-        f'<div class="risk-step-no">STEP {number}</div>'
         f'<div class="risk-step-title">{title}</div>'
         f'<div class="risk-step-value">{value}</div>'
-        f'<span class="evidence-tag tag-literature">{tag}</span></div>'
-        for number, title, value, tag in bio_steps
+        '</div>'
+        for title, value in bio_steps
     )
     st.markdown(
-        '<div class="risk-bridge"><div class="risk-bridge-title">可检查的生物响应链</div>'
-        '<div class="risk-bridge-subtitle">每一步均保留输入、状态、干预和边界，不把风险分数直接翻译成死亡或停采。</div>'
+        '<div class="risk-bridge"><div class="risk-bridge-title">网箱鱼响应概览</div>'
+        '<div class="risk-bridge-subtitle">模型沿时间推进复合压力，并在相同外部条件下比较干预方案。</div>'
         f'<div class="risk-chain">{step_cards}</div></div>', unsafe_allow_html=True,
     )
 
@@ -1155,7 +1127,7 @@ with tab_bio:
         )
         st.plotly_chart(tradeoff_chart, width="stretch", config={"displayModeBar": False})
 
-    st.markdown("#### 结论会不会只是某一组滑块参数造成的？")
+    st.markdown("#### 参数扰动下的稳定性")
     robustness_summary = bio_robustness["summary"]
     robustness_card = bio_robustness["card"]
     st.markdown(
@@ -1254,7 +1226,7 @@ with tab_bio:
         "在实际转移发生前不会减少藻华暴露。"
     )
 
-    with st.expander("检查模型方程、全部参数和输入证据属性"):
+    with st.expander("模型设定、参数与输入说明"):
         st.markdown(
             "综合挑战由HAB、热异常、低氧、密度及三个交互项加权组成。压力状态按小时更新："
         )
@@ -1263,8 +1235,8 @@ with tab_bio:
             r"-0.55(1-C_t)P_t/100,\ 0,\ 100\right]"
         )
         st.caption(
-            "Cₜ为0–1综合挑战，Pₜ为0–100相对生理压力。所有平滑中心和权重都是公开的科研原型参数，"
-            "未通过具体鱼种的死亡、生长或代谢数据进行现场标定。"
+            "Cₜ为0–1综合挑战，Pₜ为0–100相对生理压力。平滑中心和权重均在下表列出，"
+            "但尚未通过具体鱼种的死亡、生长或代谢数据进行现场标定。"
         )
         evidence_rows = [
             ["藻华危害压力", "真实回放相对峰值" if "真实" in bio_preset_name else "科研情景", "危害外部输入"],
@@ -1272,7 +1244,7 @@ with tab_bio:
             ["溶解氧", "情景假设", "低氧压力输入"],
             ["养殖密度", "情景假设", "密度与耗氧代理"],
             ["计划投喂", "情景假设", "摄食与代谢负荷代理"],
-            ["生物响应参数", "科研原型参数", "需用物种/场站数据再标定"],
+            ["生物响应参数", "未标定参数", "需用物种/场站数据再标定"],
         ]
         evidence_frame = pd.DataFrame(
             evidence_rows, columns=["模型输入", "证据属性", "在沙盘中的作用"]
@@ -1317,10 +1289,10 @@ with tab_bio:
     )
 
 with tab_methods:
-    st.markdown("### 从发现异常到解释跨区域影响")
-    st.caption("四项科学能力在同一次运行中共享数据、时间窗口和审计日志，评委可逐层检查结果来源。")
+    st.markdown("### 异常识别与跨区域影响")
+    st.caption("以下分析共享同一套时空数据、时间窗口和验证设置。")
 
-    st.markdown("#### 1. 哪些变化是真正持续的异常？")
+    st.markdown("#### 持续异常识别")
     kpi_grid([
         ("观测时间尺度", "7 / 14 / 30 / 60天", "同时识别短期冲击与持续变化"),
         ("合并异常事件", f"{len(anomaly_events)}", "相邻异常自动合并为事件"),
@@ -1330,7 +1302,7 @@ with tab_methods:
         ("输出形式", "事件目录", "可下载、可追踪、可复核"),
     ])
     anomaly_region = st.selectbox(
-        "选择异常轨迹情景区", REGIONS, index=3, key="anomaly_region",
+        "选择异常轨迹海域", REGIONS, index=3, key="anomaly_region",
         format_func=lambda value: REGION_LABELS[value],
     )
     anomaly_plot = anomaly_daily[anomaly_daily["region"].eq(anomaly_region)].set_index("date")[[
@@ -1343,7 +1315,7 @@ with tab_methods:
     st.dataframe(
         anomaly_events_display, width="stretch", hide_index=True,
         column_config={
-            "region": "情景区", "peak_score": st.column_config.NumberColumn("峰值强度", format="%.3f")
+            "region": "海域", "peak_score": st.column_config.NumberColumn("峰值强度", format="%.3f")
         },
     )
     st.download_button(
@@ -1351,7 +1323,7 @@ with tab_methods:
         "multiscale_event_catalog.csv", "text/csv",
     )
 
-    st.markdown("#### 2. 当前数据条件适合做哪一种分析？")
+    st.markdown("#### 分析路径选择")
     route_display = router_trace[[
         "branch", "compatibility_score", "routing_probability", "decision", "reason"
     ]].copy()
@@ -1374,7 +1346,7 @@ with tab_methods:
         "再对四条分支给出兼容度与软路由概率；每次决策均进入日志。"
     )
 
-    st.markdown("#### 3. 藻华风险信号如何沿海水输运路径传播？")
+    st.markdown("#### 跨区域传播时滞")
     st.caption("比较预设输运方向和反向路径，识别最可能的传播时滞，并对偶然相关进行多重检验控制。")
     te_long = te_cte_lag_summary.melt(
         id_vars="lag_days",
@@ -1416,7 +1388,7 @@ with tab_methods:
         "te_cte_network.csv", "text/csv",
     )
 
-    st.markdown("#### 4. 一个海区的异常会对周边造成多大影响？")
+    st.markdown("#### 邻近海区影响")
     st.caption("将本地影响、邻近海区溢出和总体关联分开呈现，便于确定需要同步监测的范围。")
     labels = {
         "multiscale_anomaly_score_lag14": "14天滞后多尺度异常",
@@ -1463,7 +1435,7 @@ with tab_methods:
     )
 
 with tab_agent:
-    st.markdown("### 探索不是单点高分，而是同预算证据比较")
+    st.markdown("### 实验对照与探索记录")
     c1, c2 = st.columns([1.15, 1.0], gap="large")
     with c1:
         comparison = pd.concat([
@@ -1520,8 +1492,8 @@ with tab_agent:
     st.caption("Top20%报警是固定容量排名，不使用留出标签选择阈值。")
 
 with tab_evidence:
-    st.markdown("### 从顶级科研证据到可复核风险研判")
-    st.caption("平台把不同类型的开放研究证据放在统一框架中：现场观测用于回放，全球数据用于背景校准，前沿组学用于拓展预警信号。")
+    st.markdown("### 数据来源与结果复核")
+    st.caption("现场观测用于事件回放，全球数据用于背景校准，公开研究用于补充预警信号。")
     case_columns = st.columns(4)
     for column, case_row in zip(case_columns, evidence_cases.to_dict("records")):
         with column:
@@ -1535,13 +1507,13 @@ with tab_evidence:
             )
             st.markdown(f'[论文]({case_row["url"]}) · [开放数据]({case_row["data_url"]})')
 
-    st.markdown("### 结论账本：每句话由什么证据支持？")
+    st.markdown("### 结论与证据对应关系")
     claim_ledger = pd.DataFrame([
         ["Agent能恢复预设14天沿流信号", "匿名合成真值", "完整留区+前向阻断；随机搜索与时间置换", "软件正确性通过；不代表真实海洋性能"],
         ["真实环境状态包含有限但可复核的下一次监测排序信号", "挪威2006–2019开放监测", "训练期内层选择；四个前向窗；AP区间；容量/误报分解", "AP绝对值与弱窗限制明显；不是业务报警"],
         ["南澳事件危害证据可定位到时间、地点和藻种", "115条现场qPCR", "原始工作簿、派生表、哈希与事件卡", "采样峰值；不代表全海域连续最大值"],
         ["真实危害可以转为现场复核顺序", "真实丰度+显式暴露/脆弱性假设", "证据矩阵逐项标注观测、假设和缺口", "不是损失概率、毒素阈值或监管指令"],
-        ["网箱鱼干预存在压力—摄食权衡", "公开方程的科研原型", "±15%参数包络+81个邻近输入情景", "尚无物种/场站标定，不预测死亡率"],
+        ["网箱鱼干预存在压力—摄食权衡", "公开方程与参数设定", "±15%参数包络+81个邻近输入情景", "尚无物种/场站标定，不预测死亡率"],
         ["传播方向与邻区影响可被分解", "合成基准", "TE/CTE置换、BH-FDR与Durbin效应分解", "关联与传播线索，不宣称因果"],
     ], columns=["可公开结论", "证据来源", "检查方式", "不能据此宣称"])
     st.dataframe(
@@ -1569,10 +1541,10 @@ with tab_evidence:
         unsafe_allow_html=True,
     )
 
-    st.markdown("### 可检查、可复现、可继续扩展")
+    st.markdown("### 下载结果与复核材料")
     card_bytes = json.dumps(card, ensure_ascii=False, indent=2, default=str).encode("utf-8")
     d1, d2 = st.columns(2)
-    d1.download_button("下载发现卡 JSON", card_bytes, "discovery_card.json", "application/json")
+    d1.download_button("下载结果摘要 JSON", card_bytes, "discovery_card.json", "application/json")
     evidence_bundle = {
         "discovery_card": card,
         "south_australia_external_evidence": SOUTH_AUSTRALIA_CASE,
@@ -1597,7 +1569,7 @@ with tab_evidence:
         "semifinal_evidence_bundle.json",
         "application/json",
     )
-    with st.expander("查看机器可读发现卡"):
+    with st.expander("查看结构化结果"):
         st.json(card)
 
 st.divider()
@@ -1607,9 +1579,9 @@ st.markdown(
       <b>能力边界：</b>合成基准用于验证信号恢复、跨区域评估和机制模块的软件正确性；
       南澳大利亚使用真实qPCR作事件回放；挪威长期监测另设严格前向的回顾性下一样本基准，
       均不与合成数据混合。
-      生物响应沙盘使用公开可检查但未经物种/场站标定的原型参数；风险地图、复核顺序和干预对照
+      生物响应沙盘采用公开文献支持的参数结构，尚未经物种/场站标定；风险地图、复核顺序和干预对照
       不构成死亡率或损失预测、业务预报、因果结论、统一毒素阈值或自动运营指令。
-      <br>GlobalHAB-Agent v3.7.0 GOAI Semifinal · synthetic recovery + nested real forward benchmark + event replay + biological-response sandbox ·
+      <br>GlobalHAB-Agent v3.7.1 GOAI Semifinal · synthetic recovery + nested real forward benchmark + event replay + biological-response sandbox ·
       no mortality, operational, causal or automatic action claim
     </div>
     """,

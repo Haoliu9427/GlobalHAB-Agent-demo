@@ -41,8 +41,8 @@ def main() -> None:
         importlib.import_module(name)
         imported.append(name)
     version_text = (ROOT / "VERSION.md").read_text(encoding="utf-8")
-    if "3.7.0" not in version_text:
-        raise SystemExit("VERSION.md does not declare v3.7.0")
+    if "3.7.1" not in version_text:
+        raise SystemExit("VERSION.md does not declare v3.7.1")
     print(json.dumps({
         "status": "pass",
         "required_files": len(REQUIRED_FILES),

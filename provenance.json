@@ -1,28 +1,21 @@
 {
-  "version": "1.0-observed-replay",
-  "article": "https://doi.org/10.1038/s43247-025-02421-y",
-  "record": "https://doi.org/10.5281/zenodo.10958487",
-  "license": "CC BY 4.0",
-  "source_archive_md5": "502fc865c6324cf7526230aaceab6979",
-  "raw_file": "norway_hab_observations.csv",
-  "raw_sha256": "875b4f7d302ace95ee21795743be6b265954919a1602d50dbc5b3d900b6a82a2",
-  "derived_file": "norway_hab_observations.csv",
-  "derived_sha256": "dd4a2ac7e28720b153dc6cf7273e05c8198c7fc4ea747aca4707e31d1b66a450",
-  "observations": 5919,
-  "sampling_dates": 868,
-  "regions": 35,
-  "date_range": [
-    "2006-04-03",
-    "2019-10-28"
-  ],
-  "event_definition": {
-    "taxa": [
-      "A. tamarense complex",
-      "D. acuta"
-    ],
-    "threshold_cells_l": 200.0,
-    "operator": ">",
-    "basis": "Silva et al. (2025) study definition"
+  "version": "1.0-qpcr",
+  "created_by": "scripts/prepare_sa_real_replay.py --qpcr-only",
+  "qpcr": {
+    "paper": "https://doi.org/10.1038/s41559-026-03115-0",
+    "record": "https://doi.org/10.5281/zenodo.20227730",
+    "license": "CC BY 4.0",
+    "raw_file": "Figure2_Final_qPCR_data_integrated.xlsx",
+    "raw_sha256": "391fd5d2f917cef07fad32f28af24e13a18dd93079e864a49e96d9d617d48c7c",
+    "rows": 115,
+    "sampling_dates": 22,
+    "locations": 22,
+    "derived_sha256": "6b64f3177dbcdfd08a45e6d229a8f56adb818f1cff47e2985e1b7c44ec122e06"
   },
-  "boundary": "Rows are monitoring observations. Event flags reproduce the paper's study definition and are not universal harvesting or health thresholds."
+  "sst": {
+    "status": "not_bundled_in_qpcr_only_build",
+    "expected_product": "NOAA/NCEI Optimum Interpolation SST v2.1",
+    "adapter": "run this script without --qpcr-only when ERDDAP is available"
+  },
+  "label_boundary": "Reported not-detected values are retained as assay results only. They are not interpreted as complete ecological negative labels."
 }

@@ -1,5 +1,5 @@
 {
-  "version": "3.7.0-rare-event-interpretability",
+  "version": "3.8-model-capacity-robustness",
   "config_sha256": "69e812611f5d31c0cd4934767b41384f7a3c74a33512b4fe4c62ea9a567f42df",
   "data_sha256": "b63f828b0350afe172d7485e192dfa0ac024e0606b1c809d0867714522cbe2d5",
   "real_qpcr_sha256": "6b64f3177dbcdfd08a45e6d229a8f56adb818f1cff47e2985e1b7c44ec122e06",
@@ -45,6 +45,10 @@
     "cage_fish_intervention_robustness.csv",
     "cage_fish_intervention_robustness_summary.csv",
     "cage_fish_robustness_card.json",
-    "global_nature_evidence_cases.csv"
+    "global_nature_evidence_cases.csv",
+    "model_complexity_summary.csv",
+    "model_complexity_seed_results.csv",
+    "model_complexity_training_selection.csv",
+    "model_complexity_card.json"
   ]
 }

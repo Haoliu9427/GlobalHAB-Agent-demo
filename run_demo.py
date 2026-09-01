@@ -1,4 +1,4 @@
-"""Run the complete GlobalHAB-Agent v3.7.1 rare-event workflow."""
+"""Run the complete GlobalHAB-Agent v3.8 evidence workflow."""
 
 from __future__ import annotations
 
@@ -39,6 +39,7 @@ from globalhab_demo.real_replay import (  # noqa: E402
     real_data_router,
 )
 from globalhab_demo.real_benchmark import run_forward_monitoring_benchmark  # noqa: E402
+from globalhab_demo.model_robustness import run_model_complexity_check  # noqa: E402
 from globalhab_demo.workflow import run_exploration  # noqa: E402
 
 
@@ -128,6 +129,13 @@ def main() -> None:
         horizon_hours=72,
     )
     global_cases = global_evidence_frame()
+    model_robustness = run_model_complexity_check(
+        frame=frame,
+        route=str(best["route"]),
+        lag_days=int(best["lag_days"]),
+        holdout_region=config["holdout_region"],
+        test_fraction=config["test_fraction"],
+    )
 
     data_path = data_dir / "demo_hab.csv"
     frame.to_csv(data_path, index=False)
@@ -210,6 +218,19 @@ def main() -> None:
         json.dumps(norway_replay["card"], ensure_ascii=False, indent=2), encoding="utf-8"
     )
     global_cases.to_csv(output / "global_nature_evidence_cases.csv", index=False)
+    model_robustness["summary"].to_csv(
+        output / "model_complexity_summary.csv", index=False
+    )
+    model_robustness["seed_results"].to_csv(
+        output / "model_complexity_seed_results.csv", index=False
+    )
+    model_robustness["tuning_trace"].to_csv(
+        output / "model_complexity_training_selection.csv", index=False
+    )
+    (output / "model_complexity_card.json").write_text(
+        json.dumps(model_robustness["card"], ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
     (output / "method_diagnostics.json").write_text(
         json.dumps({
             "router": result["router_diagnostics"],
@@ -224,7 +245,7 @@ def main() -> None:
         json.dumps(card, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
     )
     manifest = {
-        "version": "3.7.1-product-facing-ui",
+        "version": "3.8-model-capacity-robustness",
         "config_sha256": _sha256(config_path),
         "data_sha256": _sha256(data_path),
         "real_qpcr_sha256": _sha256(data_dir / "real_case" / "derived" / "sa_qpcr_observations.csv"),
@@ -273,6 +294,10 @@ def main() -> None:
             "cage_fish_intervention_robustness_summary.csv",
             "cage_fish_robustness_card.json",
             "global_nature_evidence_cases.csv",
+            "model_complexity_summary.csv",
+            "model_complexity_seed_results.csv",
+            "model_complexity_training_selection.csv",
+            "model_complexity_card.json",
         ],
     }
     (output / "run_manifest.json").write_text(
@@ -318,6 +343,9 @@ def main() -> None:
         f"- 沙盘中累计压力最低方案："
         f"{bio_simulation['scenario_card']['lowest_pressure_scenario']}（非自动建议）\n"
         f"- 生物沙盘邻域压力测试：{bio_robustness['card']['scenario_count']}个输入情景\n"
+        f"- 模型容量敏感性：{model_robustness['card']['result']}；"
+        f"轻量TCN参数量 {model_robustness['card']['tcn']['parameter_count']}，"
+        f"使用 {len(model_robustness['card']['tcn']['random_seeds'])} 个随机种子\n"
         f"- 真实数据定位：南澳用于事件回放；挪威另设严格前向的回顾基准，均不与合成数据混合\n\n"
         "> 页面顶部性能来自匿名合成真值恢复；挪威指标属于独立的前向回顾基准。"
         "两者均不代表场站业务预报或养殖损失预测性能。\n"

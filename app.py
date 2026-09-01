@@ -1,4 +1,4 @@
-"""GlobalHAB-Agent v3.7.1 product-facing demo."""
+"""GlobalHAB-Agent v3.8 product-facing demo."""
 
 from __future__ import annotations
 
@@ -436,6 +436,14 @@ te_cte_lag_summary = result["te_cte_lag_summary"]
 spatial_effects = result["spatial_effects"]
 spatial_diagnostics = result["spatial_diagnostics"]
 recovered = bool(card["synthetic_ground_truth"]["recovered_by_agent"])
+model_complexity_summary = pd.read_csv(ROOT / "outputs" / "model_complexity_summary.csv")
+model_complexity_seeds = pd.read_csv(ROOT / "outputs" / "model_complexity_seed_results.csv")
+model_complexity_selection = pd.read_csv(
+    ROOT / "outputs" / "model_complexity_training_selection.csv"
+)
+model_complexity_card = json.loads(
+    (ROOT / "outputs" / "model_complexity_card.json").read_text(encoding="utf-8")
+)
 
 kpi_grid([
     ("预设传播信号", "已恢复" if recovered else "待确认", "沿流方向与时间滞后"),
@@ -1491,6 +1499,87 @@ with tab_agent:
     st.line_chart(plot, height=320)
     st.caption("Top20%报警是固定容量排名，不使用留出标签选择阈值。")
 
+    st.markdown("#### 模型容量敏感性")
+    st.caption(
+        "固定检验Agent识别出的沿流14天候选，在完全相同的前向时间与完整留区样本上，"
+        "比较线性模型、树模型和轻量因果时间卷积网络。该分析不改变24项候选和8步探索。"
+    )
+    tcn_row = model_complexity_summary[
+        model_complexity_summary["model"].eq("轻量TCN")
+    ].iloc[0]
+    classical_ap = float(model_complexity_summary[
+        model_complexity_summary["model"].ne("轻量TCN")
+    ]["ap_median"].max())
+    kpi_grid([
+        (
+            "容量提高后的结论",
+            "稳定增益" if model_complexity_card["stable_improvement"] else "未见稳定增益",
+            "负结果同样保留",
+        ),
+        (
+            "轻量TCN中位AP",
+            f"{float(tcn_row['ap_median']):.3f}",
+            f"经典模型最佳中位AP {classical_ap:.3f}",
+        ),
+        (
+            "重复训练",
+            f"{int(tcn_row['seeds'])}个随机种子",
+            f"同一测试集 {int(tcn_row['test_rows'])} 条、{int(tcn_row['test_events'])} 个事件",
+        ),
+    ])
+    complexity_display = model_complexity_summary[[
+        "model", "ap_median", "ap_sd", "brier_mean", "ece_mean",
+        "fit_seconds_mean", "complexity",
+    ]].rename(columns={
+        "model": "模型",
+        "ap_median": "AP中位数",
+        "ap_sd": "AP标准差",
+        "brier_mean": "Brier均值",
+        "ece_mean": "ECE均值",
+        "fit_seconds_mean": "平均拟合秒数",
+        "complexity": "规模",
+    })
+    st.dataframe(
+        complexity_display,
+        width="stretch",
+        hide_index=True,
+        column_config={
+            "AP中位数": st.column_config.NumberColumn(format="%.3f"),
+            "AP标准差": st.column_config.NumberColumn(format="%.3f"),
+            "Brier均值": st.column_config.NumberColumn(format="%.3f"),
+            "ECE均值": st.column_config.NumberColumn(format="%.3f"),
+            "平均拟合秒数": st.column_config.NumberColumn(format="%.3f"),
+        },
+    )
+    st.info(
+        "当前轻量TCN没有在多个随机种子下稳定超过Logistic或Random Forest，"
+        "且校准误差更高。因此它被保留为模型复杂度负结果，不进入主搜索空间，"
+        "沿流14天的主要结论仍由原有24选8实验和负对照支持。"
+    )
+    with st.expander("查看训练窗口内的模型选择与逐种子结果"):
+        st.caption(
+            f"TCN结构和训练轮数仅使用外层训练区内部数据选择；最终结构为"
+            f"{model_complexity_card['tcn']['configuration']}，"
+            f"共{model_complexity_card['tcn']['parameter_count']}个可训练参数。"
+        )
+        st.dataframe(model_complexity_selection, width="stretch", hide_index=True)
+        st.dataframe(model_complexity_seeds, width="stretch", hide_index=True)
+        d1, d2 = st.columns(2)
+        with d1:
+            st.download_button(
+                "下载逐种子结果",
+                model_complexity_seeds.to_csv(index=False).encode("utf-8-sig"),
+                "model_complexity_seed_results.csv",
+                "text/csv",
+            )
+        with d2:
+            st.download_button(
+                "下载训练区选择记录",
+                model_complexity_selection.to_csv(index=False).encode("utf-8-sig"),
+                "model_complexity_training_selection.csv",
+                "text/csv",
+            )
+
 with tab_evidence:
     st.markdown("### 数据来源与结果复核")
     st.caption("现场观测用于事件回放，全球数据用于背景校准，公开研究用于补充预警信号。")
@@ -1581,7 +1670,7 @@ st.markdown(
       均不与合成数据混合。
       生物响应沙盘采用公开文献支持的参数结构，尚未经物种/场站标定；风险地图、复核顺序和干预对照
       不构成死亡率或损失预测、业务预报、因果结论、统一毒素阈值或自动运营指令。
-      <br>GlobalHAB-Agent v3.7.1 GOAI Semifinal · synthetic recovery + nested real forward benchmark + event replay + biological-response sandbox ·
+      <br>GlobalHAB-Agent v3.8 GOAI Semifinal · synthetic recovery + nested real forward benchmark + event replay + model-capacity check + biological-response sandbox ·
       no mortality, operational, causal or automatic action claim
     </div>
     """,

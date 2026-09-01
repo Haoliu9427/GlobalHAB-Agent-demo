@@ -85,8 +85,19 @@ def test_cli_runs_and_writes_auditable_outputs(tmp_path):
         "cage_fish_intervention_robustness_summary.csv",
         "cage_fish_robustness_card.json",
         "global_nature_evidence_cases.csv",
+        "model_complexity_summary.csv", "model_complexity_seed_results.csv",
+        "model_complexity_training_selection.csv", "model_complexity_card.json",
     ]:
         assert (tmp_path / name).exists(), name
+    model_card = json.loads(
+        (tmp_path / "model_complexity_card.json").read_text(encoding="utf-8")
+    )
+    assert model_card["main_agent_search_unchanged"] is True
+    assert model_card["main_agent_candidate_count"] == 24
+    assert model_card["main_agent_budget"] == 8
+    assert model_card["outer_validation"]["test_rows"] == 177
+    assert model_card["outer_validation"]["test_events"] == 26
+    assert len(model_card["tcn"]["random_seeds"]) == 5
 
 
 def test_exploration_has_baselines_controls_and_random_reference(exploration_result):

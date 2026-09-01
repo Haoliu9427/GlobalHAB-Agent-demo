@@ -1,4 +1,14 @@
-# Version 3.7.1-product-facing-ui
+# Version 3.8.0-model-capacity-robustness
+
+- 保持24项候选、8步预算及沿流14天主要结论不变
+- 新增独立的轻量因果时间卷积网络容量敏感性检查
+- TCN结构与训练轮数仅在外层训练区内部选择，完整留区和前向测试窗不参与调参
+- 使用5个固定随机种子，与Logistic和Random Forest共享完全相同的177条留出记录和26个事件
+- 同时报告Average Precision、Brier、ECE、训练时间和模型规模
+- 默认结果未显示TCN具有跨随机种子的稳定增益，作为负结果完整保留
+- TCN采用NumPy CPU实现，不引入PyTorch/TensorFlow，不增加Streamlit部署依赖
+
+## Previous: Version 3.7.1-product-facing-ui
 
 - 移除首页流程化的演示路径与脚本化文案
 - 首屏只保留科学问题、核心结果和自然的产品功能入口

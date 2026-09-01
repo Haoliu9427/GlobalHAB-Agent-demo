@@ -5,6 +5,6 @@ points import feature modules directly, which keeps Streamlit hot redeploys from
 reusing a stale aggregate import surface.
 """
 
-__version__ = "3.7.1"
+__version__ = "3.9.1"
 
 __all__ = ["__version__"]

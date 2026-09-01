@@ -1,4 +1,4 @@
-"""GlobalHAB-Agent v3.9.1 product-facing demo."""
+"""GlobalHAB-Agent v3.9.2 dynamic-run-state demo."""
 
 from __future__ import annotations
 
@@ -454,7 +454,10 @@ st.markdown(
 
 with st.sidebar:
     st.markdown("## 运行设置")
-    days = st.select_slider("数据序列长度", [540, 720, 900], value=720)
+    days = st.number_input(
+        "数据序列长度（天）", min_value=365, max_value=900, value=720, step=1,
+        help="可在365–900天之间输入任意整数；序列越长，重新计算耗时越高。",
+    )
     budget = st.slider("实验预算", 4, 12, 8)
     holdout_region = st.selectbox(
         "留出区域", REGIONS, index=3,
@@ -474,10 +477,28 @@ requested_config = {
     "holdout_region": holdout_region, "test_fraction": float(test_fraction),
 }
 if run_clicked or "exploration" not in st.session_state:
-    with st.spinner("正在执行阻断验证、随机参照与负对照……"):
-        st.session_state["exploration"] = cached_exploration(
-            days, int(seed), budget, holdout_region, test_fraction
+    try:
+        with st.spinner("正在执行阻断验证、随机参照与负对照……"):
+            new_exploration = cached_exploration(
+                int(days), int(seed), budget, holdout_region, test_fraction
+            )
+    except ValueError as exc:
+        st.sidebar.error(
+            "当前参数组合无法形成同时含事件与非事件的阻断测试窗。"
+            "请调整序列长度、随机种子、留出区域或前向测试比例后重算。"
         )
+        st.sidebar.caption(f"计算信息：{exc}")
+        if "exploration" not in st.session_state:
+            with st.spinner("正在载入稳定默认试跑……"):
+                st.session_state["exploration"] = cached_exploration(
+                    720, 42, 8, "Synthetic_Region_D", 0.25
+                )
+                st.session_state["exploration_config"] = {
+                    "days": 720, "seed": 42, "budget": 8,
+                    "holdout_region": "Synthetic_Region_D", "test_fraction": 0.25,
+                }
+    else:
+        st.session_state["exploration"] = new_exploration
         st.session_state["exploration_config"] = requested_config.copy()
 
 active_config = st.session_state.get("exploration_config", requested_config)
@@ -496,6 +517,8 @@ card = result["card"]
 anomaly_daily = result["anomaly_daily"]
 anomaly_events = result["anomaly_events"]
 router_trace = result["router_trace"]
+router_diagnostics = result["router_diagnostics"]
+catalog = result["catalog"]
 te_cte_network = result["te_cte_network"]
 te_cte_lag_summary = result["te_cte_lag_summary"]
 spatial_effects = result["spatial_effects"]
@@ -611,6 +634,12 @@ kpi_grid([
     ("高风险区事件覆盖", f"{float(best['recall_at_top20']):.1%}", "最高20%容量内覆盖的事件比例"),
     ("校准误差 ECE", f"{float(best['ece']):.3f}", "越接近0表示概率越稳定"),
 ])
+
+st.caption(
+    "界面联动规则：风险研判与生物响应沙盘的情景输入会随控件即时重算；"
+    "侧边栏的合成探索设置计算量较大，需点击“应用设置并重新计算”。"
+    "标注“注册基准/方法设定”的内容为固定审计证据，不代表实时观测。"
+)
 
 tab_alert, tab_real, tab_bio, tab_methods, tab_agent, tab_evidence = st.tabs([
     "风险研判", "真实事件回放", "生物响应沙盘",
@@ -783,7 +812,7 @@ with tab_real:
             ("监测地点", f"{selected_card['locations']}", "Gulf St Vincent沿岸"),
             ("K. cristata检出", f"{selected_card['k_cristata_detection_share']:.1%}", "样本检出比例"),
             ("最高观测丰度", f"{peak['cells_l']:.2e}", "cells L⁻¹"),
-            ("回放状态", "现场数据", "CC BY 4.0开放数据"),
+            ("当前回放窗口", f"{replay_start} → {replay_end}", f"深度：{replay_depth}"),
         ])
         risk_translation_panel(sa_translation["summary"], sa_translation["evidence"])
         st.markdown(
@@ -897,7 +926,7 @@ with tab_real:
             ("沿岸区域", f"{selected_card['regions']}", "58–71°N监测网络"),
             ("研究定义事件", f"{selected_card['target_event_observations']}", ">200 cells L⁻¹记录"),
             ("D. acuta最高观测", f"{peak_d['cells_l']:,.0f}", "cells L⁻¹"),
-            ("回放状态", "现场数据", "CC BY 4.0开放数据"),
+            ("当前回放窗口", f"{norway_start} → {norway_end}", f"区域：{norway_region}"),
         ])
         risk_translation_panel(
             norway_translation["summary"], norway_translation["evidence"]
@@ -949,7 +978,11 @@ with tab_real:
             environmental.columns = ["环境变量", "平均", "标准差", "最小", "中位", "最大"]
             st.dataframe(environmental, width="stretch", hide_index=True)
 
-        st.markdown("#### 真实数据前向回顾基准：环境状态能否提前排出下一次监测优先级？")
+        st.markdown("#### 注册前向回顾基准：环境状态能否提前排出下一次监测优先级？")
+        st.caption(
+            "这一组指标是基于完整2006–2019监测序列预先注册的严格前向基准，"
+            "用于审计模型能力，因此不随上方回放日期/区域筛选变化；上方回放KPI才绑定当前筛选。"
+        )
         benchmark_summary = norway_benchmark["summary"]
         st.markdown(
             '<div class="signal"><b>任务定义：</b>仅使用当前采样时已经可见的SST、PAR、混合层深度、'
@@ -1500,24 +1533,42 @@ with tab_methods:
     st.caption("以下分析共享同一套时空数据、时间窗口和验证设置。")
 
     st.markdown("#### 持续异常识别")
-    kpi_grid([
-        ("观测时间尺度", "7 / 14 / 30 / 60天", "同时识别短期冲击与持续变化"),
-        ("合并异常事件", f"{len(anomaly_events)}", "相邻异常自动合并为事件"),
-        ("未来信息泄漏", "无", "所有参照仅使用当日以前数据"),
-        ("稳健性判定", "≥2个尺度一致", "降低单一窗口误报"),
-        ("异常强度", "MAD标准化", "抵抗极端离群值干扰"),
-        ("输出形式", "事件目录", "可下载、可追踪、可复核"),
-    ])
     anomaly_region = st.selectbox(
         "选择异常轨迹海域", REGIONS, index=3, key="anomaly_region",
         format_func=lambda value: REGION_LABELS[value],
     )
-    anomaly_plot = anomaly_daily[anomaly_daily["region"].eq(anomaly_region)].set_index("date")[[
+    anomaly_region_daily = anomaly_daily[anomaly_daily["region"].eq(anomaly_region)].copy()
+    anomaly_region_events = anomaly_events[anomaly_events["region"].eq(anomaly_region)].copy()
+    peak_anomaly_score = float(anomaly_region_daily["multiscale_anomaly_score"].max())
+    anomaly_days = int(anomaly_region_daily["anomaly_event"].sum())
+    max_scale_agreement = int(anomaly_region_daily["scale_agreement"].max())
+    if anomaly_region_events.empty:
+        peak_event_date = "无合并事件"
+    else:
+        peak_event_date = pd.Timestamp(
+            anomaly_region_events.loc[anomaly_region_events["peak_score"].idxmax(), "peak_date"]
+        ).date().isoformat()
+    kpi_grid([
+        ("当前序列", f"{active_config['days']}天", f"{len(anomaly_region_daily):,}个逐日记录"),
+        ("当前海区合并事件", f"{len(anomaly_region_events)}", "随序列、种子与海区重新计算"),
+        ("当前海区异常日", f"{anomaly_days}", "满足多尺度事件判定的日期数"),
+        ("峰值异常强度", f"{peak_anomaly_score:.2f}", "当前海区MAD稳健标准化结果"),
+        ("最高尺度一致性", f"{max_scale_agreement}/4", "7/14/30/60天窗口中同时支持的尺度数"),
+        ("最强事件峰值日期", peak_event_date, "当前所选海区"),
+    ])
+    st.caption(
+        "方法定义固定为7/14/30/60天过去窗口、MAD稳健标准化和至少2个尺度一致；"
+        "上方KPI只显示当前运行与当前所选海区实际计算出的结果。"
+    )
+    anomaly_plot = anomaly_region_daily.set_index("date")[[
         "anomaly_score_7d", "anomaly_score_14d", "anomaly_score_30d",
         "anomaly_score_60d", "multiscale_anomaly_score",
     ]]
     st.line_chart(anomaly_plot, height=300)
-    anomaly_events_display = anomaly_events.head(12).copy()
+    anomaly_events_display = (
+        anomaly_region_events.sort_values("peak_score", ascending=False).head(12).copy()
+        if not anomaly_region_events.empty else anomaly_events.head(0).copy()
+    )
     anomaly_events_display["region"] = anomaly_events_display["region"].map(REGION_LABELS)
     st.dataframe(
         anomaly_events_display, width="stretch", hide_index=True,
@@ -1531,6 +1582,15 @@ with tab_methods:
     )
 
     st.markdown("#### 分析路径选择")
+    selected_branch_count = int(router_trace["selected"].sum())
+    kpi_grid([
+        ("当前启用分析分支", f"{selected_branch_count}/4", "由本轮数据诊断门控决定"),
+        ("数据完整度", f"{float(router_diagnostics['completeness']):.1%}", "本轮核心变量非缺失比例"),
+        ("样本支持", f"{float(router_diagnostics['sample_support']):.2f}", f"当前共{int(router_diagnostics['rows']):,}行"),
+        ("事件支持", f"{float(router_diagnostics['event_support']):.2f}", f"当前事件记录{int(router_diagnostics['events'])}条"),
+        ("时间依赖", f"{float(router_diagnostics['temporal_dependence']):.2f}", "MHW强度平均|lag-1自相关|"),
+        ("跨尺度一致性", f"{float(router_diagnostics['scale_consistency']):.2f}", "当前异常事件的平均尺度一致性"),
+    ])
     route_display = router_trace[[
         "branch", "compatibility_score", "routing_probability", "decision", "reason"
     ]].copy()
@@ -1555,6 +1615,18 @@ with tab_methods:
 
     st.markdown("#### 跨区域传播时滞")
     st.caption("比较预设输运方向和反向路径，识别最可能的传播时滞，并对偶然相关进行多重检验控制。")
+    peak_lag = int(te_cte_lag_summary.loc[te_cte_lag_summary["mean_cte_bits"].idxmax(), "lag_days"])
+    peak_lag_row = te_cte_lag_summary[te_cte_lag_summary["lag_days"].eq(peak_lag)].iloc[0]
+    significant_edges = int(te_cte_network["significant_fdr_0_10"].sum())
+    total_edges = int(len(te_cte_network))
+    kpi_grid([
+        ("本轮峰值传播时滞", f"{peak_lag}天", "由当前序列与随机种子重新估计"),
+        ("峰值沿流CTE", f"{float(peak_lag_row['mean_cte_bits']):.3f} bit", "跨边平均条件信息量"),
+        ("对应反向CTE", f"{float(peak_lag_row['mean_reverse_cte_bits']):.3f} bit", "用于方向性反证"),
+        ("FDR通过边", f"{significant_edges}/{total_edges}", "边级置换检验 + BH校正"),
+        ("候选时滞数", f"{te_cte_lag_summary['lag_days'].nunique()}", "当前固定候选集合"),
+        ("方向净差", f"{float(peak_lag_row['mean_cte_bits'] - peak_lag_row['mean_reverse_cte_bits']):.3f} bit", "峰值时滞下沿流减反向"),
+    ])
     te_long = te_cte_lag_summary.melt(
         id_vars="lag_days",
         value_vars=["mean_cte_bits", "mean_reverse_cte_bits"],
@@ -1572,8 +1644,7 @@ with tab_methods:
     te_chart.add_vline(x=14, line_dash="dot", line_color="#6a4c93")
     te_chart.update_layout(height=350, margin={"l": 5, "r": 5, "t": 20, "b": 5})
     st.plotly_chart(te_chart, width="stretch", config={"displayModeBar": False})
-    peak_lag = int(te_cte_lag_summary.loc[te_cte_lag_summary["mean_cte_bits"].idxmax(), "lag_days"])
-    st.success(f"结果指向约 {peak_lag} 天的跨区域传播窗口；反向路径更弱，且显著性经过多重比较校正。")
+    st.success(f"本轮结果指向约 {peak_lag} 天的跨区域传播窗口；是否等于合成数据预先植入的14天模式由当前运行结果决定。")
     te_display = te_cte_network[[
             "source_region", "target_region", "lag_days", "te_bits", "cte_bits",
             "reverse_cte_bits", "net_directionality_bits", "permutation_p", "fdr_q",
@@ -1614,13 +1685,19 @@ with tab_methods:
     )
     effect_chart.update_layout(height=390, margin={"l": 5, "r": 5, "t": 20, "b": 5})
     st.plotly_chart(effect_chart, width="stretch", config={"displayModeBar": False})
+    anomaly_effect_rows = spatial_effects[
+        spatial_effects["variable"].eq("multiscale_anomaly_score_lag14")
+    ].set_index("effect_type")
+    direct_effect = anomaly_effect_rows.loc["direct"]
+    indirect_effect = anomaly_effect_rows.loc["indirect"]
+    total_effect = anomaly_effect_rows.loc["total"]
     kpi_grid([
-        ("区域联动强度", f"ρ = {float(spatial_diagnostics['rho']):.2f}", "相邻区域结果的同步程度"),
-        ("探索性解释度", f"{float(spatial_diagnostics['pseudo_r2']):.3f}", "用于合成基准的软件验证"),
-        ("不确定性复核", f"{int(spatial_diagnostics['bootstrap_repeats'])}次", "按区域块重复抽样"),
-        ("本地影响", "Direct", "异常发生区自身变化"),
-        ("邻区溢出", "Indirect", "沿网络传播到周边的关联"),
-        ("总体关联", "Total", "本地与邻区影响之和"),
+        ("区域联动强度", f"ρ = {float(spatial_diagnostics['rho']):.2f}", "本轮空间诊断结果"),
+        ("探索性解释度", f"{float(spatial_diagnostics['pseudo_r2']):.3f}", "当前合成基准拟合"),
+        ("Bootstrap复核", f"{int(spatial_diagnostics['bootstrap_repeats'])}次", "当前运行的区域块重复抽样"),
+        ("14天异常·本地影响", f"{float(direct_effect['effect_per_1sd']):+.3f}", f"90%区间 {float(direct_effect['ci90_lower']):+.3f}–{float(direct_effect['ci90_upper']):+.3f}"),
+        ("14天异常·邻区溢出", f"{float(indirect_effect['effect_per_1sd']):+.3f}", f"90%区间 {float(indirect_effect['ci90_lower']):+.3f}–{float(indirect_effect['ci90_upper']):+.3f}"),
+        ("14天异常·总体关联", f"{float(total_effect['effect_per_1sd']):+.3f}", f"90%区间 {float(total_effect['ci90_lower']):+.3f}–{float(total_effect['ci90_upper']):+.3f}"),
     ])
     st.caption(
         "区域传播关系根据预设输运方向标准化；14天窗口来自前述风险模式和传播路径结果。"
@@ -1665,13 +1742,13 @@ with tab_agent:
     with c2:
         st.markdown("#### 随机探索参照")
         kpi_grid([
-            ("随机探索恢复14天信号", f"{float(random_ref['hidden_signal_recovery_rate']):.1%}", "相同实验次数下的参照"),
+            ("随机探索识别14天模式", f"{float(random_ref['hidden_signal_recovery_rate']):.1%}", "识别到预先植入14天沿流模式的重复比例"),
             ("随机探索中位效用", f"{float(random_ref['median_best_utility']):.3f}", "用于判断Agent选择增益"),
             ("重复对照次数", f"{int(random_ref['repeats'])}", "每次使用相同候选空间"),
         ])
         st.caption(
             f"基于{int(random_ref['repeats'])}次随机选择；每次使用相同候选空间、"
-            f"相同预算（{budget}步）和相同阻断验证结果。"
+            f"相同预算（{active_config['budget']}步）和相同阻断验证结果。"
         )
         st.markdown("#### 负对照")
         st.dataframe(
@@ -1700,83 +1777,89 @@ with tab_agent:
 
     st.markdown("#### 模型容量敏感性")
     st.caption(
-        "固定检验Agent识别出的沿流14天候选，在完全相同的前向时间与完整留区样本上，"
-        "比较线性模型、树模型和轻量因果时间卷积网络。该分析不改变24项候选和8步探索。"
+        "主搜索中的Logistic与Random Forest使用当前页面的同一留出海区和前向测试窗，因此下面三张卡随本轮设置更新。"
+        "轻量TCN的5随机种子检查属于注册的默认试跑证据，单独标记，不伪装成当前设置的实时结果。"
     )
-    tcn_row = model_complexity_summary[
-        model_complexity_summary["model"].eq("轻量TCN")
-    ].iloc[0]
-    classical_ap = float(model_complexity_summary[
-        model_complexity_summary["model"].ne("轻量TCN")
-    ]["ap_median"].max())
+    selected_pair = catalog[
+        catalog["route"].eq(str(best["route"]))
+        & catalog["lag_days"].eq(int(best["lag_days"]))
+    ].copy()
+    logistic_current = selected_pair[selected_pair["model"].eq("logistic")].iloc[0]
+    rf_current = selected_pair[selected_pair["model"].eq("random_forest")].iloc[0]
+    current_test_rows = int(logistic_current["test_rows"])
+    current_test_events = int(logistic_current["test_events"])
     kpi_grid([
-        (
-            "容量提高后的结论",
-            "稳定增益" if model_complexity_card["stable_improvement"] else "未见稳定增益",
-            "负结果同样保留",
-        ),
-        (
-            "轻量TCN中位AP",
-            f"{float(tcn_row['ap_median']):.3f}",
-            f"经典模型最佳中位AP {classical_ap:.3f}",
-        ),
-        (
-            "重复训练",
-            f"{int(tcn_row['seeds'])}个随机种子",
-            f"同一测试集 {int(tcn_row['test_rows'])} 条、{int(tcn_row['test_events'])} 个事件",
-        ),
+        ("当前候选", f"{best['route']} · {int(best['lag_days'])}天", f"完全留出 {active_holdout}"),
+        ("当前Logistic AP", f"{float(logistic_current['pr_auc']):.3f}", f"{current_test_rows}条测试记录 / {current_test_events}个事件"),
+        ("当前Random Forest AP", f"{float(rf_current['pr_auc']):.3f}", f"与Logistic完全相同测试集"),
     ])
-    complexity_display = model_complexity_summary[[
-        "model", "ap_median", "ap_sd", "brier_mean", "ece_mean",
-        "fit_seconds_mean", "complexity",
-    ]].rename(columns={
-        "model": "模型",
-        "ap_median": "AP中位数",
-        "ap_sd": "AP标准差",
-        "brier_mean": "Brier均值",
-        "ece_mean": "ECE均值",
-        "fit_seconds_mean": "平均拟合秒数",
-        "complexity": "规模",
-    })
-    st.dataframe(
-        complexity_display,
-        width="stretch",
-        hide_index=True,
-        column_config={
-            "AP中位数": st.column_config.NumberColumn(format="%.3f"),
-            "AP标准差": st.column_config.NumberColumn(format="%.3f"),
-            "Brier均值": st.column_config.NumberColumn(format="%.3f"),
-            "ECE均值": st.column_config.NumberColumn(format="%.3f"),
-            "平均拟合秒数": st.column_config.NumberColumn(format="%.3f"),
+    current_classical = pd.DataFrame([
+        {
+            "模型": "Logistic", "Average Precision": float(logistic_current["pr_auc"]),
+            "Brier Skill": float(logistic_current["brier_skill"]), "ECE": float(logistic_current["ece"]),
+            "测试记录": int(logistic_current["test_rows"]), "测试事件": int(logistic_current["test_events"]),
         },
+        {
+            "模型": "Random Forest", "Average Precision": float(rf_current["pr_auc"]),
+            "Brier Skill": float(rf_current["brier_skill"]), "ECE": float(rf_current["ece"]),
+            "测试记录": int(rf_current["test_rows"]), "测试事件": int(rf_current["test_events"]),
+        },
+    ])
+    st.dataframe(current_classical, width="stretch", hide_index=True)
+
+    registered_default = (
+        int(active_config["days"]) == 720
+        and int(active_config["seed"]) == 42
+        and int(active_config["budget"]) == 8
+        and active_config["holdout_region"] == "Synthetic_Region_D"
+        and abs(float(active_config["test_fraction"]) - 0.25) < 1e-9
     )
-    st.info(
-        "当前轻量TCN没有在多个随机种子下稳定超过Logistic或Random Forest，"
-        "且校准误差更高。因此它被保留为模型复杂度负结果，不进入主搜索空间，"
-        "沿流14天的主要结论仍由原有24选8实验和负对照支持。"
-    )
-    with st.expander("查看训练窗口内的模型选择与逐种子结果"):
+    if registered_default:
+        st.info(
+            "当前设置与轻量TCN注册试跑一致，因此下方5随机种子结果可直接与当前经典模型对照。"
+        )
+    else:
+        st.warning(
+            "当前设置不是轻量TCN注册试跑的默认配置（720天、seed 42、预算8、留出Region D、前向25%）。"
+            "下方TCN结果仅作独立稳健性证据，不与当前卡片混算。"
+        )
+    with st.expander("查看轻量TCN注册试跑：5随机种子与训练区内选择"):
+        tcn_row = model_complexity_summary[
+            model_complexity_summary["model"].eq("轻量TCN")
+        ].iloc[0]
+        classical_ap = float(model_complexity_summary[
+            model_complexity_summary["model"].ne("轻量TCN")
+        ]["ap_median"].max())
+        st.markdown(
+            f"**注册结论：**{'稳定增益' if model_complexity_card['stable_improvement'] else '未见稳定增益'}；"
+            f"轻量TCN中位AP {float(tcn_row['ap_median']):.3f}，经典模型最佳中位AP {classical_ap:.3f}。"
+        )
         st.caption(
             f"TCN结构和训练轮数仅使用外层训练区内部数据选择；最终结构为"
             f"{model_complexity_card['tcn']['configuration']}，"
             f"共{model_complexity_card['tcn']['parameter_count']}个可训练参数。"
         )
+        complexity_display = model_complexity_summary[[
+            "model", "ap_median", "ap_sd", "brier_mean", "ece_mean",
+            "fit_seconds_mean", "complexity",
+        ]].rename(columns={
+            "model": "模型", "ap_median": "AP中位数", "ap_sd": "AP标准差",
+            "brier_mean": "Brier均值", "ece_mean": "ECE均值",
+            "fit_seconds_mean": "平均拟合秒数", "complexity": "规模",
+        })
+        st.dataframe(complexity_display, width="stretch", hide_index=True)
         st.dataframe(model_complexity_selection, width="stretch", hide_index=True)
         st.dataframe(model_complexity_seeds, width="stretch", hide_index=True)
         d1, d2 = st.columns(2)
         with d1:
             st.download_button(
-                "下载逐种子结果",
-                model_complexity_seeds.to_csv(index=False).encode("utf-8-sig"),
-                "model_complexity_seed_results.csv",
-                "text/csv",
+                "下载逐种子结果", model_complexity_seeds.to_csv(index=False).encode("utf-8-sig"),
+                "model_complexity_seed_results.csv", "text/csv",
             )
         with d2:
             st.download_button(
-                "下载训练区选择记录",
-                model_complexity_selection.to_csv(index=False).encode("utf-8-sig"),
-                "model_complexity_training_selection.csv",
-                "text/csv",
+                "下载训练区选择记录", model_complexity_selection.to_csv(index=False).encode("utf-8-sig"),
+                "model_complexity_training_selection.csv", "text/csv",
             )
 
 with tab_evidence:
@@ -1797,7 +1880,7 @@ with tab_evidence:
 
     st.markdown("### 结论与证据对应关系")
     claim_ledger = pd.DataFrame([
-        ["Agent能恢复预设14天沿流信号", "匿名合成真值", "完整留区+前向阻断；随机搜索与时间置换", "软件正确性通过；不代表真实海洋性能"],
+        ["Agent能重新识别预先植入的14天沿流模式", "匿名合成真值", "完整留区+前向阻断；随机搜索与时间置换", "软件正确性通过；不代表真实海洋性能"],
         ["真实环境状态包含有限但可复核的下一次监测排序信号", "挪威2006–2019开放监测", "训练期内层选择；四个前向窗；AP区间；容量/误报分解", "AP绝对值与弱窗限制明显；不是业务报警"],
         ["南澳事件危害证据可定位到时间、地点和藻种", "115条现场qPCR", "原始工作簿、派生表、哈希与事件卡", "采样峰值；不代表全海域连续最大值"],
         ["真实危害可以转为现场复核顺序", "真实丰度+显式暴露/脆弱性假设", "证据矩阵逐项标注观测、假设和缺口", "不是损失概率、毒素阈值或监管指令"],
@@ -1864,12 +1947,12 @@ st.divider()
 st.markdown(
     """
     <div class="footer-boundary">
-      <b>能力边界：</b>合成基准用于验证信号恢复、跨区域评估和机制模块的软件正确性；
+      <b>能力边界：</b>合成基准用于检验能否重新识别预先植入的14天沿流模式、跨区域评估和机制模块的软件正确性；
       南澳大利亚使用真实qPCR作事件回放；挪威长期监测另设严格前向的回顾性下一样本基准，
       均不与合成数据混合。
       生物响应沙盘采用公开文献支持的参数结构，尚未经物种/场站标定；风险地图、复核顺序和干预对照
       不构成死亡率或损失预测、业务预报、因果结论、统一毒素阈值或自动运营指令。
-      <br>GlobalHAB-Agent v3.9.1 GOAI Semifinal · synthetic recovery + nested real forward benchmark + event replay + global production context + biological-response sandbox ·
+      <br>GlobalHAB-Agent v3.9.2 GOAI Semifinal · synthetic recovery + nested real forward benchmark + event replay + global production context + biological-response sandbox ·
       no mortality, operational, causal or automatic action claim
     </div>
     """,

@@ -248,7 +248,7 @@ def main() -> None:
         json.dumps(card, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
     )
     manifest = {
-        "version": "3.9-global-production-context",
+        "version": "3.9.2-dynamic-run-state",
         "config_sha256": _sha256(config_path),
         "data_sha256": _sha256(data_path),
         "real_qpcr_sha256": _sha256(data_dir / "real_case" / "derived" / "sa_qpcr_observations.csv"),

@@ -172,7 +172,9 @@ def test_scenario_and_aquaculture_outputs_are_bounded():
 
     regions = production_region_frame()
     assert len(regions) == len(BIO_PRODUCTION_REGIONS)
+    assert len(regions) >= 13
     assert regions["cage_sandbox"].sum() >= 7
+    assert {"北阿拉斯加湾", "北大西洋中部"}.issubset(set(regions["region"]))
     cage_status = regions.set_index("region")["cage_sandbox"].to_dict()
     assert cage_status["东地中海—爱琴海"]
     assert cage_status["智利巴塔哥尼亚峡湾"]

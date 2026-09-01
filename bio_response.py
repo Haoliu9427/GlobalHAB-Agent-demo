@@ -116,6 +116,16 @@ BIO_PRODUCTION_REGIONS = {
         "dissolved_oxygen_mg_l": 7.0, "stocking_density_kg_m3": 18.0,
         "planned_feeding_pct": 100.0, "hab_duration_hours": 36,
     },
+    "北阿拉斯加湾": {
+        "latitude": 57.0, "longitude": -145.0,
+        "production_type": "捕捞渔业背景", "representative_stock": "鲑类、鳕类与北太平洋近岸渔业",
+        "cage_sandbox": False,
+    },
+    "北大西洋中部": {
+        "latitude": 36.0, "longitude": -40.0,
+        "production_type": "捕捞渔业背景", "representative_stock": "远洋金枪鱼及大西洋远洋渔业",
+        "cage_sandbox": False,
+    },
     "东地中海—爱琴海": {
         "latitude": 37.2, "longitude": 25.2,
         "production_type": "海水网箱养殖", "representative_stock": "欧洲海鲈、金头鲷",

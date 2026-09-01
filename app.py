@@ -1,9 +1,10 @@
-"""GlobalHAB-Agent v3.9 product-facing demo."""
+"""GlobalHAB-Agent v3.9.1 product-facing demo."""
 
 from __future__ import annotations
 
-import json
 import html
+import importlib
+import json
 import sys
 from pathlib import Path
 
@@ -22,14 +23,27 @@ from globalhab_demo.aquaculture import (  # noqa: E402
     PRODUCTION_PROFILES,
     project_aquaculture_risk,
 )
-from globalhab_demo.bio_response import (  # noqa: E402
-    BIO_PRODUCTION_REGIONS,
-    BIO_SCENARIO_PRESETS,
-    INTERVENTIONS,
-    compare_interventions,
-    evaluate_intervention_robustness,
-    production_region_frame,
-)
+try:
+    from globalhab_demo.bio_response import (  # noqa: E402
+        BIO_PRODUCTION_REGIONS,
+        BIO_SCENARIO_PRESETS,
+        INTERVENTIONS,
+        compare_interventions,
+        evaluate_intervention_robustness,
+        production_region_frame,
+    )
+except ImportError:
+    # Deployment compatibility for repositories where GitHub's web uploader
+    # updated root files but left src/globalhab_demo on an earlier version.
+    from globalhab_demo.bio_response import (  # noqa: E402
+        BIO_SCENARIO_PRESETS,
+        INTERVENTIONS,
+        compare_interventions,
+        evaluate_intervention_robustness,
+    )
+    _bio_compat = importlib.import_module("bio_response")
+    BIO_PRODUCTION_REGIONS = _bio_compat.BIO_PRODUCTION_REGIONS
+    production_region_frame = _bio_compat.production_region_frame
 from globalhab_demo.data import REGIONS  # noqa: E402
 from globalhab_demo.evidence import SOUTH_AUSTRALIA_CASE  # noqa: E402
 from globalhab_demo.event_risk import (  # noqa: E402
@@ -49,10 +63,11 @@ from globalhab_demo.real_replay import (  # noqa: E402
 from globalhab_demo.real_benchmark import (  # noqa: E402
     run_forward_monitoring_benchmark,
 )
-from globalhab_demo.scenario import (  # noqa: E402
-    SCENARIO_PRESETS,
-    project_synthetic_scenario,
-)
+_scenario_module = importlib.import_module("globalhab_demo.scenario")
+if len(getattr(_scenario_module, "DEMO_ZONES", ())) < 12:
+    _scenario_module = importlib.import_module("scenario")
+SCENARIO_PRESETS = _scenario_module.SCENARIO_PRESETS
+project_synthetic_scenario = _scenario_module.project_synthetic_scenario
 from globalhab_demo.workflow import run_exploration  # noqa: E402
 
 
@@ -1854,7 +1869,7 @@ st.markdown(
       均不与合成数据混合。
       生物响应沙盘采用公开文献支持的参数结构，尚未经物种/场站标定；风险地图、复核顺序和干预对照
       不构成死亡率或损失预测、业务预报、因果结论、统一毒素阈值或自动运营指令。
-      <br>GlobalHAB-Agent v3.9 GOAI Semifinal · synthetic recovery + nested real forward benchmark + event replay + global production context + biological-response sandbox ·
+      <br>GlobalHAB-Agent v3.9.1 GOAI Semifinal · synthetic recovery + nested real forward benchmark + event replay + global production context + biological-response sandbox ·
       no mortality, operational, causal or automatic action claim
     </div>
     """,

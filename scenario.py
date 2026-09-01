@@ -56,6 +56,7 @@ DEMO_ZONES = (
         "heat_sensitivity": 0.92,
         "nutrient_sensitivity": 0.62,
         "transport_sensitivity": 0.86,
+        "production_context": "北太平洋渔业与近岸养殖背景",
     },
     {
         "zone": "加州沿岸",
@@ -64,6 +65,7 @@ DEMO_ZONES = (
         "heat_sensitivity": 0.88,
         "nutrient_sensitivity": 0.82,
         "transport_sensitivity": 0.80,
+        "production_context": "加州上升流渔业与贝类养殖背景",
     },
     {
         "zone": "墨西哥湾",
@@ -72,6 +74,7 @@ DEMO_ZONES = (
         "heat_sensitivity": 0.72,
         "nutrient_sensitivity": 1.00,
         "transport_sensitivity": 0.92,
+        "production_context": "墨西哥湾渔业与贝类养殖背景",
     },
     {
         "zone": "北大西洋中部",
@@ -80,6 +83,7 @@ DEMO_ZONES = (
         "heat_sensitivity": 0.58,
         "nutrient_sensitivity": 0.48,
         "transport_sensitivity": 0.58,
+        "production_context": "远洋渔业背景",
     },
     {
         "zone": "日本黑潮延伸区",
@@ -88,6 +92,7 @@ DEMO_ZONES = (
         "heat_sensitivity": 1.00,
         "nutrient_sensitivity": 0.76,
         "transport_sensitivity": 1.00,
+        "production_context": "日本海水养殖与近海渔业背景",
     },
     {
         "zone": "中国南部近岸",
@@ -96,6 +101,7 @@ DEMO_ZONES = (
         "heat_sensitivity": 0.86,
         "nutrient_sensitivity": 0.94,
         "transport_sensitivity": 0.88,
+        "production_context": "中国南部海水养殖背景",
     },
     {
         "zone": "南澳大利亚近岸",
@@ -104,6 +110,52 @@ DEMO_ZONES = (
         "heat_sensitivity": 0.80,
         "nutrient_sensitivity": 0.68,
         "transport_sensitivity": 0.96,
+        "production_context": "南澳大利亚贝类与海水鱼养殖背景",
+    },
+    {
+        "zone": "挪威海—峡湾沿岸",
+        "latitude": 65.0,
+        "longitude": 10.0,
+        "heat_sensitivity": 0.70,
+        "nutrient_sensitivity": 0.58,
+        "transport_sensitivity": 0.84,
+        "production_context": "北大西洋鲑鱼网箱养殖背景",
+    },
+    {
+        "zone": "东地中海—爱琴海",
+        "latitude": 37.2,
+        "longitude": 25.2,
+        "heat_sensitivity": 0.94,
+        "nutrient_sensitivity": 0.64,
+        "transport_sensitivity": 0.72,
+        "production_context": "海鲈与金头鲷网箱养殖背景",
+    },
+    {
+        "zone": "西印度洋—阿拉伯海",
+        "latitude": 9.0,
+        "longitude": 63.0,
+        "heat_sensitivity": 0.91,
+        "nutrient_sensitivity": 0.72,
+        "transport_sensitivity": 0.88,
+        "production_context": "印度洋金枪鱼与沿岸渔业背景",
+    },
+    {
+        "zone": "秘鲁—智利洪堡流",
+        "latitude": -22.0,
+        "longitude": -73.5,
+        "heat_sensitivity": 0.78,
+        "nutrient_sensitivity": 1.00,
+        "transport_sensitivity": 0.93,
+        "production_context": "高生产力上升流与小型中上层鱼渔业背景",
+    },
+    {
+        "zone": "智利巴塔哥尼亚峡湾",
+        "latitude": -43.5,
+        "longitude": -73.5,
+        "heat_sensitivity": 0.74,
+        "nutrient_sensitivity": 0.66,
+        "transport_sensitivity": 0.90,
+        "production_context": "南美鲑鱼网箱养殖背景",
     },
 )
 
@@ -129,7 +181,7 @@ def project_synthetic_scenario(
     silicate_mmol_m3: float,
     transport_proxy: float,
 ) -> pd.DataFrame:
-    """Project one hypothetical compound scenario onto five demo zones.
+    """Project one hypothetical compound scenario onto representative ocean zones.
 
     The output is a dimensionless visual index, not an estimated cell count,
     chlorophyll concentration, toxin concentration, or event probability.
@@ -176,6 +228,8 @@ def project_synthetic_scenario(
             "预计藻华强度指数": round(intensity_index, 1),
             "风险等级": _risk_level(risk_score),
             "情景证据等级": "C（环境条件候选）",
+            "海区生产背景": zone["production_context"],
+            "数据属性": "代表性海区情景锚点（非实时观测）",
             "预计时间": center.isoformat(),
             "预计窗口": f"{window_start.isoformat()} 至 {window_end.isoformat()}",
         })

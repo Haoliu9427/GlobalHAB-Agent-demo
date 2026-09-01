@@ -1,4 +1,4 @@
-"""GlobalHAB-Agent v3.8.1 product-facing demo."""
+"""GlobalHAB-Agent v3.9 product-facing demo."""
 
 from __future__ import annotations
 
@@ -23,10 +23,12 @@ from globalhab_demo.aquaculture import (  # noqa: E402
     project_aquaculture_risk,
 )
 from globalhab_demo.bio_response import (  # noqa: E402
+    BIO_PRODUCTION_REGIONS,
     BIO_SCENARIO_PRESETS,
     INTERVENTIONS,
     compare_interventions,
     evaluate_intervention_robustness,
+    production_region_frame,
 )
 from globalhab_demo.data import REGIONS  # noqa: E402
 from globalhab_demo.evidence import SOUTH_AUSTRALIA_CASE  # noqa: E402
@@ -269,9 +271,10 @@ def bloom_map(frame: pd.DataFrame) -> go.Figure:
         lon=frame["longitude"],
         lat=frame["latitude"],
         text=frame["候选海区"],
-        customdata=frame[["综合风险指数", "预计藻华强度指数", "风险等级", "预计窗口"]],
-        mode="markers+text",
-        textposition="top center",
+        customdata=frame[[
+            "综合风险指数", "预计藻华强度指数", "风险等级", "预计窗口", "海区生产背景"
+        ]],
+        mode="markers",
         marker={
             "size": 10 + frame["预计藻华强度指数"] * 0.28,
             "color": frame["综合风险指数"],
@@ -288,7 +291,8 @@ def bloom_map(frame: pd.DataFrame) -> go.Figure:
         hovertemplate=(
             "<b>%{text}</b><br>HAB风险：%{customdata[0]:.1f}/100"
             "<br>相对强度：%{customdata[1]:.1f}/100"
-            "<br>等级：%{customdata[2]}<br>窗口：%{customdata[3]}<extra></extra>"
+            "<br>等级：%{customdata[2]}<br>窗口：%{customdata[3]}"
+            "<br>生产背景：%{customdata[4]}<extra></extra>"
         ),
     ))
     fig.update_geos(
@@ -301,6 +305,43 @@ def bloom_map(frame: pd.DataFrame) -> go.Figure:
     )
     fig.update_layout(
         height=510, margin={"l": 0, "r": 0, "t": 5, "b": 0},
+        paper_bgcolor="white", font={"family": "Microsoft YaHei, Arial", "size": 12},
+    )
+    return fig
+
+
+def production_region_map(frame: pd.DataFrame, selected_region: str) -> go.Figure:
+    """Map global production settings without conflating capture and cage systems."""
+    palette = {
+        "海水网箱养殖": "#0b7c78",
+        "捕捞渔业背景": "#d08a32",
+        "捕捞与贝类养殖背景": "#6a4c93",
+    }
+    fig = go.Figure()
+    for production_type, subset in frame.groupby("production_type", sort=False):
+        sizes = [26 if region == selected_region else 16 for region in subset["region"]]
+        line_widths = [3.0 if region == selected_region else 1.2 for region in subset["region"]]
+        fig.add_trace(go.Scattergeo(
+            lon=subset["longitude"], lat=subset["latitude"], text=subset["region"],
+            customdata=subset[["representative_stock", "evidence_boundary"]],
+            mode="markers", name=production_type,
+            marker={
+                "size": sizes, "color": palette.get(production_type, "#607d8b"),
+                "line": {"color": "white", "width": line_widths}, "opacity": .92,
+            },
+            hovertemplate=(
+                "<b>%{text}</b><br>生产类型：" + production_type +
+                "<br>代表对象：%{customdata[0]}<br>%{customdata[1]}<extra></extra>"
+            ),
+        ))
+    fig.update_geos(
+        projection_type="natural earth", showland=True, landcolor="#edf0eb",
+        showocean=True, oceancolor="#dceff2", showcountries=True,
+        countrycolor="#ffffff", showcoastlines=True, coastlinecolor="#79939a",
+    )
+    fig.update_layout(
+        height=440, margin={"l": 0, "r": 0, "t": 5, "b": 0},
+        legend={"orientation": "h", "y": 0.01, "x": .5, "xanchor": "center"},
         paper_bgcolor="white", font={"family": "Microsoft YaHei, Arial", "size": 12},
     )
     return fig
@@ -410,14 +451,23 @@ with st.sidebar:
         format_func=lambda value: f"{value:.0%}",
     )
     seed = st.number_input("随机种子", 1, 9999, 42)
-    run_clicked = st.button("运行分析", type="primary", width="stretch")
-    st.caption("可调整设置并重新运行；实验结果和验证指标会自动记录。")
+    run_clicked = st.button("应用设置并重新计算", type="primary", width="stretch")
+    st.caption("设置更改后需点击按钮；页面会保留上一轮结果，直至新计算完成。")
 
+requested_config = {
+    "days": int(days), "seed": int(seed), "budget": int(budget),
+    "holdout_region": holdout_region, "test_fraction": float(test_fraction),
+}
 if run_clicked or "exploration" not in st.session_state:
     with st.spinner("正在执行阻断验证、随机参照与负对照……"):
         st.session_state["exploration"] = cached_exploration(
             days, int(seed), budget, holdout_region, test_fraction
         )
+        st.session_state["exploration_config"] = requested_config.copy()
+
+active_config = st.session_state.get("exploration_config", requested_config)
+if active_config != requested_config:
+    st.sidebar.warning("设置已经改变。当前页面仍显示上一轮结果，请点击“应用设置并重新计算”。")
 
 result = st.session_state["exploration"]
 frame = result["frame"]
@@ -525,13 +575,26 @@ else:
         },
     }
 
+active_holdout = REGION_LABELS[active_config["holdout_region"]]
+st.caption(
+    f"当前结果：{active_config['days']}天序列 · {active_config['budget']}次实验 · "
+    f"完全留出 {active_holdout} · 前向测试 {active_config['test_fraction']:.0%} · "
+    f"随机种子 {active_config['seed']}"
+)
+control_passed = recovered and bool(
+    card["minimum_references"]["negative_controls_lower_than_candidate"]
+)
 kpi_grid([
-    ("预设传播信号", "已恢复" if recovered else "待确认", "沿流方向与时间滞后"),
-    ("识别出的传播模式", f"沿流传播 · {int(best['lag_days'])}天", "留区与前向阻断结果"),
-    ("基准 · Average Precision", f"{float(best['pr_auc']):.3f}", "合成数据上的排序能力"),
-    ("基准 · Brier Skill", f"{float(best['brier_skill']):.3f}", "相对气候概率基准"),
-    ("高风险区事件覆盖", f"{float(best['recall_at_top20']):.1%}", "最高20%容量内的事件比例"),
-    ("基准 · 校准误差", f"{float(best['ece']):.3f}", "越接近0越稳定"),
+    ("当前合成基准结论", f"沿流关联 · {int(best['lag_days'])}天",
+     "完整留区与前向阻断；不是现实海域预报"),
+    ("反证检查", "通过" if control_passed else "待确认",
+     "反向路径与时间置换均低于候选" if control_passed else "未满足预设反证条件"),
+    ("Average Precision", f"{float(best['pr_auc']):.3f}", "当前设置下的合成留出排序"),
+])
+kpi_grid([
+    ("Brier Skill", f"{float(best['brier_skill']):.3f}", "相对气候概率基准"),
+    ("高风险区事件覆盖", f"{float(best['recall_at_top20']):.1%}", "最高20%容量内覆盖的事件比例"),
+    ("校准误差 ECE", f"{float(best['ece']):.3f}", "越接近0表示概率越稳定"),
 ])
 
 tab_alert, tab_real, tab_bio, tab_methods, tab_agent, tab_evidence = st.tabs([
@@ -541,6 +604,10 @@ tab_alert, tab_real, tab_bio, tab_methods, tab_agent, tab_evidence = st.tabs([
 
 with tab_alert:
     st.markdown("### 未来7/14/30天藻华风险情景推演")
+    st.caption(
+        "地图覆盖12个代表性海洋生产区，包括东地中海、西/东印度洋、秘鲁—智利洪堡流和"
+        "智利巴塔哥尼亚峡湾。地名是情景锚点，输入值不是实时观测，结果也不是业务预报。"
+    )
     control_col, map_col = st.columns([1.0, 2.25], gap="large")
     with control_col:
         preset_name = st.selectbox("复合环境情景", list(SCENARIO_PRESETS), index=0)
@@ -581,7 +648,7 @@ with tab_alert:
             '<div class="signal">当前情景最高候选区：'
             f'<b>{top["候选海区"]}</b> · {top["预计窗口"]} · '
             f'HAB风险 <b>{top["综合风险指数"]:.1f}/100</b>。'
-            '颜色表示风险，圆点大小表示相对强度。</div>',
+            '颜色表示风险，圆点大小表示相对强度；悬停可查看当地生产背景。</div>',
             unsafe_allow_html=True,
         )
         st.plotly_chart(bloom_map(scenario), width="stretch", config={"displayModeBar": False})
@@ -1004,56 +1071,86 @@ with tab_real:
 with tab_bio:
     st.markdown("### 网箱鱼生物响应沙盘")
     st.markdown(
-        '<div class="signal"><b>网箱鱼响应情景：</b>本沙盘将藻华、高温、溶解氧、'
+        '<div class="signal"><b>区域化网箱鱼响应情景：</b>本沙盘将藻华、高温、溶解氧、'
         '养殖密度和计划投喂转化为网箱鱼的相对生理压力轨迹，并并列比较监测、降低投喂、增氧和'
         '转移准备。参数用于情景比较，尚未按具体鱼种或场站进行标定。</div>',
         unsafe_allow_html=True,
     )
 
+    production_regions = production_region_frame()
+    cage_region_names = [
+        name for name, profile in BIO_PRODUCTION_REGIONS.items()
+        if profile["cage_sandbox"]
+    ]
+    selected_bio_region = st.selectbox(
+        "网箱鱼情景海区", cage_region_names,
+        index=cage_region_names.index("智利巴塔哥尼亚峡湾"),
+        help="仅列入具有海水网箱养殖背景的代表海区。捕捞渔场仍显示在地图上，但不套用网箱鱼生理模型。",
+    )
+    region_profile = BIO_PRODUCTION_REGIONS[selected_bio_region]
+    st.plotly_chart(
+        production_region_map(production_regions, selected_bio_region),
+        width="stretch", config={"displayModeBar": False},
+    )
+    st.caption(
+        "青色点可进入网箱鱼情景比较；橙色和紫色点用于呈现全球捕捞或贝类生产背景。"
+        "洪堡流和西印度洋不属于网箱鱼模型的适用对象，因此只在地图中保留。"
+    )
+
     bio_control, bio_result = st.columns([1.0, 2.15], gap="large")
     with bio_control:
+        bio_options = ["区域背景情景"] + list(BIO_SCENARIO_PRESETS)
         bio_preset_name = st.selectbox(
-            "选择生物响应情景", list(BIO_SCENARIO_PRESETS), index=0
+            "压力情景", bio_options, index=0
         )
-        bio_preset = BIO_SCENARIO_PRESETS[bio_preset_name]
+        if bio_preset_name == "区域背景情景":
+            bio_preset = region_profile
+            bio_source_note = (
+                f"当前示范对象：{region_profile['representative_stock']}。"
+                "初始值用于区域间情景比较，可继续调整；不是实时场站观测或当地运营阈值。"
+            )
+        else:
+            bio_preset = BIO_SCENARIO_PRESETS[bio_preset_name]
+            bio_source_note = str(bio_preset["source_note"])
+        bio_key = f"{selected_bio_region}_{bio_preset_name}"
         hab_pressure = st.slider(
             "藻华危害压力（0–100）", 0.0, 100.0,
             float(bio_preset["hab_pressure"]), 1.0,
-            key=f"bio_hab_{bio_preset_name}",
+            key=f"bio_hab_{bio_key}",
             help="无量纲外部压力。真实事件锚点只表示所选回放内的相对峰值，不是毒素或死亡阈值。",
         )
         bio_mhw = st.slider(
             "海洋热浪强度（°C）", 0.0, 5.0,
             float(bio_preset["mhw_intensity_c"]), .1,
-            key=f"bio_mhw_{bio_preset_name}",
+            key=f"bio_mhw_{bio_key}",
         )
         bio_do = st.slider(
             "场景溶解氧（mg L⁻¹）", 1.0, 10.0,
             float(bio_preset["dissolved_oxygen_mg_l"]), .1,
-            key=f"bio_do_{bio_preset_name}",
+            key=f"bio_do_{bio_key}",
             help="情景输入，不代表当前真实养殖场观测。",
         )
         bio_density = st.slider(
             "养殖密度（kg m⁻³）", 2.0, 45.0,
             float(bio_preset["stocking_density_kg_m3"]), 1.0,
-            key=f"bio_density_{bio_preset_name}",
+            key=f"bio_density_{bio_key}",
             help="用于模拟密度相关氧负荷；不是推荐养殖密度。",
         )
         bio_feed = st.slider(
             "计划投喂水平（%）", 0.0, 120.0,
             float(bio_preset["planned_feeding_pct"]), 5.0,
-            key=f"bio_feed_{bio_preset_name}",
+            key=f"bio_feed_{bio_key}",
         )
         bio_duration = st.slider(
             "藻华压力持续时间（小时）", 12, 72,
             int(bio_preset["hab_duration_hours"]), 6,
-            key=f"bio_duration_{bio_preset_name}",
+            key=f"bio_duration_{bio_key}",
         )
         bio_horizon = st.radio(
             "模拟时间", [48, 72, 96], index=1, horizontal=True,
             format_func=lambda value: f"{value}小时",
         )
-        st.caption(str(bio_preset["source_note"]))
+        st.caption(bio_source_note)
 
     bio_simulation = compare_interventions(
         hab_pressure=hab_pressure,
@@ -1096,6 +1193,11 @@ with tab_bio:
                 f"{norway_card['peak_d_acuta']['region']} · "
                 f"{norway_card['peak_d_acuta']['date']}。仅在回放内部归一化为100。"
             )
+        elif bio_preset_name == "区域背景情景":
+            anchor_text = (
+                f"{selected_bio_region} · {region_profile['representative_stock']}。"
+                "区域名称和生产对象提供情景背景，环境与养殖参数为可调整初始值。"
+            )
         else:
             anchor_text = "本情景全部输入均为可调整的科研演示值，不代表具体养殖场。"
         st.markdown(
@@ -1103,20 +1205,22 @@ with tab_bio:
             f'{html.escape(anchor_text)}</div>', unsafe_allow_html=True,
         )
         kpi_grid([
+            ("当前生产情景", selected_bio_region, str(region_profile["representative_stock"])),
             ("基准峰值压力", f"{baseline['peak_pressure_index']:.1f}/100", "维持监测情景"),
             ("沙盘最低压力方案", str(lowest["intervention"]), "仅为情景比较，不是自动建议"),
+        ])
+        kpi_grid([
             ("累计压力变化", f"−{lowest['pressure_load_reduction_vs_baseline_pct']:.1f}%", "相对维持监测基准"),
             ("摄食机会保留", f"{lowest['mean_feeding_opportunity_pct']:.1f}%", "模型中的相对摄食代理"),
             ("最低有效DO", f"{lowest['minimum_effective_do_mg_l']:.2f}", "mg L⁻¹ · 场景代理"),
-            ("准备响应时间", f"{transfer['response_readiness_hours']}小时", "转移准备但尚未执行"),
         ])
 
     bio_steps = [
-        ("环境条件", f"HAB {hab_pressure:.0f} · MHW {bio_mhw:.1f}°C"),
-        ("养殖条件", f"DO {bio_do:.1f} · 密度 {bio_density:.0f} kg m⁻³"),
-        ("生理响应", "压力累积、恢复与摄食机会"),
-        ("干预方案", "降投喂、增氧、转移准备"),
-        ("结果解读", "比较轨迹，不外推死亡率"),
+        ("海区与环境", f"{selected_bio_region} · HAB {hab_pressure:.0f} · MHW {bio_mhw:.1f}°C"),
+        ("养殖对象", f"{region_profile['representative_stock']} · 密度 {bio_density:.0f} kg m⁻³"),
+        ("当前响应", f"峰值 {baseline['peak_pressure_index']:.1f}/100 · 最低DO {baseline['minimum_effective_do_mg_l']:.2f}"),
+        ("情景比较", f"{lowest['intervention']} · 累计压力 −{lowest['pressure_load_reduction_vs_baseline_pct']:.1f}%"),
+        ("准备状态", f"转移准备 {transfer['response_readiness_hours']}小时 · 不外推死亡率"),
     ]
     step_cards = "".join(
         '<div class="risk-step">'
@@ -1750,7 +1854,7 @@ st.markdown(
       均不与合成数据混合。
       生物响应沙盘采用公开文献支持的参数结构，尚未经物种/场站标定；风险地图、复核顺序和干预对照
       不构成死亡率或损失预测、业务预报、因果结论、统一毒素阈值或自动运营指令。
-      <br>GlobalHAB-Agent v3.8.1 GOAI Semifinal · synthetic recovery + nested real forward benchmark + event replay + model-capacity check + biological-response sandbox ·
+      <br>GlobalHAB-Agent v3.9 GOAI Semifinal · synthetic recovery + nested real forward benchmark + event replay + global production context + biological-response sandbox ·
       no mortality, operational, causal or automatic action claim
     </div>
     """,

@@ -104,6 +104,103 @@ BIO_SCENARIO_PRESETS = {
 }
 
 
+# Real place names identify representative production settings. Environmental
+# values remain adjustable scenario defaults, not live observations or local
+# operating limits. Capture-only fisheries are mapped for global context but
+# are deliberately excluded from the cage-fish response selector.
+BIO_PRODUCTION_REGIONS = {
+    "挪威海—峡湾沿岸": {
+        "latitude": 65.0, "longitude": 10.0,
+        "production_type": "海水网箱养殖", "representative_stock": "大西洋鲑",
+        "cage_sandbox": True, "hab_pressure": 55.0, "mhw_intensity_c": 1.2,
+        "dissolved_oxygen_mg_l": 7.0, "stocking_density_kg_m3": 18.0,
+        "planned_feeding_pct": 100.0, "hab_duration_hours": 36,
+    },
+    "东地中海—爱琴海": {
+        "latitude": 37.2, "longitude": 25.2,
+        "production_type": "海水网箱养殖", "representative_stock": "欧洲海鲈、金头鲷",
+        "cage_sandbox": True, "hab_pressure": 60.0, "mhw_intensity_c": 2.3,
+        "dissolved_oxygen_mg_l": 5.8, "stocking_density_kg_m3": 20.0,
+        "planned_feeding_pct": 100.0, "hab_duration_hours": 42,
+    },
+    "智利巴塔哥尼亚峡湾": {
+        "latitude": -43.5, "longitude": -73.5,
+        "production_type": "海水网箱养殖", "representative_stock": "鲑鳟类",
+        "cage_sandbox": True, "hab_pressure": 65.0, "mhw_intensity_c": 1.4,
+        "dissolved_oxygen_mg_l": 6.4, "stocking_density_kg_m3": 20.0,
+        "planned_feeding_pct": 100.0, "hab_duration_hours": 42,
+    },
+    "日本黑潮—濑户内海": {
+        "latitude": 33.6, "longitude": 133.5,
+        "production_type": "海水网箱养殖", "representative_stock": "鰤鱼、真鲷",
+        "cage_sandbox": True, "hab_pressure": 62.0, "mhw_intensity_c": 2.2,
+        "dissolved_oxygen_mg_l": 5.8, "stocking_density_kg_m3": 18.0,
+        "planned_feeding_pct": 100.0, "hab_duration_hours": 36,
+    },
+    "中国南部近岸": {
+        "latitude": 21.8, "longitude": 113.4,
+        "production_type": "海水网箱养殖", "representative_stock": "海鲈、石斑鱼",
+        "cage_sandbox": True, "hab_pressure": 68.0, "mhw_intensity_c": 2.6,
+        "dissolved_oxygen_mg_l": 5.2, "stocking_density_kg_m3": 16.0,
+        "planned_feeding_pct": 100.0, "hab_duration_hours": 42,
+    },
+    "东印度洋群岛近岸": {
+        "latitude": -5.0, "longitude": 116.0,
+        "production_type": "海水网箱养殖", "representative_stock": "石斑鱼、军曹鱼",
+        "cage_sandbox": True, "hab_pressure": 64.0, "mhw_intensity_c": 2.5,
+        "dissolved_oxygen_mg_l": 5.4, "stocking_density_kg_m3": 15.0,
+        "planned_feeding_pct": 100.0, "hab_duration_hours": 36,
+    },
+    "南澳大利亚近岸": {
+        "latitude": -35.2, "longitude": 137.6,
+        "production_type": "海水网箱养殖", "representative_stock": "黄尾鰤、金枪鱼养殖背景",
+        "cage_sandbox": True, "hab_pressure": 70.0, "mhw_intensity_c": 2.0,
+        "dissolved_oxygen_mg_l": 6.0, "stocking_density_kg_m3": 14.0,
+        "planned_feeding_pct": 100.0, "hab_duration_hours": 48,
+    },
+    "秘鲁—智利洪堡流": {
+        "latitude": -22.0, "longitude": -73.5,
+        "production_type": "捕捞渔业背景", "representative_stock": "鳀鱼、沙丁鱼等小型中上层鱼",
+        "cage_sandbox": False,
+    },
+    "西印度洋—阿拉伯海": {
+        "latitude": 9.0, "longitude": 63.0,
+        "production_type": "捕捞渔业背景", "representative_stock": "金枪鱼及类金枪鱼",
+        "cage_sandbox": False,
+    },
+    "加州上升流沿岸": {
+        "latitude": 35.5, "longitude": -123.0,
+        "production_type": "捕捞与贝类养殖背景", "representative_stock": "中上层鱼、蟹类、贝类",
+        "cage_sandbox": False,
+    },
+    "墨西哥湾": {
+        "latitude": 25.5, "longitude": -89.5,
+        "production_type": "捕捞与贝类养殖背景", "representative_stock": "虾类、鱼类、牡蛎",
+        "cage_sandbox": False,
+    },
+}
+
+
+def production_region_frame() -> pd.DataFrame:
+    """Return representative global production settings for map display."""
+    return pd.DataFrame([
+        {
+            "region": name,
+            "latitude": profile["latitude"],
+            "longitude": profile["longitude"],
+            "production_type": profile["production_type"],
+            "representative_stock": profile["representative_stock"],
+            "cage_sandbox": bool(profile["cage_sandbox"]),
+            "evidence_boundary": (
+                "可进入网箱鱼情景沙盘；默认环境值为可调演示输入"
+                if profile["cage_sandbox"]
+                else "仅作全球渔业空间背景，不代入网箱鱼生理模型"
+            ),
+        }
+        for name, profile in BIO_PRODUCTION_REGIONS.items()
+    ])
+
+
 MODEL_PARAMETERS = {
     "HAB主效应权重": (0.34, "无量纲", "藻华危害压力对相对生理压力的贡献"),
     "热异常主效应权重": (0.18, "无量纲", "MHW强度经平滑变换后的贡献"),

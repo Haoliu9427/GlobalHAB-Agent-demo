@@ -1,4 +1,4 @@
-"""Run the complete GlobalHAB-Agent v3.8 evidence workflow."""
+"""Run the complete GlobalHAB-Agent v3.9 evidence workflow."""
 
 from __future__ import annotations
 
@@ -27,6 +27,7 @@ from globalhab_demo.bio_response import (  # noqa: E402
     BIO_SCENARIO_PRESETS,
     compare_interventions,
     evaluate_intervention_robustness,
+    production_region_frame,
 )
 from globalhab_demo.global_cases import (  # noqa: E402
     build_norway_replay,
@@ -129,6 +130,7 @@ def main() -> None:
         horizon_hours=72,
     )
     global_cases = global_evidence_frame()
+    production_regions = production_region_frame()
     model_robustness = run_model_complexity_check(
         frame=frame,
         route=str(best["route"]),
@@ -218,6 +220,7 @@ def main() -> None:
         json.dumps(norway_replay["card"], ensure_ascii=False, indent=2), encoding="utf-8"
     )
     global_cases.to_csv(output / "global_nature_evidence_cases.csv", index=False)
+    production_regions.to_csv(output / "global_production_regions.csv", index=False)
     model_robustness["summary"].to_csv(
         output / "model_complexity_summary.csv", index=False
     )
@@ -245,7 +248,7 @@ def main() -> None:
         json.dumps(card, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
     )
     manifest = {
-        "version": "3.8-model-capacity-robustness",
+        "version": "3.9-global-production-context",
         "config_sha256": _sha256(config_path),
         "data_sha256": _sha256(data_path),
         "real_qpcr_sha256": _sha256(data_dir / "real_case" / "derived" / "sa_qpcr_observations.csv"),
@@ -294,6 +297,7 @@ def main() -> None:
             "cage_fish_intervention_robustness_summary.csv",
             "cage_fish_robustness_card.json",
             "global_nature_evidence_cases.csv",
+            "global_production_regions.csv",
             "model_complexity_summary.csv",
             "model_complexity_seed_results.csv",
             "model_complexity_training_selection.csv",

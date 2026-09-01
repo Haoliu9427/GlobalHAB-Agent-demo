@@ -12,9 +12,11 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import project_aquaculture_risk  # noqa: E402
 from globalhab_demo.bio_response import (  # noqa: E402
+    BIO_PRODUCTION_REGIONS,
     INTERVENTIONS,
     compare_interventions,
     evaluate_intervention_robustness,
+    production_region_frame,
 )
 from globalhab_demo.event_risk import (  # noqa: E402
     build_norway_risk_translation,
@@ -85,6 +87,7 @@ def test_cli_runs_and_writes_auditable_outputs(tmp_path):
         "cage_fish_intervention_robustness_summary.csv",
         "cage_fish_robustness_card.json",
         "global_nature_evidence_cases.csv",
+        "global_production_regions.csv",
         "model_complexity_summary.csv", "model_complexity_seed_results.csv",
         "model_complexity_training_selection.csv", "model_complexity_card.json",
     ]:
@@ -147,7 +150,11 @@ def test_scenario_and_aquaculture_outputs_are_bounded():
         silicate_mmol_m3=7.0,
         transport_proxy=0.85,
     )
-    assert len(scenario) == 7
+    assert len(scenario) == 12
+    assert {
+        "东地中海—爱琴海", "西印度洋—阿拉伯海",
+        "秘鲁—智利洪堡流", "智利巴塔哥尼亚峡湾",
+    }.issubset(set(scenario["候选海区"]))
     assert scenario["综合风险指数"].between(0, 100).all()
     assert scenario["预计时间"].eq("2026-09-11").all()
 
@@ -162,6 +169,15 @@ def test_scenario_and_aquaculture_outputs_are_bounded():
     assert aquaculture["养殖响应优先指数"].between(0, 100).all()
     assert (aquaculture["不确定性下限"] <= aquaculture["养殖响应优先指数"]).all()
     assert (aquaculture["不确定性上限"] >= aquaculture["养殖响应优先指数"]).all()
+
+    regions = production_region_frame()
+    assert len(regions) == len(BIO_PRODUCTION_REGIONS)
+    assert regions["cage_sandbox"].sum() >= 7
+    cage_status = regions.set_index("region")["cage_sandbox"].to_dict()
+    assert cage_status["东地中海—爱琴海"]
+    assert cage_status["智利巴塔哥尼亚峡湾"]
+    assert not cage_status["秘鲁—智利洪堡流"]
+    assert not cage_status["西印度洋—阿拉伯海"]
 
 
 def test_real_sa_replay_uses_bundled_qpcr_and_defers_unsupported_models():

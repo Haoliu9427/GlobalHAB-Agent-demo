@@ -1,4 +1,11 @@
-# Version 3.8.0-model-capacity-robustness
+# Version 3.8.1-deployment-safe-model-evidence
+
+- 修复GitHub未上传`outputs/model_complexity_*.csv/json`时网页启动失败的问题
+- `app.py`优先读取可下载结果文件，缺失时使用同一次注册试跑的内置证据副本
+- 缺失输出只影响外部文件下载来源，不改变TCN指标、结论或24项主搜索
+- 已在同时移除四个模型容量结果文件的条件下通过Streamlit启动测试
+
+## Previous: Version 3.8.0-model-capacity-robustness
 
 - 保持24项候选、8步预算及沿流14天主要结论不变
 - 新增独立的轻量因果时间卷积网络容量敏感性检查

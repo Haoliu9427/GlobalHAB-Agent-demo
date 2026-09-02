@@ -1,0 +1,11 @@
+{
+  "project": "GlobalHAB-Agent",
+  "version": "4.1",
+  "core_run_file": "full_run_agent_log.jsonl",
+  "policy_run_file": "agent_policy_trajectories_default.jsonl",
+  "candidate_count": 24,
+  "budget": 8,
+  "holdout_region": "Synthetic_Region_D",
+  "time_block": "last 25% of dates",
+  "notes": "JSONL files are direct row-wise conversions of the bundled CSV logs; no records were removed."
+}

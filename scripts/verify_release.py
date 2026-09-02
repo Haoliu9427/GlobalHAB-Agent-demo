@@ -31,6 +31,7 @@ REQUIRED_FILES = (
     "prompts/AGENT_POLICY.md",
     "docs/MINIMAL_REPRODUCTION.md",
     "scripts/run_minimal_reproduction.py",
+    "scripts/smoke_test.py",
     "scripts/run_agent_policy_benchmark.py",
     "scripts/run_broad_benchmark_audit.py",
     "scripts/run_florida_sts_validation.py",

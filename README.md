@@ -231,6 +231,15 @@ python scripts/run_field_forward_validation.py \
   --currents <field_currents.csv>
 ```
 
+
+### 8.9 一键 smoke test
+
+```bash
+python scripts/smoke_test.py
+```
+
+该命令依次执行 Python 编译检查、发布文件核验和核心快速测试；GitHub Actions 使用同一组核心检查。
+
 ## 9. 发布检查
 
 快速发布检查：
@@ -295,3 +304,4 @@ docs/TECHNICAL_NOTE.md
 THIRD_PARTY_DATA.md
 ```
 
+英文版说明保留在 `README_EN.md`。

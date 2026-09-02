@@ -1,0 +1,28 @@
++ /opt/pyvenv/bin/python -m compileall -q app.py run_demo.py scripts src tests
++ /opt/pyvenv/bin/python scripts/verify_release.py
+{
+  "status": "pass",
+  "required_files": 25,
+  "imported_modules": [
+    "globalhab_demo.workflow",
+    "globalhab_demo.event_risk",
+    "globalhab_demo.bio_response",
+    "globalhab_demo.real_benchmark",
+    "globalhab_demo.sts_gated_tcn",
+    "globalhab_demo.broad_benchmark",
+    "globalhab_demo.bayesian_design",
+    "globalhab_demo.florida_sts"
+  ],
+  "python": "3.13.5"
+}
++ /opt/pyvenv/bin/python -m pytest -q tests/test_release_smoke_fast.py tests/test_bayesian_design.py tests/test_florida_sts.py tests/test_broad_benchmark.py
+.......                                                                  [100%]
+=============================== warnings summary ===============================
+tests/test_broad_benchmark.py::test_broad_benchmark_uses_same_blocked_rows_and_many_methods
+tests/test_broad_benchmark.py::test_broad_benchmark_uses_same_blocked_rows_and_many_methods
+  /opt/pyvenv/lib/python3.13/site-packages/sklearn/neural_network/_multilayer_perceptron.py:785: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (250) reached and the optimization hasn't converged yet.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+7 passed, 2 warnings in 13.20s
+SMOKE TEST: PASS

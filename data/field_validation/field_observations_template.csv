@@ -1,0 +1,3 @@
+date,station_id,latitude,longitude,cell_count,toxin_value,toxin_unit,water_temp_c,salinity,dissolved_oxygen_mg_l,nitrate_mmol_m3,phosphate_mmol_m3,silicate_mmol_m3,chlorophyll
+2026-08-01,UPSTREAM_A,27.5,-84.0,120000,,,30.1,35.2,5.8,1.2,0.15,2.8,3.1
+2026-08-02,MID_B,27.65,-83.7,25000,,,30.0,35.1,5.6,1.1,0.14,2.6,2.7

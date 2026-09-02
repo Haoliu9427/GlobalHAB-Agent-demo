@@ -118,3 +118,61 @@
 - `cage_fish_intervention_comparison.csv`：峰值、累计压力、摄食机会、DO和准备时间对照；
 - `cage_fish_sandbox_parameters.csv`：全部公开原型参数与解释边界；
 - `cage_fish_sandbox_card.json`：输入、最低压力情景和明确排除的结论类型。
+
+## Florida/Gulf真实流场回顾验证数据
+
+该模块不把数据随包静态写成一个固定成绩，而是在运行时读取公开数据或接受用户上传。
+
+### Karenia/HABSOS观测标准字段
+
+| 统一字段 | 含义 |
+|---|---|
+| `date` | 采样日期，日尺度对齐 |
+| `latitude/longitude` | 真实采样经纬度 |
+| `cell_count` | Karenia/K. brevis细胞计数（cells L⁻¹） |
+| `category` | HABSOS观测类别/描述，若有 |
+| `salinity` | 现场盐度，若有 |
+| `water_temp_c` | 现场水温，若有 |
+| `sample_depth` | 采样深度，若有 |
+| `genus/species` | 分类信息，用于识别Karenia brevis |
+
+### 连续流场标准字段
+
+| 统一字段 | 含义 |
+|---|---|
+| `date` | 流场日期，与观测日对齐 |
+| `latitude/longitude` | 流场网格点 |
+| `u_ms` | 东向流速（m s⁻¹） |
+| `v_ms` | 北向流速（m s⁻¹） |
+
+在线NOAA CoastWatch适配器使用日尺度表层**地转流**u/v；上传模式可识别`u_current/v_current`、`u/v`、`uo/vo`等常见字段。绝对流速超过5 m s⁻¹的记录会被质量门控剔除，以减少cm/s误作m/s等单位错误。
+
+回顾验证按候选lag构建“先前源观测→后续目标观测”配对，并分别计算真实流向约束、反向流负对照和仅空间邻近对照。该结果是流场约束的关联证据，不等于完整Lagrangian粒子轨迹或因果证明。
+
+## 未来出海/场站前向验证数据协议
+
+最低现场观测字段见`data/field_validation/field_observations_template.csv`：
+
+`date, station_id, latitude, longitude, cell_count`
+
+最低流场字段见`data/field_validation/field_currents_template.csv`：
+
+`date, latitude, longitude, u_ms, v_ms`
+
+建议同步保留但当前不强制参与事件标签的字段：
+
+- `toxin_value/toxin_unit`：毒素检测；
+- `water_temp_c/salinity`：水温与盐度；
+- `dissolved_oxygen_mg_l`：溶解氧；
+- `nitrate_mmol_m3/phosphate_mmol_m3/silicate_mmol_m3`：营养盐；
+- `chlorophyll`：叶绿素/荧光代理；
+- 后续可扩展鱼体、鳃部、网箱密度与设备运行信息。
+
+严格前向模式先执行质量门控；较早时间块只用于选择lag，较晚时间块只评估一次。输出包括训练期lag表、前向测试流向/反向/无流向指标以及下一批采样候选位置。数据不足时返回`defer`而不是填补一个结果。
+
+## Agent实验设计策略输出
+
+- `agent_policy_benchmark_default.csv`：同一候选景观、同一预算下各实验选择策略的恢复率、首次触达隐藏模式步数和最佳效用；
+- `agent_policy_trajectories_default.csv`：策略代表性逐步动作轨迹。
+
+贝叶斯策略只观察已执行动作的反馈；合成隐藏真值只在轨迹完成后评分，不进入获取函数。

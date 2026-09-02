@@ -1,4 +1,4 @@
-"""GlobalHAB-Agent v4.0 dynamic scientific exploration demo."""
+"""GlobalHAB-Agent v4.1 dynamic scientific exploration demo."""
 
 from __future__ import annotations
 
@@ -76,6 +76,24 @@ from globalhab_demo.sts_gated_tcn import (  # noqa: E402
 from globalhab_demo.broad_benchmark import (  # noqa: E402
     benchmark_catalogue,
     run_broad_benchmark,
+)
+from globalhab_demo.bayesian_design import (  # noqa: E402
+    benchmark_agent_policies,
+)
+from globalhab_demo.florida_sts import (  # noqa: E402
+    DEFAULT_LAGS as FLORIDA_STS_LAGS,
+    PUBLIC_SOURCE_CATALOG as FLORIDA_SOURCE_CATALOG,
+    fetch_habsos,
+    fetch_coastwatch_currents,
+    normalize_habsos,
+    normalize_current_frame,
+    normalize_field_observations,
+    run_retrospective_sts,
+    run_forward_field_validation,
+    project_next_sampling_candidates,
+    field_quality_gate,
+    field_observation_template,
+    field_current_template,
 )
 
 
@@ -226,6 +244,21 @@ def cached_broad_benchmark(
         frame=frame, lag_days=lag_days, holdout_region=holdout_region,
         test_fraction=test_fraction, include_deep=include_deep,
     )
+
+
+@st.cache_data(show_spinner=False)
+def cached_policy_benchmark(catalog: pd.DataFrame, budget: int, seed: int):
+    return benchmark_agent_policies(catalog=catalog, budget=budget, seed=seed, repeats=40)
+
+
+@st.cache_data(show_spinner=False, ttl=1800)
+def cached_habsos_live(start_date, end_date, state_id: str = "FL"):
+    return fetch_habsos(start_date=start_date, end_date=end_date, state_id=state_id)
+
+
+@st.cache_data(show_spinner=False, ttl=1800)
+def cached_coastwatch_live(start_date, end_date, spatial_stride: int = 2):
+    return fetch_coastwatch_currents(start_date=start_date, end_date=end_date, spatial_stride=spatial_stride)
 
 
 def kpi_grid(items: list[tuple[str, str, str]]) -> None:
@@ -781,15 +814,15 @@ with tab_alert:
 with tab_real:
     st.markdown("### 全球真实观测与前沿研究证据")
     st.markdown(
-        '<div class="signal"><b>两类真实证据分层使用：</b>南澳qPCR用于事件回放，不参与训练；'
-        '挪威长期监测除回放外，另设严格前向的“下一次观测样本”回顾基准。'
-        '两者都不与合成基准混合，暴露或监管证据缺失时明确降级为“情景假设/待补数据”。</div>',
+        '<div class="signal"><b>真实证据按任务分层使用：</b>南澳qPCR用于事件回放；挪威长期监测用于严格前向排序；'
+        'Florida/Gulf工作流把公开Karenia细胞计数与真实流场做回顾性STS匹配；现场前向接口则为后续出海/场站连续观测预留。'
+        '所有真实模块均与合成真值分开，数据不满足前提时返回defer。</div>',
         unsafe_allow_html=True,
     )
     evidence_cases = global_evidence_frame()
     st.plotly_chart(global_case_map(evidence_cases), width="stretch", config={"displayModeBar": False})
     st.caption(
-        "南澳大利亚和挪威沿岸为随包运行的真实观测回放；美国Salish Sea与全球数据库用于展示可扩展研究接口。"
+        "南澳大利亚和挪威为随包真实观测；Florida/Gulf模块连接NOAA公开Karenia与流场数据；现场接口用于后续出海和合作场站前向验证。"
     )
 
     real_observations, real_provenance = load_sa_real_case(ROOT / "data")
@@ -808,7 +841,12 @@ with tab_real:
 
     case_choice = st.selectbox(
         "选择可运行的真实观测案例",
-        ["南澳大利亚 · 2025复杂Karenia事件", "挪威沿岸 · 2006–2019有毒藻监测"],
+        [
+            "南澳大利亚 · 2025复杂Karenia事件",
+            "挪威沿岸 · 2006–2019有毒藻监测",
+            "Florida/Gulf · Karenia真实流场回顾验证",
+            "现场前向验证 · 出海/场站数据接入",
+        ],
     )
 
     if case_choice.startswith("南澳大利亚"):
@@ -923,7 +961,7 @@ with tab_real:
             "来源：[Nature Ecology & Evolution](https://doi.org/10.1038/s41559-026-03115-0) · "
             "[Zenodo数据（CC BY 4.0）](https://doi.org/10.5281/zenodo.20227730)"
         )
-    else:
+    elif case_choice.startswith("挪威沿岸"):
         st.markdown("#### 挪威沿岸：14年有毒藻与环境监测回放")
         norway_min = norway_observations["sample_date"].min().date()
         norway_max = norway_observations["sample_date"].max().date()
@@ -1152,6 +1190,258 @@ with tab_real:
             "来源：[Communications Earth & Environment](https://doi.org/10.1038/s43247-025-02421-y) · "
             "[Zenodo数据与模型（CC BY 4.0）](https://doi.org/10.5281/zenodo.10958487)"
         )
+
+
+    elif case_choice.startswith("Florida/Gulf"):
+        st.markdown("#### Florida/Gulf of Mexico：Karenia真实流场约束STS回顾验证")
+        st.caption(
+            "第一阶段使用真实Karenia brevis细胞计数与真实连续流场检验‘先在上游出现的高丰度信号，"
+            "是否在候选时滞后沿流向与后续下游观测更一致’。这里是回顾性关联验证，不把单步流速投影当成完整粒子追踪。"
+        )
+        st.dataframe(FLORIDA_SOURCE_CATALOG, width="stretch", hide_index=True)
+        st.markdown(
+            "公开数据入口：[NOAA HABSOS](https://habsos.noaa.gov/about/) · "
+            "[NOAA CoastWatch surface currents](https://coastwatch.noaa.gov/erddap/info/noaacwBLENDEDNRTcurrentsDaily/index.html) · "
+            "[HYCOM Gulf reanalysis](https://www.hycom.org/data/gome0pt04/gom-reanalysis)"
+        )
+
+        fc1, fc2, fc3 = st.columns([1.2, 1.0, 1.0])
+        florida_range = fc1.date_input(
+            "回顾验证时间范围",
+            value=(pd.Timestamp("2018-08-01").date(), pd.Timestamp("2018-12-31").date()),
+            min_value=pd.Timestamp("2015-01-15").date(),
+            max_value=pd.Timestamp("2024-03-25").date(),
+            key="florida_sts_range",
+        )
+        florida_threshold = fc2.selectbox(
+            "Karenia事件阈值（cells L⁻¹）",
+            [10_000, 100_000, 1_000_000], index=1,
+            format_func=lambda x: f"{x:,}", key="florida_event_threshold",
+        )
+        florida_lags = fc3.multiselect(
+            "候选时滞（天）", list(FLORIDA_STS_LAGS),
+            default=list(FLORIDA_STS_LAGS), key="florida_lags",
+        )
+        if isinstance(florida_range, tuple) and len(florida_range) == 2:
+            florida_start, florida_end = florida_range
+        else:
+            florida_start = florida_end = florida_range
+
+        fs1, fs2 = st.columns(2)
+        with fs1:
+            hab_source_mode = st.radio(
+                "Karenia观测来源", ["NOAA HABSOS在线读取", "上传HABSOS/现场CSV"],
+                horizontal=False, key="florida_hab_source",
+            )
+            hab_upload = None
+            if hab_source_mode.startswith("上传"):
+                hab_upload = st.file_uploader("上传Karenia观测CSV", type=["csv"], key="florida_hab_upload")
+        with fs2:
+            current_source_mode = st.radio(
+                "流场来源", ["NOAA CoastWatch在线读取", "上传HYCOM/Copernicus/HF-radar流场CSV"],
+                horizontal=False, key="florida_current_source",
+            )
+            current_upload = None
+            if current_source_mode.startswith("上传"):
+                current_upload = st.file_uploader("上传流场CSV", type=["csv"], key="florida_current_upload")
+                st.caption("最低字段：date/time、latitude、longitude、u/v（m s⁻¹）。常见uo/vo、u_current/v_current字段会自动识别。")
+
+        florida_run_key = (
+            str(florida_start), str(florida_end), int(florida_threshold), tuple(florida_lags),
+            hab_source_mode, current_source_mode,
+        )
+        if st.button("读取数据并运行Florida/Gulf STS回顾验证", key="run_florida_sts", type="primary"):
+            if not florida_lags:
+                st.error("至少选择一个候选时滞。")
+            else:
+                try:
+                    with st.spinner("正在读取Karenia观测与真实流场，并构建流向约束的上游—下游匹配……"):
+                        if hab_source_mode.startswith("NOAA"):
+                            florida_hab = cached_habsos_live(florida_start, florida_end, "FL")
+                        else:
+                            if hab_upload is None:
+                                raise ValueError("请先上传Karenia观测CSV。")
+                            florida_hab = normalize_habsos(pd.read_csv(hab_upload))
+                        # 聚焦Florida Gulf/Florida Keys一侧；HABSOS也含东海岸记录。
+                        florida_hab = florida_hab[
+                            florida_hab["longitude"].between(-87.2, -80.0)
+                            & florida_hab["latitude"].between(24.0, 31.2)
+                        ].reset_index(drop=True)
+                        if current_source_mode.startswith("NOAA"):
+                            florida_current = cached_coastwatch_live(florida_start, florida_end, 2)
+                        else:
+                            if current_upload is None:
+                                raise ValueError("请先上传流场CSV。")
+                            florida_current = normalize_current_frame(pd.read_csv(current_upload))
+                        florida_result = run_retrospective_sts(
+                            florida_hab, florida_current, florida_lags, float(florida_threshold)
+                        )
+                        st.session_state["florida_sts_result"] = florida_result
+                        st.session_state["florida_sts_hab"] = florida_hab
+                        st.session_state["florida_sts_current"] = florida_current
+                        st.session_state["florida_sts_key"] = florida_run_key
+                except Exception as exc:
+                    st.error(f"Florida/Gulf公开数据读取或验证未完成：{exc}")
+                    st.info("若在线公开服务暂时不可达，可切换为上传模式：HABSOS CSV + HYCOM/Copernicus/HF-radar导出的u/v流场CSV。")
+
+        florida_result = st.session_state.get("florida_sts_result")
+        if florida_result is not None and st.session_state.get("florida_sts_key") == florida_run_key:
+            fq = florida_result["quality"]
+            kpi_grid([
+                ("Karenia观测", f"{fq['observations']:,}", f"{fq['sampling_dates']}个采样日期"),
+                ("空间位置", f"{fq['locations']:,}", "按经纬度去重"),
+                ("事件观测", f"{fq['events']:,}", f"阈值 {int(florida_threshold):,} cells L⁻¹"),
+                ("流场日期覆盖", f"{fq['current_date_overlap']:.1%}", "观测日存在流场的比例"),
+                ("质量门控", str(fq["status"]).upper(), "不足时只保留defer"),
+                ("最佳回顾时滞", f"{florida_result['best_lag']}天" if florida_result["best_lag"] else "未确定", "由真实流向匹配AP排序"),
+            ])
+            if fq["reasons"]:
+                st.warning("质量门控提示：" + "；".join(fq["reasons"]))
+            lag_summary = florida_result["lag_summary"].copy()
+            st.markdown("##### 候选时滞：真实流向匹配 vs 无流向/反向流对照")
+            lag_long = lag_summary.melt(
+                id_vars=["lag_days", "samples", "events"],
+                value_vars=["flow_ap", "no_flow_ap", "reverse_ap"],
+                var_name="evidence", value_name="average_precision",
+            )
+            lag_long["evidence"] = lag_long["evidence"].map({
+                "flow_ap": "真实流向约束", "no_flow_ap": "仅空间邻近", "reverse_ap": "反向流负对照",
+            })
+            lag_fig = px.line(
+                lag_long, x="lag_days", y="average_precision", color="evidence", markers=True,
+                labels={"lag_days": "时滞（天）", "average_precision": "Average Precision", "evidence": "证据"},
+            )
+            lag_fig.update_layout(height=380, margin={"l": 10, "r": 10, "t": 20, "b": 45})
+            st.plotly_chart(lag_fig, width="stretch", config={"displayModeBar": False})
+            st.dataframe(lag_summary, width="stretch", hide_index=True)
+            if florida_result["best_lag"] is not None and not florida_result["best_pairs"].empty:
+                best_pairs = florida_result["best_pairs"]
+                st.markdown("##### 最佳时滞下的流向匹配记录")
+                st.dataframe(best_pairs.head(100), width="stretch", hide_index=True)
+                projection = project_next_sampling_candidates(
+                    st.session_state["florida_sts_hab"], st.session_state["florida_sts_current"],
+                    int(florida_result["best_lag"]), 12,
+                )
+                if not projection.empty:
+                    map_fig = px.scatter_geo(
+                        projection, lat="projected_latitude", lon="projected_longitude",
+                        size="sampling_priority", hover_name="date",
+                        hover_data={"cell_count": ":.0f", "current_speed_ms": ":.3f"},
+                        projection="natural earth",
+                        labels={"sampling_priority": "采样优先级"},
+                    )
+                    map_fig.update_geos(lataxis_range=[23, 32], lonaxis_range=[-89, -78], showland=True, landcolor="#edf2f1")
+                    map_fig.update_layout(height=430, margin={"l": 0, "r": 0, "t": 10, "b": 0})
+                    st.plotly_chart(map_fig, width="stretch", config={"displayModeBar": False})
+                    st.caption("位置为最新观测点按局地表层流速作的一阶欧拉投影，仅用于形成下一批采样候选，不等同于业务粒子轨迹预报。")
+                fd1, fd2 = st.columns(2)
+                fd1.download_button(
+                    "下载Florida时滞审计", lag_summary.to_csv(index=False).encode("utf-8-sig"),
+                    "florida_gulf_sts_lag_summary.csv", "text/csv",
+                )
+                fd2.download_button(
+                    "下载最佳流向匹配", best_pairs.to_csv(index=False).encode("utf-8-sig"),
+                    "florida_gulf_sts_best_pairs.csv", "text/csv",
+                )
+            st.caption("结论边界：这一阶段把真实连续流场与真实但不规则的Karenia细胞计数对齐；它比合成路径更接近现实，但仍不是连续毒素/生物响应的前向现场验证。")
+        elif florida_result is not None:
+            st.warning("时间范围、阈值、时滞或数据来源已经变化，请重新运行；旧Florida结果不会继续作为当前结果显示。")
+
+    else:
+        st.markdown("#### 现场前向验证接口：为后续出海与合作场站直接接入数据")
+        st.caption(
+            "第二阶段不是预填一个未来结果，而是把现场数据接入协议和前向验证规则固定下来："
+            "较早时间块只用于选择lag，后续时间块一次性评估；数据不足则defer。"
+        )
+        t1, t2 = st.columns(2)
+        t1.download_button(
+            "下载现场观测模板CSV", field_observation_template().to_csv(index=False).encode("utf-8-sig"),
+            "field_observations_template.csv", "text/csv",
+        )
+        t2.download_button(
+            "下载流场模板CSV", field_current_template().to_csv(index=False).encode("utf-8-sig"),
+            "field_currents_template.csv", "text/csv",
+        )
+        st.markdown(
+            "最低观测字段：`date, station_id, latitude, longitude, cell_count`；最低流场字段："
+            "`date, latitude, longitude, u_ms, v_ms`。建议同步加入毒素、SST、盐度、DO、NO₃、PO₄、Si、Chl-a、鱼体/鳃部反应和网箱信息。"
+        )
+        fu1, fu2 = st.columns(2)
+        with fu1:
+            field_obs_upload = st.file_uploader("上传现场观测CSV", type=["csv"], key="field_obs_upload")
+        with fu2:
+            field_cur_upload = st.file_uploader("上传连续流场CSV", type=["csv"], key="field_cur_upload")
+        fp1, fp2, fp3 = st.columns(3)
+        field_threshold = fp1.selectbox(
+            "事件阈值（cells L⁻¹）", [10_000, 100_000, 1_000_000], index=1,
+            format_func=lambda x: f"{x:,}", key="field_event_threshold",
+        )
+        field_lags = fp2.multiselect(
+            "训练期候选lag", list(FLORIDA_STS_LAGS), default=list(FLORIDA_STS_LAGS), key="field_lags"
+        )
+        field_test_fraction = fp3.slider("最终前向测试比例", 0.20, 0.40, 0.30, 0.05, key="field_test_fraction")
+
+        if field_obs_upload is not None and field_cur_upload is not None:
+            try:
+                field_obs = normalize_field_observations(pd.read_csv(field_obs_upload))
+                field_cur = normalize_current_frame(pd.read_csv(field_cur_upload))
+                readiness = field_quality_gate(field_obs, field_cur, float(field_threshold), strict_forward=True)
+                kpi_grid([
+                    ("现场观测", f"{readiness['observations']:,}", f"{readiness['sampling_dates']}个日期"),
+                    ("空间位置", f"{readiness['locations']}", "建议至少上游/中间/下游3站"),
+                    ("事件观测", f"{readiness['events']}", f"阈值 {int(field_threshold):,}"),
+                    ("流场日期覆盖", f"{readiness['current_date_overlap']:.1%}", "越高越适合前向分析"),
+                    ("时间跨度", f"{readiness['date_span_days']}天", "建议覆盖多个传播窗口"),
+                    ("前向门控", readiness["status"].upper(), "不满足则defer"),
+                ])
+                if readiness["reasons"]:
+                    st.warning("当前还不能进入严格前向验证：" + "；".join(readiness["reasons"]))
+                if st.button("运行现场数据前向STS验证", key="run_field_forward", type="primary"):
+                    if not field_lags:
+                        st.error("至少选择一个训练期候选lag。")
+                    else:
+                        result = run_forward_field_validation(
+                            field_obs, field_cur, field_lags, float(field_threshold), float(field_test_fraction)
+                        )
+                        st.session_state["field_forward_result"] = result
+                        st.session_state["field_forward_key"] = (
+                            len(field_obs), len(field_cur), int(field_threshold), tuple(field_lags), float(field_test_fraction)
+                        )
+                        st.session_state["field_forward_obs"] = field_obs
+                        st.session_state["field_forward_cur"] = field_cur
+                field_result = st.session_state.get("field_forward_result")
+                current_field_key = (len(field_obs), len(field_cur), int(field_threshold), tuple(field_lags), float(field_test_fraction))
+                if field_result is not None and st.session_state.get("field_forward_key") == current_field_key:
+                    if field_result["status"] == "evaluated":
+                        fs = field_result["test_summary"]
+                        kpi_grid([
+                            ("训练期选择lag", f"{field_result['selected_lag']}天", f"截止 {pd.Timestamp(field_result['cut_date']).date()} 前选择"),
+                            ("前向测试AP", f"{fs['flow_ap']:.3f}", "后续时间块一次性评估"),
+                            ("无流向对照AP", f"{fs['no_flow_ap']:.3f}", f"增量 {fs['flow_vs_no_flow']:+.3f}"),
+                            ("反向流对照AP", f"{fs['reverse_ap']:.3f}", f"增量 {fs['flow_vs_reverse']:+.3f}"),
+                            ("测试配对", f"{fs['samples']}", f"{fs['events']}个事件"),
+                            ("中位路径误差", f"{fs['median_path_error_km']:.1f} km", "一阶流场匹配诊断"),
+                        ])
+                        st.dataframe(field_result["training_lags"], width="stretch", hide_index=True)
+                        st.dataframe(field_result["test_pairs"].head(100), width="stretch", hide_index=True)
+                        horizon = st.radio("生成下一批采样候选的投影窗口", [3, 7, 14], index=1, horizontal=True, key="field_projection_horizon")
+                        priority = project_next_sampling_candidates(field_obs, field_cur, int(horizon), 15)
+                        if not priority.empty:
+                            st.markdown("##### 下一批采样位置候选")
+                            st.dataframe(priority, width="stretch", hide_index=True)
+                            pf = px.scatter_geo(
+                                priority, lat="projected_latitude", lon="projected_longitude",
+                                size="sampling_priority", hover_data={"cell_count": ":.0f", "current_speed_ms": ":.3f"},
+                            )
+                            pf.update_layout(height=430, margin={"l": 0, "r": 0, "t": 10, "b": 0})
+                            st.plotly_chart(pf, width="stretch", config={"displayModeBar": False})
+                        st.success("现场数据已经通过质量门控并完成严格前向测试。结果仍需与毒素、连续生物观测和现场水团追踪共同解释。")
+                    else:
+                        st.warning("系统返回DEFER：" + "；".join(field_result["quality"]["reasons"]))
+            except Exception as exc:
+                st.error(f"现场数据解析失败：{exc}")
+        else:
+            st.info("上传两张CSV后，系统会先显示数据质量门控；只有满足时间、空间、事件和流场覆盖条件才允许运行前向验证。")
 
 with tab_bio:
     st.markdown("### 网箱鱼生物响应沙盘")
@@ -1804,6 +2094,63 @@ with tab_agent:
             width="stretch", hide_index=True,
         )
 
+    st.markdown("#### Agent策略Benchmark：同一24候选、同一预算，谁更会选下一项实验？")
+    st.caption(
+        "这里不改变任何预测模型或合成数据，只替换实验选择策略。Bayesian Expected Improvement、"
+        "Bayesian Information Gain和Thompson Sampling只看到已经执行实验的反馈；14天隐藏真值只在整条轨迹结束后用于评分。"
+    )
+    policy_key = (
+        int(active_config["days"]), int(active_config["seed"]), int(active_config["budget"]),
+        active_config["holdout_region"], float(active_config["test_fraction"]),
+    )
+    run_policy_bench = st.button("运行当前设置的Agent策略对比", key="run_agent_policy_benchmark")
+    if run_policy_bench:
+        with st.spinner("正在用同一实验景观比较启发式、贝叶斯和随机策略……"):
+            st.session_state["agent_policy_benchmark"] = cached_policy_benchmark(
+                catalog, int(active_config["budget"]), int(active_config["seed"])
+            )
+            st.session_state["agent_policy_benchmark_key"] = policy_key
+    policy_bench = st.session_state.get("agent_policy_benchmark")
+    if policy_bench is not None and st.session_state.get("agent_policy_benchmark_key") == policy_key:
+        policy_summary = policy_bench["summary"].copy()
+        policy_display = policy_summary[[
+            "policy_label", "recovery_rate", "median_first_hidden_step",
+            "median_best_utility", "repeats",
+        ]].copy()
+        policy_display["recovery_rate"] = 100.0 * policy_display["recovery_rate"].astype(float)
+        policy_display = policy_display.rename(columns={
+            "policy_label": "实验选择策略",
+            "recovery_rate": "14天模式恢复率（%）",
+            "median_first_hidden_step": "首次试到14天模式的中位步数",
+            "median_best_utility": "最佳效用中位数",
+            "repeats": "重复次数",
+        })
+        st.dataframe(
+            policy_display, width="stretch", hide_index=True,
+            column_config={
+                "14天模式恢复率（%）": st.column_config.NumberColumn(format="%.1f"),
+                "首次试到14天模式的中位步数": st.column_config.NumberColumn(format="%.1f"),
+                "最佳效用中位数": st.column_config.NumberColumn(format="%.3f"),
+            },
+        )
+        det = policy_summary[policy_summary["policy"].isin(["current_heuristic", "bayesian_ei", "bayesian_eig"])]
+        if not det.empty:
+            kpi_grid([
+                (str(row.policy_label), "恢复" if float(row.recovery_rate) >= 0.999 else "未恢复",
+                 f"首次14天候选：第{int(row.median_first_hidden_step)}步" if pd.notna(row.median_first_hidden_step) else "8步内未触达")
+                for row in det.itertuples(index=False)
+            ])
+        with st.expander("查看各策略代表性探索轨迹"):
+            trace_cols = ["policy_label", "step", "action_id", "status", "pr_auc", "brier_skill", "ece", "utility"]
+            available_cols = [c for c in trace_cols if c in policy_bench["trajectory"].columns]
+            st.dataframe(policy_bench["trajectory"][available_cols], width="stretch", hide_index=True)
+        st.caption(
+            "当前对比属于同一合成实验景观上的策略审计：它回答‘同样只有这些反馈和8步预算时，下一项实验怎么选更高效’，"
+            "不代表贝叶斯策略已经在真实海洋中优于其他科研策略。"
+        )
+    elif policy_bench is not None:
+        st.warning("当前合成探索设置已经变化，请重新运行Agent策略Benchmark；旧策略结果不会冒充当前结果。")
+
     st.markdown("#### 完整探索轨迹：正结果、负结果和成本均保留")
     display = log[[
         "step", "hypothesis", "action_id", "status", "pr_auc", "pr_auc_gain",
@@ -2310,7 +2657,7 @@ st.markdown(
       均不与合成数据混合。
       生物响应沙盘采用公开文献支持的参数结构，尚未经物种/场站标定；风险地图、复核顺序和干预对照
       不构成死亡率或损失预测、业务预报、因果结论、统一毒素阈值或自动运营指令。
-      <br>GlobalHAB-Agent v4.0 GOAI Semifinal · constrained data fusion + dynamic model comparison + synthetic recovery + real forward benchmark + biological-response sandbox ·
+      <br>GlobalHAB-Agent v4.1 GOAI Semifinal · constrained data fusion + dynamic model comparison + synthetic recovery + Bayesian experiment design + real-flow validation + field-forward interface + biological-response sandbox ·
       no mortality, operational, causal or automatic action claim
     </div>
     """,

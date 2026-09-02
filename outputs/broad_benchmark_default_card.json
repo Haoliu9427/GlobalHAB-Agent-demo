@@ -1,0 +1,11 @@
+{
+  "lag_days": 14,
+  "holdout_region": "Synthetic_Region_D",
+  "test_fraction": 0.25,
+  "cut_date": "2025-06-27",
+  "test_rows": 177,
+  "test_events": 26,
+  "model_count": 19,
+  "same_outer_rows": true,
+  "selection_rule": "all hyper-parameter choices use only the final 20% of the outer training era"
+}

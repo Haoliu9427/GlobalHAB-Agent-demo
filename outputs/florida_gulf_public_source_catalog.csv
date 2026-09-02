@@ -1,0 +1,6 @@
+source,role,access,status
+NOAA HABSOS,Karenia brevis cell counts + associated field observations,ArcGIS REST / NCEI archive,live adapter
+NOAA CoastWatch surface currents,daily geostrophic u/v current field,ERDDAP,live adapter; upload fallback
+HYCOM GOM reanalysis,1/25° Gulf current/temperature/salinity reanalysis,THREDDS/NCSS/OPeNDAP,supported through exported CSV upload
+Copernicus Marine,global analysis/reanalysis u/v + ocean environment,Marine Data Store,supported through exported CSV upload
+GCOOS / IOOS HF radar,high-frequency coastal surface currents,ERDDAP / NCEI archive,supported through exported CSV upload

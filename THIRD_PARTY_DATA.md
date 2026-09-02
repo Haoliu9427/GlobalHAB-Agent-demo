@@ -31,3 +31,26 @@ The original workbook is preserved unchanged. Source and derived SHA-256 values 
 Historical subsets are requested from the NOAA CoastWatch ERDDAP dataset `ncdcOisst21Agg` (1981–present): https://coastwatch.pfeg.noaa.gov/erddap/griddap/ncdcOisst21Agg . The 1991–2020 baseline is split into bounded time chunks to reduce timeout risk; every generated request URL is retained in the provenance record.
 
 The repository MIT license applies to project code only. It does not replace the licenses or attribution requirements of third-party data.
+
+## Florida/Gulf public real-data adapters
+
+### NOAA HABSOS
+
+The Florida/Gulf retrospective workflow can request public Harmful Algal BloomS Observing System (HABSOS) records from the NOAA/NCEI ArcGIS REST service. The adapter requests observation coordinates, sample dates, taxonomic fields, cell count and available environmental fields, then normalizes them at runtime. These live records are not relicensed under the repository MIT license and are not bundled as a fabricated fixed performance result.
+
+- NOAA/NCEI product page: https://www.ncei.noaa.gov/products/harmful-algal-blooms-observing-system
+- ArcGIS service used by the adapter: https://gis.ngdc.noaa.gov/arcgis/rest/services/EnvironmentalMonitoring/HABSOSViewBase/MapServer/0
+
+### NOAA CoastWatch sea-surface geostrophic currents
+
+The built-in live current adapter targets NOAA CoastWatch ERDDAP dataset `noaacwBLENDEDNRTcurrentsDaily`, which exposes daily gridded eastward and northward surface geostrophic current components. Source data remain subject to the NOAA dataset's own attribution/disclaimer terms.
+
+- Dataset information: https://coastwatch.noaa.gov/erddap/info/noaacwBLENDEDNRTcurrentsDaily/index.html
+
+### Alternative uploaded current sources
+
+The workflow accepts normalized CSV exports from sources such as HYCOM Gulf of Mexico reanalysis, Copernicus Marine products and IOOS/GCOOS HF-radar. The repository does not redistribute those full archives. Users remain responsible for source-specific licenses, attribution and access conditions.
+
+## Future field data
+
+Files uploaded through the field-forward interface remain user-supplied research data. The repository template files contain only illustrative schema rows and do not grant rights over future cruise, station, farm, toxin or biological-response observations.

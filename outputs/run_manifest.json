@@ -1,5 +1,5 @@
 {
-  "version": "4.0-science-value-model-fusion",
+  "version": "4.1-bayesian-realflow-forward",
   "config_sha256": "69e812611f5d31c0cd4934767b41384f7a3c74a33512b4fe4c62ea9a567f42df",
   "data_sha256": "b63f828b0350afe172d7485e192dfa0ac024e0606b1c809d0867714522cbe2d5",
   "real_qpcr_sha256": "6b64f3177dbcdfd08a45e6d229a8f56adb818f1cff47e2985e1b7c44ec122e06",
@@ -50,6 +50,14 @@
     "model_science_comparison_seed_results.csv",
     "model_science_interaction_tuning.csv",
     "model_science_tcn_tuning.csv",
-    "model_science_comparison_card.json"
-  ]
+    "model_science_comparison_card.json",
+    "agent_policy_benchmark_default.csv",
+    "agent_policy_trajectories_default.csv",
+    "florida_gulf_public_source_catalog.csv"
+  ],
+  "v4_1_extensions": {
+    "agent_policy_audit": "same synthetic catalogue / same budget; hidden truth scored only after trajectory",
+    "florida_stage1": "live public-data adapter; no fixed Florida performance score bundled",
+    "field_stage2": "upload schema + quality gate + earlier-block lag selection + later-block one-time evaluation"
+  }
 }

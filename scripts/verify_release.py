@@ -14,6 +14,7 @@ sys.path.insert(0, str(SRC))
 
 REQUIRED_FILES = (
     "app.py",
+    "PACKAGE_MANIFEST_SHA256.txt",
     "run_demo.py",
     "requirements.txt",
     "src/globalhab_demo/__init__.py",
@@ -22,6 +23,19 @@ REQUIRED_FILES = (
     "src/globalhab_demo/real_benchmark.py",
     "src/globalhab_demo/sts_gated_tcn.py",
     "src/globalhab_demo/broad_benchmark.py",
+    "src/globalhab_demo/bayesian_design.py",
+    "src/globalhab_demo/florida_sts.py",
+    "data/field_validation/field_observations_template.csv",
+    "data/field_validation/field_currents_template.csv",
+    "SUBMISSION_MANIFEST.md",
+    "prompts/README.md",
+    "prompts/AGENT_POLICY.md",
+    "docs/MINIMAL_REPRODUCTION.md",
+    "scripts/run_minimal_reproduction.py",
+    "scripts/run_agent_policy_benchmark.py",
+    "scripts/run_broad_benchmark_audit.py",
+    "scripts/run_florida_sts_validation.py",
+    "scripts/run_field_forward_validation.py",
     "data/real_case/derived/sa_qpcr_observations.csv",
     "data/real_case_norway/derived/norway_hab_observations.csv",
 )
@@ -33,6 +47,8 @@ REQUIRED_MODULES = (
     "globalhab_demo.real_benchmark",
     "globalhab_demo.sts_gated_tcn",
     "globalhab_demo.broad_benchmark",
+    "globalhab_demo.bayesian_design",
+    "globalhab_demo.florida_sts",
 )
 
 
@@ -45,8 +61,8 @@ def main() -> None:
         importlib.import_module(name)
         imported.append(name)
     version_text = (ROOT / "VERSION.md").read_text(encoding="utf-8")
-    if "4.0" not in version_text:
-        raise SystemExit("VERSION.md does not declare v4.0")
+    if "4.1" not in version_text:
+        raise SystemExit("VERSION.md does not declare v4.1")
     print(json.dumps({
         "status": "pass",
         "required_files": len(REQUIRED_FILES),

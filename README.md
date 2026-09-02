@@ -18,6 +18,39 @@ GlobalHAB-Agent 面向稀有、稀疏且证据异质的海洋有害藻华数据�
 
 > 重要边界：页面顶部AP等指标属于合成真值恢复；挪威页面另行报告严格前向的“下一次实际观测样本”回顾基准。真实前向AP约0.102，仍是有限研究信号而非业务预警性能。南澳不参与训练，真实模块均不与合成数据混合。生物响应沙盘使用公开但未经鱼种/场站标定的原型参数，不输出死亡率、生物量损失、真实毒素或自动运营指令。
 
+## Agent实验设计策略
+
+探索与验证页除保留原有透明受约束策略外，可在**同一24个候选实验、同一预算和同一阻断验证景观**上比较：
+
+- 当前受约束策略；
+- Bayesian Expected Improvement；
+- Bayesian Information Gain；
+- Thompson Sampling；
+- Random。
+
+贝叶斯获取函数只读取已经执行实验的反馈，不读取预注册的14天隐藏真值。隐藏真值只在完整探索轨迹结束后用于评价“是否恢复”和“第几步触达”。因此该模块回答的是**有限预算下怎么选下一项实验更有效率**，不是用合成结果声称某一种策略已在真实海洋中占优。
+
+## 两阶段真实STS验证
+
+### 第一阶段：Florida/Gulf Karenia回顾验证
+
+真实事件回放页可连接NOAA HABSOS的`Karenia brevis`细胞计数，并配对NOAA CoastWatch日尺度表层地转流`u/v`；如果需要更完整的海流背景，也可上传HYCOM、Copernicus Marine或HF-radar导出的流场CSV。系统比较真实流向约束、仅空间邻近和反向流负对照在3/7/14/21/30天候选时滞上的事件排序信号。
+
+这一步是**真实流场约束的回顾性关联验证**，不是完整粒子追踪，也不把当前结果解释为业务级HAB预报。在线公开服务不可达时可切换到上传模式。
+
+### 第二阶段：现场前向验证接口
+
+`data/field_validation/`给出了后续出海、固定站和养殖场合作所需的最低数据协议。上传现场观测和连续流场后，系统先检查样本量、日期数、空间位置、事件数量和流场日期覆盖。质量门控通过后：
+
+1. 较早时间块用于比较候选lag；
+2. 只在训练块确定lag；
+3. 后续时间块一次性做前向评估；
+4. 输出真实流向、无流向和反向流对照；
+5. 依据最近观测与流场生成下一批采样候选位置；
+6. 证据不足时返回`defer`。
+
+因此第二阶段就是为未来真实出海/场站数据预留的**输入数据→质量检查→前向验证→下一批采样候选**接口，而不是预先写死未来结果。
+
 ## 在线页面能展示什么
 
 - 什么条件：MHW强度、Nitrate、Phosphate、Silicate、输运/停留/汇聚代理；
@@ -144,10 +177,10 @@ AP提升伴随Top10事件覆盖相对固定参考模型略有变化，因此页�
 网页包含六个工作区：
 
 1. 风险研判：情景地图、养殖对象、危害机制、证据等级和响应优先级；
-2. 真实事件回放：全球证据地图、南澳qPCR回放和挪威14年监测回放；
+2. 真实事件回放：南澳qPCR、挪威14年监测、Florida/Gulf真实流场回顾验证，以及未来现场前向验证数据接口；
 3. 生物响应沙盘：网箱鱼复合压力、五项干预轨迹、敏感性和运营权衡；
 4. 科学解释：持续异常、方法选择、跨区域传播和邻区溢出；
-5. 探索与验证：基线、随机参照、负对照、完整探索轨迹和风险序列；
+5. 探索与验证：基线、随机参照、Bayesian/Thompson实验设计策略、负对照、完整探索轨迹、模型Benchmark和风险序列；
 6. 数据来源与复核：开放来源、结果摘要与证据包下载。
 
 Streamlit Community Cloud 部署与完整上传检查见 `docs/DEPLOYMENT_AND_RELEASE.md`。
@@ -240,3 +273,15 @@ python scripts/run_science_model_comparison.py
 ```
 
 该脚本不会重跑全部真实事件与机制模块，只复现同一留出集上的 Logistic、Random Forest、STS-Interaction GLM 和 STS-Gated TCN 五随机种子对照。
+
+## v4.1新增审计命令
+
+```bash
+python scripts/run_agent_policy_benchmark.py
+python scripts/run_florida_sts_validation.py --online --start 2018-08-01 --end 2018-12-31
+python scripts/run_field_forward_validation.py \
+  --observations data/field_validation/field_observations_template.csv \
+  --currents data/field_validation/field_currents_template.csv
+```
+
+最后一条命令中的模板只有字段示例，默认不足以通过严格前向质量门控；实际出海/场站数据应按模板持续积累后再运行。

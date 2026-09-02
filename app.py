@@ -85,6 +85,7 @@ from globalhab_demo.florida_sts import (  # noqa: E402
     PUBLIC_SOURCE_CATALOG as FLORIDA_SOURCE_CATALOG,
     fetch_habsos,
     fetch_coastwatch_currents,
+    LIVE_ADAPTER_REVISION,
     normalize_habsos,
     normalize_current_frame,
     normalize_field_observations,
@@ -252,12 +253,13 @@ def cached_policy_benchmark(catalog: pd.DataFrame, budget: int, seed: int):
 
 
 @st.cache_data(show_spinner=False, ttl=1800)
-def cached_habsos_live(start_date, end_date, state_id: str = "FL"):
+def cached_habsos_live(start_date, end_date, state_id: str = "FL", adapter_revision: str = LIVE_ADAPTER_REVISION):
+    # adapter_revision is part of the cache key so data-adapter fixes cannot reuse stale rows.
     return fetch_habsos(start_date=start_date, end_date=end_date, state_id=state_id)
 
 
 @st.cache_data(show_spinner=False, ttl=1800)
-def cached_coastwatch_live(start_date, end_date, spatial_stride: int = 2):
+def cached_coastwatch_live(start_date, end_date, spatial_stride: int = 2, adapter_revision: str = LIVE_ADAPTER_REVISION):
     return fetch_coastwatch_currents(start_date=start_date, end_date=end_date, spatial_stride=spatial_stride)
 
 
@@ -1240,6 +1242,9 @@ with tab_real:
             hab_source_mode, current_source_mode,
         )
         if st.button("读取数据并运行回顾分析", key="run_florida_sts", type="primary"):
+            # A failed live fetch must never leave a previous run visible under the current controls.
+            for _key in ("florida_sts_result", "florida_sts_hab", "florida_sts_current", "florida_sts_key"):
+                st.session_state.pop(_key, None)
             if not florida_lags:
                 st.error("至少选择一个候选时滞。")
             else:
@@ -1256,12 +1261,20 @@ with tab_real:
                             florida_hab["longitude"].between(-87.2, -80.0)
                             & florida_hab["latitude"].between(24.0, 31.2)
                         ].reset_index(drop=True)
+                        if florida_hab.empty:
+                            raise ValueError("所选时间范围与Florida区域内没有可用的HABSOS Karenia观测。")
+                        _start_day = pd.Timestamp(florida_start).floor("D")
+                        _end_day = pd.Timestamp(florida_end).floor("D")
+                        if florida_hab["date"].min() < _start_day or florida_hab["date"].max() > _end_day:
+                            raise ValueError("HABSOS返回日期与当前选择的回顾时间范围不一致。")
                         if current_source_mode.startswith("NOAA"):
                             florida_current = cached_coastwatch_live(florida_start, florida_end, 2)
                         else:
                             if current_upload is None:
                                 raise ValueError("请先上传流场CSV。")
                             florida_current = normalize_current_frame(pd.read_csv(current_upload))
+                        if florida_current.empty:
+                            raise ValueError("所选时间范围内没有读取到有效流场记录。")
                         florida_result = run_retrospective_sts(
                             florida_hab, florida_current, florida_lags, float(florida_threshold)
                         )
@@ -1270,8 +1283,8 @@ with tab_real:
                         st.session_state["florida_sts_current"] = florida_current
                         st.session_state["florida_sts_key"] = florida_run_key
                 except Exception as exc:
-                    st.error(f"Florida/Gulf公开数据读取或验证未完成：{exc}")
-                    st.info("若在线公开服务暂时不可达，可切换为上传模式：HABSOS CSV + HYCOM/Copernicus/HF-radar导出的u/v流场CSV。")
+                    st.error(f"Florida/Gulf数据读取或验证未完成：{exc}")
+                    st.info("当前运行未保留旧结果。可重新读取，或切换为CSV上传模式。")
 
         florida_result = st.session_state.get("florida_sts_result")
         if florida_result is not None and st.session_state.get("florida_sts_key") == florida_run_key:

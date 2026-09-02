@@ -33,6 +33,7 @@ HABSOS_QUERY_URL = (
 COASTWATCH_DATASET = "noaacwBLENDEDNRTcurrentsDaily"
 COASTWATCH_ERDDAP = f"https://coastwatch.noaa.gov/erddap/griddap/{COASTWATCH_DATASET}.csvp"
 DEFAULT_LAGS = (3, 7, 14, 21, 30)
+LIVE_ADAPTER_REVISION = "2026-09-02-r2"
 
 PUBLIC_SOURCE_CATALOG = pd.DataFrame([
     {
@@ -87,11 +88,13 @@ def fetch_habsos(
     # layer.  Therefore the ArcGIS ``time=`` parameter is not relied on here;
     # SAMPLE_DATE is constrained explicitly in the SQL WHERE clause and the
     # returned frame is filtered once more locally below.
-    start_day = start.tz_convert("UTC").strftime("%Y-%m-%d 00:00:00")
-    end_exclusive = (end.tz_convert("UTC").floor("D") + pd.Timedelta(days=1)).strftime("%Y-%m-%d 00:00:00")
+    start_day = start.tz_convert("UTC").strftime("%Y-%m-%d")
+    end_exclusive = (end.tz_convert("UTC").floor("D") + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    # ArcGIS standardized SQL supports DATE literals for esriFieldTypeDate.
+    # The selected window is day-based, so DATE avoids unnecessary timezone/time-of-day ambiguity.
     date_where = (
-        f"SAMPLE_DATE >= TIMESTAMP '{start_day}' AND "
-        f"SAMPLE_DATE < TIMESTAMP '{end_exclusive}'"
+        f"SAMPLE_DATE >= DATE '{start_day}' AND "
+        f"SAMPLE_DATE < DATE '{end_exclusive}'"
     )
     fields = [
         "OBJECTID", "LONGITUDE", "LATITUDE", "DESCRIPTION", "STATE_ID",
@@ -132,7 +135,13 @@ def fetch_habsos(
             state_mask = result["state_id"].astype(str).str.upper().eq(str(state_id).upper())
             if state_mask.any():
                 result = result[state_mask].copy()
-    return result.sort_values("date").reset_index(drop=True)
+    result = result.sort_values("date").reset_index(drop=True)
+    # Never return historical rows outside the requested window. If the public
+    # service changes query behaviour, an empty frame is safer than stale evidence.
+    if not result.empty:
+        if result["date"].min() < pd.Timestamp(start).tz_convert(None).floor("D") or result["date"].max() > pd.Timestamp(end).tz_convert(None).floor("D"):
+            raise RuntimeError("HABSOS returned observations outside the requested date window")
+    return result
 
 
 def build_coastwatch_url(

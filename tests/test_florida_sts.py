@@ -90,7 +90,7 @@ def test_habsos_fetch_enforces_sample_date_window(monkeypatch):
     monkeypatch.setattr(florida_sts, "_download_bytes", fake_download)
     result = florida_sts.fetch_habsos("2018-08-01", "2018-08-31", max_records=100)
     decoded = unquote_plus(captured["url"])
-    assert "SAMPLE_DATE >= TIMESTAMP '2018-08-01 00:00:00'" in decoded
-    assert "SAMPLE_DATE < TIMESTAMP '2018-09-01 00:00:00'" in decoded
+    assert "SAMPLE_DATE >= DATE '2018-08-01'" in decoded
+    assert "SAMPLE_DATE < DATE '2018-09-01'" in decoded
     assert len(result) == 1
     assert result.iloc[0]["date"] == pd.Timestamp("2018-08-15")

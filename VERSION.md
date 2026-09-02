@@ -9,7 +9,7 @@
 ## Florida/Gulf retrospective analysis
 
 - Added NOAA HABSOS `Karenia brevis` input.
-- Added NOAA CoastWatch surface-current input and CSV adapters for HYCOM, Copernicus Marine and HF-radar products.
+- Added live HYCOM-TSIS GOMb0.04 Gulf reanalysis as the default retrospective current source; NOAA CoastWatch remains an online alternative, with CSV adapters for HYCOM/Copernicus/HF-radar products.
 - Added flow-constrained, no-flow and reverse-flow lag comparisons.
 
 ## Field forward validation

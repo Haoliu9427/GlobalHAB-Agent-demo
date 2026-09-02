@@ -41,9 +41,13 @@ The Florida/Gulf retrospective workflow can request public Harmful Algal BloomS 
 - NOAA/NCEI product page: https://www.ncei.noaa.gov/products/harmful-algal-blooms-observing-system
 - ArcGIS service used by the adapter: https://gis.ncdc.noaa.gov/arcgis/rest/services/ms/HABSOS_CellCounts/MapServer/0
 
+### HYCOM-TSIS GOMb0.04 Gulf of Mexico reanalysis
+
+The default Florida/Gulf retrospective current source is the HYCOM-TSIS 1/25° Gulf of Mexico reanalysis (GOMb0.04). The live adapter requests surface `u`/`v` subsets through the HYCOM NetCDF Subset Service (NCSS). The public reanalysis covers 2001-01-01 through 2024-08-31 and is used here for retrospective flow-constrained matching. HYCOM source terms and attribution remain applicable.
+
 ### NOAA CoastWatch sea-surface geostrophic currents
 
-The built-in live current adapter targets NOAA CoastWatch ERDDAP dataset `noaacwBLENDEDNRTcurrentsDaily`, which exposes daily gridded eastward and northward surface geostrophic current components. Source data remain subject to the NOAA dataset's own attribution/disclaimer terms.
+NOAA CoastWatch ERDDAP dataset `noaacwBLENDEDNRTcurrentsDaily` remains an online alternative. It exposes gridded eastward and northward surface geostrophic current components, but its near-real-time product and uneven historical time axis make it secondary to HYCOM for the 2018 retrospective case. Source data remain subject to the NOAA dataset's own attribution/disclaimer terms.
 
 - Dataset information: https://coastwatch.noaa.gov/erddap/info/noaacwBLENDEDNRTcurrentsDaily/index.html
 

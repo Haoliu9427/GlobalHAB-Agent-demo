@@ -85,6 +85,7 @@ from globalhab_demo.florida_sts import (  # noqa: E402
     PUBLIC_SOURCE_CATALOG as FLORIDA_SOURCE_CATALOG,
     fetch_habsos,
     fetch_coastwatch_currents,
+    fetch_hycom_gom_currents,
     LIVE_ADAPTER_REVISION,
     normalize_habsos,
     normalize_current_frame,
@@ -1187,13 +1188,13 @@ with tab_real:
     elif case_choice.startswith("Florida/Gulf"):
         st.markdown("#### Florida/Gulf of Mexico：Karenia流场约束回顾分析")
         st.caption(
-            "将Karenia brevis细胞计数与表层流场按候选时滞进行上游—下游匹配，并与无流向和反向流对照比较。流场位移采用一阶投影，不等同于完整粒子追踪。"
+            "将Karenia brevis细胞计数与表层流场按候选时滞进行上游—下游匹配，并与无流向和反向流对照比较。回顾分析默认使用HYCOM Gulf reanalysis；流场位移采用一阶投影。"
         )
         st.dataframe(FLORIDA_SOURCE_CATALOG, width="stretch", hide_index=True)
         st.markdown(
             "公开数据入口：[NOAA HABSOS](https://habsos.noaa.gov/about/) · "
             "[NOAA CoastWatch surface currents](https://coastwatch.noaa.gov/erddap/info/noaacwBLENDEDNRTcurrentsDaily/index.html) · "
-            "[HYCOM Gulf reanalysis](https://www.hycom.org/data/gome0pt04/gom-reanalysis)"
+            "[HYCOM Gulf reanalysis](https://www.hycom.org/data/gomb0pt04/gom-reanalysis)"
         )
 
         fc1, fc2, fc3 = st.columns([1.2, 1.0, 1.0])
@@ -1229,7 +1230,12 @@ with tab_real:
                 hab_upload = st.file_uploader("上传Karenia观测CSV", type=["csv"], key="florida_hab_upload")
         with fs2:
             current_source_mode = st.radio(
-                "流场来源", ["NOAA CoastWatch在线读取", "上传HYCOM/Copernicus/HF-radar流场CSV"],
+                "流场来源",
+                [
+                    "HYCOM GOMb0.04在线回顾流场",
+                    "NOAA CoastWatch在线流场",
+                    "上传HYCOM/Copernicus/HF-radar流场CSV",
+                ],
                 horizontal=False, key="florida_current_source",
             )
             current_upload = None
@@ -1267,7 +1273,9 @@ with tab_real:
                         _end_day = pd.Timestamp(florida_end).floor("D")
                         if florida_hab["date"].min() < _start_day or florida_hab["date"].max() > _end_day:
                             raise ValueError("HABSOS返回日期与当前选择的回顾时间范围不一致。")
-                        if current_source_mode.startswith("NOAA"):
+                        if current_source_mode.startswith("HYCOM"):
+                            florida_current = fetch_hycom_gom_currents(florida_start, florida_end)
+                        elif current_source_mode.startswith("NOAA"):
                             florida_current = fetch_coastwatch_currents(florida_start, florida_end, 2)
                         else:
                             if current_upload is None:

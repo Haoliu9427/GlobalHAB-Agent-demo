@@ -1,7 +1,8 @@
 """Run Florida/Gulf flow-constrained STS retrospective validation.
 
-Use --online for NOAA HABSOS + NOAA CoastWatch, or provide two CSV files exported
-from HABSOS/HYCOM/Copernicus/HF-radar compatible sources.
+Use --online for NOAA HABSOS plus a live Gulf current source. HYCOM GOMb0.04
+reanalysis is the default for retrospective validation; NOAA CoastWatch remains
+available as an alternative. CSV inputs are also supported.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ sys.path.insert(0, str(SRC))
 from globalhab_demo.florida_sts import (
     DEFAULT_LAGS,
     fetch_coastwatch_currents,
+    fetch_hycom_gom_currents,
     fetch_habsos,
     normalize_current_frame,
     normalize_habsos,
@@ -32,13 +34,17 @@ def main() -> None:
     parser.add_argument("--end", default="2018-12-31")
     parser.add_argument("--threshold", type=float, default=100_000.0)
     parser.add_argument("--online", action="store_true")
+    parser.add_argument("--current-source", choices=["hycom", "coastwatch"], default="hycom")
     parser.add_argument("--habsos-csv")
     parser.add_argument("--current-csv")
     args = parser.parse_args()
 
     if args.online:
         obs = fetch_habsos(args.start, args.end)
-        current = fetch_coastwatch_currents(args.start, args.end)
+        if args.current_source == "hycom":
+            current = fetch_hycom_gom_currents(args.start, args.end)
+        else:
+            current = fetch_coastwatch_currents(args.start, args.end)
     else:
         if not args.habsos_csv or not args.current_csv:
             parser.error("use --online or provide --habsos-csv and --current-csv")

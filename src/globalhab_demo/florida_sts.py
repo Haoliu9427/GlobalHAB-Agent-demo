@@ -36,8 +36,9 @@ COASTWATCH_ERDDAP_BASES = (
     f"https://coastwatch.pfeg.noaa.gov/erddap/griddap/{COASTWATCH_DATASET}",
 )
 COASTWATCH_ERDDAP_BASE = COASTWATCH_ERDDAP_BASES[0]
+HYCOM_GOM_NCSS_TEMPLATE = "https://ncss.hycom.org/thredds/ncss/grid/GOMb0.04/reanalysis/{year}/3z"
 DEFAULT_LAGS = (3, 7, 14, 21, 30)
-LIVE_ADAPTER_REVISION = "2026-09-02-r4"
+LIVE_ADAPTER_REVISION = "2026-09-02-r5-hycom"
 
 PUBLIC_SOURCE_CATALOG = pd.DataFrame([
     {
@@ -50,13 +51,13 @@ PUBLIC_SOURCE_CATALOG = pd.DataFrame([
         "source": "NOAA CoastWatch surface currents",
         "role": "daily geostrophic u/v current field",
         "access": "ERDDAP",
-        "status": "live adapter; upload fallback",
+        "status": "online alternative; near-real-time product",
     },
     {
         "source": "HYCOM GOM reanalysis",
         "role": "1/25° Gulf current/temperature/salinity reanalysis",
         "access": "THREDDS/NCSS/OPeNDAP",
-        "status": "supported through exported CSV upload",
+        "status": "preferred live adapter for retrospective analysis",
     },
     {
         "source": "Copernicus Marine",
@@ -263,6 +264,166 @@ def fetch_coastwatch_currents(
     if result.empty:
         raise RuntimeError("NOAA CoastWatch返回的数据在当前时间窗内没有有限u/v流速值")
     return result
+
+
+def build_hycom_gom_url(
+    start_date: str | pd.Timestamp,
+    end_date: str | pd.Timestamp,
+    lat_min: float = 24.0,
+    lat_max: float = 31.2,
+    lon_min: float = -87.2,
+    lon_max: float = -80.0,
+    horiz_stride: int = 8,
+    time_stride: int = 24,
+) -> str:
+    """Build a HYCOM GOMb0.04 NCSS request for surface u/v currents.
+
+    GOMb0.04 stores longitude on a 0..360 convention.  The endpoint is
+    year-specific, so callers should not pass a range spanning calendar years.
+    """
+    start = pd.Timestamp(start_date).floor("D")
+    end = pd.Timestamp(end_date).floor("D")
+    if start.year != end.year:
+        raise ValueError("HYCOM yearly endpoint requires a single calendar year per request")
+    if end < start:
+        raise ValueError("end_date must be on/after start_date")
+    west = lon_min % 360.0
+    east = lon_max % 360.0
+    params = [
+        ("var", "u"), ("var", "v"),
+        ("north", f"{lat_max:.3f}"), ("south", f"{lat_min:.3f}"),
+        ("west", f"{west:.3f}"), ("east", f"{east:.3f}"),
+        ("horizStride", str(max(1, int(horiz_stride)))),
+        ("time_start", start.strftime("%Y-%m-%dT00:00:00Z")),
+        ("time_end", end.strftime("%Y-%m-%dT23:00:00Z")),
+        ("timeStride", str(max(1, int(time_stride)))),
+        ("vertCoord", "0"),
+        ("accept", "netcdf"),
+    ]
+    return f"{HYCOM_GOM_NCSS_TEMPLATE.format(year=start.year)}?{urlencode(params)}"
+
+
+def _hycom_netcdf_to_frame(raw: bytes) -> pd.DataFrame:
+    """Parse a small HYCOM NCSS NetCDF3 response without an extra runtime dependency.
+
+    scipy is already required transitively by scikit-learn; importing it lazily keeps
+    the module import light.  Variable aliases are intentionally permissive because
+    HYCOM catalogs have used both u/v and water_u/water_v naming conventions.
+    """
+    from scipy.io import netcdf_file  # lazy import
+
+    with netcdf_file(BytesIO(raw), mode="r", mmap=False) as ds:
+        variables = ds.variables
+        def pick(names):
+            for name in names:
+                if name in variables:
+                    return name
+            raise ValueError(f"HYCOM response missing variable: {names}")
+
+        t_name = pick(("time", "MT"))
+        y_name = pick(("lat", "latitude", "Latitude", "Y"))
+        x_name = pick(("lon", "longitude", "Longitude", "X"))
+        u_name = pick(("u", "water_u", "eastward_sea_water_velocity"))
+        v_name = pick(("v", "water_v", "northward_sea_water_velocity"))
+
+        tvar = variables[t_name]
+        time_values = np.array(tvar[:], dtype=float).reshape(-1)
+        units = getattr(tvar, "units", b"")
+        if isinstance(units, bytes):
+            units = units.decode("utf-8", "ignore")
+        units = str(units)
+        # Typical NCSS responses use hours since 2000-01-01 or seconds since epoch.
+        import re
+        m = re.match(r"\s*(seconds|hours|days)\s+since\s+(.+?)\s*$", units, flags=re.I)
+        if not m:
+            raise ValueError(f"unsupported HYCOM time units: {units}")
+        unit, origin = m.group(1).lower(), pd.Timestamp(m.group(2)).tz_localize(None)
+        scale = {"seconds": "s", "hours": "h", "days": "D"}[unit]
+        times = pd.DatetimeIndex(origin + pd.to_timedelta(time_values, unit=scale)).floor("D")
+
+        lat = np.array(variables[y_name][:], dtype=float).reshape(-1)
+        lon = np.array(variables[x_name][:], dtype=float).reshape(-1)
+        lon = np.where(lon > 180.0, lon - 360.0, lon)
+
+        def surface_array(name):
+            arr = np.array(variables[name][:], dtype=float)
+            # NCSS with vertCoord=0 should normally return [time, lat, lon]. If a
+            # singleton depth axis remains, squeeze only singleton dimensions.
+            arr = np.squeeze(arr)
+            if arr.ndim == 2:  # one time step
+                arr = arr[None, ...]
+            if arr.ndim != 3:
+                raise ValueError(f"unexpected HYCOM {name} shape: {arr.shape}")
+            return arr
+
+        u = surface_array(u_name)
+        v = surface_array(v_name)
+        if u.shape != v.shape:
+            raise ValueError("HYCOM u/v shapes do not match")
+        # Some servers return latitude descending; values are paired with the
+        # returned coordinate arrays, so no reordering is necessary here.
+        nt, ny, nx = u.shape
+        if nt != len(times) or ny != len(lat) or nx != len(lon):
+            raise ValueError(
+                f"HYCOM coordinate/data shape mismatch: data={u.shape}, "
+                f"time={len(times)}, lat={len(lat)}, lon={len(lon)}"
+            )
+        tt = np.repeat(np.asarray(times), ny * nx)
+        yy = np.tile(np.repeat(lat, nx), nt)
+        xx = np.tile(lon, nt * ny)
+        frame = pd.DataFrame({
+            "date": tt,
+            "latitude": yy,
+            "longitude": xx,
+            "u_ms": u.reshape(-1),
+            "v_ms": v.reshape(-1),
+        })
+    frame = frame.replace([np.inf, -np.inf], np.nan).dropna().copy()
+    # HYCOM fill values are far outside physical surface-current magnitudes.
+    frame = frame[(frame["u_ms"].abs() <= 5.0) & (frame["v_ms"].abs() <= 5.0)]
+    return frame.sort_values(["date", "latitude", "longitude"]).reset_index(drop=True)
+
+
+def fetch_hycom_gom_currents(
+    start_date: str | pd.Timestamp,
+    end_date: str | pd.Timestamp,
+    horiz_stride: int = 8,
+    time_stride: int = 24,
+) -> pd.DataFrame:
+    """Fetch surface currents from the HYCOM-TSIS GOMb0.04 reanalysis.
+
+    The reanalysis is the preferred live source for retrospective Florida/Gulf
+    validation. Requests are split by year because the NCSS catalog is year-scoped.
+    """
+    start = pd.Timestamp(start_date).floor("D")
+    end = pd.Timestamp(end_date).floor("D")
+    if end < start:
+        raise ValueError("end_date must be on/after start_date")
+    if start < pd.Timestamp("2001-01-01") or end > pd.Timestamp("2024-08-31"):
+        raise ValueError("HYCOM GOMb0.04 retrospective coverage is 2001-01-01 to 2024-08-31")
+    pieces: list[pd.DataFrame] = []
+    errors: list[str] = []
+    for year in range(start.year, end.year + 1):
+        y_start = max(start, pd.Timestamp(f"{year}-01-01"))
+        y_end = min(end, pd.Timestamp(f"{year}-12-31"))
+        try:
+            url = build_hycom_gom_url(y_start, y_end, horiz_stride=horiz_stride, time_stride=time_stride)
+            raw = _download_bytes(url, timeout=120)
+            part = _hycom_netcdf_to_frame(raw)
+            part = part[part["date"].between(y_start, y_end)].copy()
+            if not part.empty:
+                pieces.append(part)
+            else:
+                errors.append(f"{year}: no finite surface u/v rows")
+        except Exception as exc:
+            errors.append(f"{year}: {type(exc).__name__}: {exc}")
+    if not pieces:
+        raise RuntimeError("HYCOM GOMb0.04流场读取失败（" + "; ".join(errors[:2]) + "）")
+    result = pd.concat(pieces, ignore_index=True)
+    result = result.drop_duplicates(["date", "latitude", "longitude"], keep="last")
+    result = result.sort_values(["date", "latitude", "longitude"]).reset_index(drop=True)
+    return result
+
 
 def _find_column(frame: pd.DataFrame, aliases: Iterable[str]) -> str | None:
     normalized = {str(c).strip().lower().replace(" ", "_"): c for c in frame.columns}

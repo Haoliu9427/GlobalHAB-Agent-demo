@@ -145,7 +145,7 @@
 | `u_ms` | 东向流速（m s⁻¹） |
 | `v_ms` | 北向流速（m s⁻¹） |
 
-在线NOAA CoastWatch适配器使用日尺度表层**地转流**u/v；上传模式可识别`u_current/v_current`、`u/v`、`uo/vo`等常见字段。绝对流速超过5 m s⁻¹的记录会被质量门控剔除，以减少cm/s误作m/s等单位错误。
+Florida/Gulf回顾分析默认在线读取HYCOM-TSIS GOMb0.04表层u/v流场；NOAA CoastWatch地转流保留为备选在线源。上传模式可识别`u_current/v_current`、`u/v`、`uo/vo`等常见字段。绝对流速超过5 m s⁻¹的记录会被质量门控剔除，以减少cm/s误作m/s等单位错误。
 
 回顾验证按候选lag构建“先前源观测→后续目标观测”配对，并分别计算真实流向约束、反向流负对照和仅空间邻近对照。该结果是流场约束的关联证据，不等于完整Lagrangian粒子轨迹或因果证明。
 

@@ -94,3 +94,45 @@ def test_habsos_fetch_enforces_sample_date_window(monkeypatch):
     assert "SAMPLE_DATE < DATE '2018-09-01'" in decoded
     assert len(result) == 1
     assert result.iloc[0]["date"] == pd.Timestamp("2018-08-15")
+
+
+def test_hycom_ncss_url_and_netcdf_parser(tmp_path):
+    import numpy as np
+    from scipy.io import netcdf_file
+    import globalhab_demo.florida_sts as florida_sts
+
+    url = florida_sts.build_hycom_gom_url("2018-08-01", "2018-08-31")
+    assert "GOMb0.04/reanalysis/2018/3z" in url
+    assert "var=u" in url and "var=v" in url
+    assert "west=272.800" in url and "east=280.000" in url
+    assert "vertCoord=0" in url
+
+    path = tmp_path / "hycom.nc"
+    with netcdf_file(path, "w") as ds:
+        ds.createDimension("time", 2)
+        ds.createDimension("lat", 2)
+        ds.createDimension("lon", 2)
+        time = ds.createVariable("time", "f8", ("time",))
+        time.units = "hours since 2000-01-01 00:00:00"
+        # 2018-08-01 and 2018-08-02
+        origin = pd.Timestamp("2000-01-01")
+        time[:] = [
+            (pd.Timestamp("2018-08-01") - origin).total_seconds() / 3600,
+            (pd.Timestamp("2018-08-02") - origin).total_seconds() / 3600,
+        ]
+        lat = ds.createVariable("lat", "f4", ("lat",))
+        lat[:] = [25.0, 26.0]
+        lon = ds.createVariable("lon", "f4", ("lon",))
+        lon[:] = [273.0, 274.0]
+        u = ds.createVariable("u", "f4", ("time", "lat", "lon"))
+        v = ds.createVariable("v", "f4", ("time", "lat", "lon"))
+        u[:] = np.full((2, 2, 2), 0.15, dtype="f4")
+        v[:] = np.full((2, 2, 2), -0.05, dtype="f4")
+
+    frame = florida_sts._hycom_netcdf_to_frame(path.read_bytes())
+    assert len(frame) == 8
+    assert frame["date"].min() == pd.Timestamp("2018-08-01")
+    assert frame["date"].max() == pd.Timestamp("2018-08-02")
+    assert frame["longitude"].min() == -87.0
+    assert frame["longitude"].max() == -86.0
+    assert frame["u_ms"].notna().all() and frame["v_ms"].notna().all()

@@ -29,7 +29,7 @@ Observed-data modules are kept separate from the synthetic benchmark:
 
 - South Australia: 115 qPCR observations from the 2025 Karenia event;
 - Norway: 5,919 observations from 2006–2019 toxic-algae and environmental monitoring;
-- Florida/Gulf: NOAA HABSOS `Karenia brevis` observations combined with surface-current data from NOAA CoastWatch or uploaded HYCOM/Copernicus/HF-radar products;
+- Florida/Gulf: NOAA HABSOS `Karenia brevis` observations combined by default with the HYCOM-TSIS GOMb0.04 Gulf reanalysis; NOAA CoastWatch and uploaded Copernicus/HF-radar current fields remain alternative sources;
 - field forward validation: user-supplied station observations and current fields.
 
 Third-party data attribution is documented in `THIRD_PARTY_DATA.md`.

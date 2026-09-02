@@ -1,6 +1,10 @@
 # GlobalHAB-Agent · GOAI复赛可运行环境
 
 
+### Broad model benchmark
+The Exploration & Validation page can dynamically compare a wide spectrum of familiar statistical and machine-learning baselines on the exact same blocked holdout, including GAM, SVM, Random Forest, Extra Trees, gradient boosting, XGBoost, LightGBM and MLP, alongside STS-Interaction GLM. Two compact temporal networks can be added on demand. No benchmark score is hard-coded into the live panel.
+
+
 ## 一眼看懂当前系统
 
 - **特别的数据**：把环境冲击、输运/汇聚背景、真实qPCR/长期监测和养殖脆弱性组织为分层证据，而不是把所有数据混成一张训练表。

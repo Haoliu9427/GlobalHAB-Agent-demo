@@ -23,3 +23,10 @@ A capability comparison explains how the system differs from station-only predic
 ## Model comparison panel refinement
 
 The Exploration & Validation page now keeps the science-structured model comparison in one visible panel. Logistic, Random Forest and STS-Interaction GLM are evaluated dynamically on the current blocked holdout; STS-Gated TCN is added through the on-demand four-model, five-seed comparison. The registered lightweight-TCN audit remains a separate supplemental audit rather than a current-run result.
+
+## Broad benchmark expansion
+- Exploration & Validation now exposes a current-configuration broad benchmark for reviewers outside marine ecology.
+- The live benchmark spans rule/statistical baselines, GAM, Gaussian NB, kNN, RBF-SVM, decision tree, Random Forest, Extra Trees, AdaBoost, Gradient Boosting, HistGradientBoosting, XGBoost, LightGBM, MLP, STS-Interaction GLM, plus optional Lightweight TCN and STS-Gated TCN.
+- All reported scores use the same held-out region and forward test rows; model selection occurs only inside the outer training era.
+- The broad benchmark is dynamic. When sequence length, lag, holdout region or forward-window fraction changes, old scores are invalidated rather than reused.
+- Performance-vs-compute visualisation is included so model complexity is evaluated rather than assumed to be beneficial.

@@ -21,6 +21,7 @@ REQUIRED_FILES = (
     "src/globalhab_demo/bio_response.py",
     "src/globalhab_demo/real_benchmark.py",
     "src/globalhab_demo/sts_gated_tcn.py",
+    "src/globalhab_demo/broad_benchmark.py",
     "data/real_case/derived/sa_qpcr_observations.csv",
     "data/real_case_norway/derived/norway_hab_observations.csv",
 )
@@ -31,6 +32,7 @@ REQUIRED_MODULES = (
     "globalhab_demo.bio_response",
     "globalhab_demo.real_benchmark",
     "globalhab_demo.sts_gated_tcn",
+    "globalhab_demo.broad_benchmark",
 )
 
 

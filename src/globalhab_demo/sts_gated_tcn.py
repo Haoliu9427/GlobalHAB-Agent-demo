@@ -445,6 +445,8 @@ def evaluate_current_interaction_glm(
         "brier_skill": float(metrics["brier_skill"]),
         "brier": float(metrics["brier"]),
         "ece": float(metrics["ece"]),
+        "recall_at_top20": float(metrics["recall_at_top20"]),
+        "precision_at_top20": float(metrics["precision_at_top20"]),
         "fit_seconds": float(perf_counter() - start),
         "selected_c": float(selected_c),
         "test_rows": int(outer_test.sum()),
@@ -588,4 +590,57 @@ def run_dynamic_model_comparison(
                 "change the Agent search or transfer synthetic performance to real cases."
             ),
         },
+    }
+
+
+def evaluate_current_sts_gated_tcn(
+    frame: pd.DataFrame,
+    lag_days: int,
+    holdout_region: str,
+    test_fraction: float,
+    seed: int = 42,
+    window: int = 14,
+) -> dict[str, object]:
+    """Fast current-setting STS-Gated TCN evaluation for the broad benchmark.
+
+    The compact 241-parameter architecture and epoch budget are fixed.  This
+    avoids using the outer test set for architecture selection while keeping the
+    live comparison responsive; the deeper five-seed audit remains separate.
+    """
+    work = _dual_branch_frame(frame, lag_days)
+    standard_work = _experiment_frame(frame, "downstream", lag_days)
+    _, standard_test, standard_cut = _split(standard_work, holdout_region, test_fraction)
+    outer_train, outer_test, cut = _outer_masks(work, holdout_region, test_fraction)
+    if cut != standard_cut:
+        raise RuntimeError("gated TCN cut date is not aligned with Agent split")
+    current_keys = set(map(tuple, work.loc[outer_test, ["date", "region"]].to_numpy()))
+    standard_keys = set(map(tuple, standard_test[["date", "region"]].to_numpy()))
+    if current_keys != standard_keys:
+        raise RuntimeError("gated TCN test rows are not identical to Agent test rows")
+    labels = work["hab_event"].to_numpy(dtype=float)
+    local_seq, upstream_seq, gate, science_skip = _prepare_sequences(work, outer_train, window)
+    start = perf_counter()
+    p, losses = _fit(
+        local_seq[outer_train], upstream_seq[outer_train], gate[outer_train], science_skip[outer_train],
+        labels[outer_train], seed=seed, epochs=CONFIG.max_epochs,
+    )
+    probability, cache = _forward(local_seq[outer_test], upstream_seq[outer_test], gate[outer_test], science_skip[outer_test], p)
+    metrics, _ = _metrics(labels[outer_test], probability, float(labels[outer_train].mean()))
+    gate_values = cache[2]
+    return {
+        "model": "STS-Gated TCN",
+        "pr_auc": float(metrics["pr_auc"]),
+        "brier_skill": float(metrics["brier_skill"]),
+        "ece": float(metrics["ece"]),
+        "recall_at_top20": float(metrics["recall_at_top20"]),
+        "precision_at_top20": float(metrics["precision_at_top20"]),
+        "fit_seconds": float(perf_counter() - start),
+        "complexity": f"{_parameter_count()}个可训练参数",
+        "test_rows": int(outer_test.sum()),
+        "test_events": int(labels[outer_test].sum()),
+        "cut_date": cut.date().isoformat(),
+        "epochs": int(CONFIG.max_epochs),
+        "gate_mean": float(gate_values.mean()),
+        "final_training_loss": float(losses[-1]),
+        "selection": "fixed compact STS-Gated architecture and epoch budget; no outer-test tuning",
     }

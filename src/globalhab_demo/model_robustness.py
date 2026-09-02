@@ -461,3 +461,53 @@ def run_model_complexity_check(
         "tuning_trace": tuning_trace,
         "card": card,
     }
+
+
+def evaluate_current_lightweight_tcn(
+    frame: pd.DataFrame,
+    route: str,
+    lag_days: int,
+    holdout_region: str,
+    test_fraction: float,
+    seed: int = 42,
+    window: int = 14,
+    epochs: int = 90,
+) -> dict[str, object]:
+    """Fast current-setting TCN benchmark using a pre-registered tiny architecture.
+
+    The architecture and epoch budget are fixed before seeing the current outer
+    test labels.  This is intentionally lighter than the five-seed registered
+    robustness audit and is meant only for the broad live benchmark table.
+    """
+    work = _experiment_frame(frame, route, lag_days)
+    train_frame, test_frame, cut = _split(work, holdout_region, test_fraction)
+    outer_train, outer_test, mask_cut = _outer_masks(work, holdout_region, test_fraction)
+    if cut != mask_cut or len(test_frame) != int(outer_test.sum()):
+        raise RuntimeError("current TCN rows are not aligned with the Agent split")
+    labels = work["hab_event"].to_numpy(dtype=float)
+    config = TCN_CANDIDATES[0]
+    scaled = _scale_frame(work, outer_train)
+    sequences = _causal_sequences(work, scaled, window)
+    start = perf_counter()
+    parameters, losses = _fit_tcn(
+        sequences[outer_train], labels[outer_train], config,
+        seed=seed, epochs=min(epochs, config.max_epochs),
+    )
+    probability, _ = _forward(sequences[outer_test], parameters)
+    metrics, _ = _metrics(labels[outer_test], probability, float(labels[outer_train].mean()))
+    return {
+        "model": "Lightweight TCN",
+        "pr_auc": float(metrics["pr_auc"]),
+        "brier_skill": float(metrics["brier_skill"]),
+        "ece": float(metrics["ece"]),
+        "recall_at_top20": float(metrics["recall_at_top20"]),
+        "precision_at_top20": float(metrics["precision_at_top20"]),
+        "fit_seconds": float(perf_counter() - start),
+        "complexity": f"{_parameter_count(config)}个可训练参数",
+        "test_rows": int(outer_test.sum()),
+        "test_events": int(labels[outer_test].sum()),
+        "cut_date": cut.date().isoformat(),
+        "epochs": int(min(epochs, config.max_epochs)),
+        "final_training_loss": float(losses[-1]),
+        "selection": "fixed registered TCN-119 architecture and 90-epoch budget; no outer-test tuning",
+    }

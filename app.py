@@ -1964,25 +1964,39 @@ with tab_agent:
             f"{int(card['test_events'])} 个事件；完全留出 {active_holdout}；前向切分日期 {card['cut_date']}。"
         )
 
-        # 图1：完整性能排名。模型名只出现在纵轴，避免在图内重复堆叠标签。
+        # 图1：完整性能排名。标题与图例均放在绘图区之外，避免与条形内容争抢顶部空间。
         chart_data = bench.sort_values("ap", ascending=True).copy()
+        st.markdown("##### 模型性能排名")
+        st.caption("同一严格留出集上的 Average Precision；所有方法使用完全相同的测试记录与事件。")
         fig_bench = px.bar(
             chart_data, x="ap", y="model", color="category", orientation="h",
-            title="模型性能排名：同一严格留出集上的 Average Precision",
             labels={"ap": "Average Precision", "model": "模型", "category": "方法类别"},
             text_auto=".3f",
         )
         fig_bench.update_traces(textposition="outside", cliponaxis=False)
+        # Plotly Express按颜色拆成多个trace后可能重新分组；显式固定全局AP排序。
+        fig_bench.update_yaxes(
+            categoryorder="array",
+            categoryarray=chart_data["model"].tolist(),
+            title_text="",
+        )
         fig_bench.update_layout(
-            height=max(560, 34 * len(chart_data)),
-            margin={"l": 10, "r": 55, "t": 70, "b": 10},
+            height=max(590, 36 * len(chart_data)),
+            margin={"l": 10, "r": 230, "t": 20, "b": 40},
             legend_title_text="方法类别",
-            legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "left", "x": 0},
+            legend={
+                "orientation": "v",
+                "yanchor": "top", "y": 1.0,
+                "xanchor": "left", "x": 1.01,
+                "itemsizing": "constant",
+            },
         )
         st.plotly_chart(fig_bench, width="stretch", config={"displayModeBar": False})
 
-        # 图2：性能—成本权衡。所有模型保留为点，但只给少数关键模型加文字，
-        # 其余模型通过悬停查看，避免19个标签互相遮挡。
+        # 图2：性能—成本权衡。所有模型保留为点，但只给少数关键模型加文字；
+        # 标题和类别图例继续放到绘图区之外，其余模型通过悬停查看。
+        st.markdown("##### 性能—计算成本权衡")
+        st.caption("横轴为平均拟合时间（对数轴），纵轴为Average Precision；虚线表示当前Pareto前沿。")
         scatter = bench.dropna(subset=["fit_seconds"]).copy()
         scatter["fit_seconds_plot"] = scatter["fit_seconds"].clip(lower=0.001)
         fig_eff = px.scatter(
@@ -1999,7 +2013,6 @@ with tab_agent:
                 "ece": ":.3f",
                 "category": True,
             },
-            title="性能—计算成本权衡",
             labels={
                 "fit_seconds_plot": "平均拟合时间（秒，对数轴）",
                 "ap": "Average Precision",
@@ -2050,13 +2063,25 @@ with tab_agent:
                 hoverinfo="skip",
             )
 
+        # 给顶部关键模型名称留出余量，避免文字触碰绘图区上边缘。
+        if not scatter.empty:
+            y_min = float(scatter["ap"].min())
+            y_max = float(scatter["ap"].max())
+            y_pad = max(0.025, 0.10 * max(y_max - y_min, 0.05))
+            fig_eff.update_yaxes(range=[max(0.0, y_min - y_pad), min(1.0, y_max + 1.8 * y_pad)])
         fig_eff.update_layout(
-            height=520,
-            margin={"l": 10, "r": 20, "t": 70, "b": 10},
-            legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "left", "x": 0},
+            height=550,
+            margin={"l": 10, "r": 230, "t": 25, "b": 55},
+            legend_title_text="方法类别",
+            legend={
+                "orientation": "v",
+                "yanchor": "top", "y": 1.0,
+                "xanchor": "left", "x": 1.01,
+                "itemsizing": "constant",
+            },
         )
         st.plotly_chart(fig_eff, width="stretch", config={"displayModeBar": False})
-        st.caption("排名图用于比较预测性能；成本图用于观察性能提升是否值得额外计算开销。未标注模型可悬停查看。")
+        st.caption("未直接标注的模型可悬停查看名称、AP、Brier Skill、ECE与拟合时间。")
 
         display_bench = bench.rename(columns={
             "model": "模型", "category": "方法类别", "ap": "AP", "ap_sd": "AP标准差",

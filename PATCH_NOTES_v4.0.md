@@ -42,3 +42,10 @@ The Exploration & Validation page now keeps the science-structured model compari
 - The performance-cost chart no longer labels every point; it labels only dynamically selected key models and exposes all other names through hover.
 - Added a dynamic Pareto frontier (higher AP, lower fitting time) to make the performance-efficiency trade-off easier to interpret.
 - Removed the literal Markdown-style registered-conclusion marker from the capacity-audit UI and replaced it with plain interface text.
+
+## Chart layout hotfix
+- Moved benchmark chart titles out of Plotly canvases to avoid title/legend overlap in Streamlit.
+- Moved method-category legends to a reserved right-side area with explicit figure margins.
+- Forced the AP ranking chart to use one global AP order even when Plotly splits traces by method category.
+- Added vertical headroom to the performance-cost scatter so key model labels do not collide with the top edge.
+- Kept all benchmark values dynamic; no static score cards were introduced.

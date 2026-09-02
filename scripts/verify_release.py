@@ -27,7 +27,6 @@ REQUIRED_FILES = (
     "src/globalhab_demo/florida_sts.py",
     "data/field_validation/field_observations_template.csv",
     "data/field_validation/field_currents_template.csv",
-    "SUBMISSION_MANIFEST.md",
     "prompts/README.md",
     "prompts/AGENT_POLICY.md",
     "docs/MINIMAL_REPRODUCTION.md",

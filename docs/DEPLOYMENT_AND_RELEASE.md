@@ -33,7 +33,7 @@ scripts/verify_release.py
 - Branch：`main`；
 - Main file path：`app.py`；
 - Python：建议3.12；
-- App visibility：比赛Demo设为公开。
+- App visibility：按部署需要设置。
 
 Python版本是在首次部署的Advanced settings中选择的。已部署App不能原地修改Python版本；如确需变更，记录仓库、入口、URL和Secrets后删除并按原URL重新部署。
 
@@ -46,9 +46,8 @@ Python版本是在首次部署的Advanced settings中选择的。已部署App不
 5. 挪威真实基准显示四个时间窗；
 6. 生物响应页显示81情景稳健性；
 7. 下载按钮可以生成CSV/JSON；
-8. 页脚显示v4.1；
 9. 手机和桌面端均无指标截断；
-10. 上传比赛前再执行一次`python scripts/verify_release.py`。
+9. 发布前再执行一次`python scripts/verify_release.py`。
 
 ## 版本发布原则
 

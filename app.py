@@ -106,7 +106,7 @@ REGION_LABELS = {
 
 
 st.set_page_config(
-    page_title="GlobalHAB-Agent | GOAI复赛",
+    page_title="GlobalHAB-Agent",
     page_icon="🌊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -513,10 +513,10 @@ def real_qpcr_map(frame: pd.DataFrame) -> go.Figure:
 st.markdown(
     """
     <div class="hero">
-      <div class="eyebrow" style="color:#a7eee2">GOAI · AI FOR RESEARCH</div>
+      <div class="eyebrow" style="color:#a7eee2">MARINE HAB ANALYSIS</div>
       <h1>GlobalHAB-Agent</h1>
-      <p class="tagline">面向跨区域有害藻华风险研判、真实事件回放、科学解释与养殖复核的 AI for Research 原型</p>
-      <p class="value">融合环境、输运、生物监测与养殖响应信息，在严格时间/空间留出条件下开展风险情景、模型比较和可追溯探索。</p>
+      <p class="tagline">跨区域有害藻华风险研判与验证</p>
+      <p class="value">融合环境、输运、生物监测与养殖响应数据，支持情景分析、时滞检验、模型比较和前向验证。</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -692,9 +692,9 @@ control_passed = recovered and bool(
     card["minimum_references"]["negative_controls_lower_than_candidate"]
 )
 kpi_grid([
-    ("当前合成基准结论", f"沿流关联 · {int(best['lag_days'])}天",
-     "完整留区与前向阻断；不是现实海域预报"),
-    ("反证检查", "通过" if control_passed else "待确认",
+    ("当前合成结果", f"沿流关联 · {int(best['lag_days'])}天",
+     "完整留区与前向阻断；仅用于合成验证"),
+    ("负对照", "通过" if control_passed else "待确认",
      "反向路径与时间置换均低于候选" if control_passed else "未满足预设反证条件"),
     ("Average Precision", f"{float(best['pr_auc']):.3f}", "当前设置下的合成留出排序"),
 ])
@@ -705,9 +705,7 @@ kpi_grid([
 ])
 
 st.caption(
-    "界面联动规则：风险研判与生物响应沙盘的情景输入会随控件即时重算；"
-    "侧边栏的合成探索设置计算量较大，需点击“应用设置并重新计算”。"
-    "标注“注册基准/方法设定”的内容为固定审计证据，不代表实时观测。"
+    "情景输入即时更新；合成探索设置需点击“应用设置并重新计算”。"
 )
 
 tab_alert, tab_real, tab_bio, tab_methods, tab_agent, tab_evidence = st.tabs([
@@ -717,10 +715,9 @@ tab_alert, tab_real, tab_bio, tab_methods, tab_agent, tab_evidence = st.tabs([
 
 with tab_alert:
     st.markdown("### 未来7/14/30天藻华风险情景推演")
-    st.caption("选择复合环境条件和预警窗口后，地图与下方风险排序会即时联动，用于比较哪些代表海区更值得优先复核。")
+    st.caption("选择环境情景和时间窗口后，地图与风险排序同步更新。")
     st.caption(
-        "地图覆盖12个代表性海洋生产区，包括东地中海、西/东印度洋、秘鲁—智利洪堡流和"
-        "智利巴塔哥尼亚峡湾。地名是情景锚点，输入值不是实时观测，结果也不是业务预报。"
+        "代表区域用于情景比较；输入为情景参数，不是实时观测。"
     )
     control_col, map_col = st.columns([1.0, 2.25], gap="large")
     with control_col:
@@ -749,7 +746,7 @@ with tab_alert:
         )
         transport = st.slider(
             "水团停留与汇聚背景", 0.0, 1.0, float(preset["transport_proxy"]), .05,
-            help="由微塑料浓度的有界变换构造，仅代理水团状态，不是流速或流向。",
+            help="由微塑料浓度的有界变换构造，作为水团停留/汇聚代理，不表示实际流速或流向。",
             key=f"transport_{preset_name}",
         )
 
@@ -812,17 +809,15 @@ with tab_alert:
     )
 
 with tab_real:
-    st.markdown("### 全球真实观测与前沿研究证据")
+    st.markdown("### 真实观测与验证")
     st.markdown(
-        '<div class="signal"><b>真实证据按任务分层使用：</b>南澳qPCR用于事件回放；挪威长期监测用于严格前向排序；'
-        'Florida/Gulf工作流把公开Karenia细胞计数与真实流场做回顾性STS匹配；现场前向接口则为后续出海/场站连续观测预留。'
-        '所有真实模块均与合成真值分开，数据不满足前提时返回defer。</div>',
+        '<div class="signal">南澳qPCR用于事件回放；挪威长期监测用于前向排序；Florida/Gulf将Karenia细胞计数与流场进行时滞匹配；现场数据可进行独立前向验证。数据不满足分析条件时返回DEFER。</div>',
         unsafe_allow_html=True,
     )
     evidence_cases = global_evidence_frame()
     st.plotly_chart(global_case_map(evidence_cases), width="stretch", config={"displayModeBar": False})
     st.caption(
-        "南澳大利亚和挪威为随包真实观测；Florida/Gulf模块连接NOAA公开Karenia与流场数据；现场接口用于后续出海和合作场站前向验证。"
+        "南澳大利亚和挪威数据随包提供；Florida/Gulf支持公开数据在线读取或CSV上传。"
     )
 
     real_observations, real_provenance = load_sa_real_case(ROOT / "data")
@@ -840,12 +835,12 @@ with tab_real:
     norway_card = norway_full_replay["card"]
 
     case_choice = st.selectbox(
-        "选择可运行的真实观测案例",
+        "选择数据集或验证方式",
         [
             "南澳大利亚 · 2025复杂Karenia事件",
             "挪威沿岸 · 2006–2019有毒藻监测",
             "Florida/Gulf · Karenia真实流场回顾验证",
-            "现场前向验证 · 出海/场站数据接入",
+            "现场前向验证",
         ],
     )
 
@@ -874,8 +869,8 @@ with tab_real:
             help="对象选择只改变脆弱性与复核内容，不改变真实qPCR观测。",
         )
         real_exposure = ra2.slider(
-            "养殖暴露情景（演示）", .25, 1.0, .80, .05, key="real_exposure",
-            help="当前尚未接入真实养殖场坐标和养殖密度。该系数仅演示暴露变化如何影响复核顺序。",
+            "养殖暴露系数", .25, 1.0, .80, .05, key="real_exposure",
+            help="用于敏感性分析；当前未接入真实养殖场坐标和养殖密度。",
         )
         sa_translation = build_sa_risk_translation(
             replay["sites"], real_production, real_exposure
@@ -922,7 +917,7 @@ with tab_real:
 
         st.markdown("#### 监测区域排序")
         st.caption(
-            "排序使用真实qPCR相对丰度，但养殖暴露仍为演示情景；优先级不是死亡率、经济损失率或停采阈值。"
+            "排序由qPCR相对丰度与设定暴露系数组合计算；结果不对应死亡率、经济损失率或停采阈值。"
         )
         st.dataframe(
             real_aqua[[
@@ -988,8 +983,8 @@ with tab_real:
             help="对象选择只改变脆弱性与复核内容，不改变真实监测计数。",
         )
         norway_exposure = nr2.slider(
-            "养殖暴露情景（演示）", .25, 1.0, .75, .05, key="norway_exposure",
-            help="当前尚未接入真实养殖场坐标和养殖密度。该系数仅演示暴露变化如何影响监测顺序。",
+            "养殖暴露系数", .25, 1.0, .75, .05, key="norway_exposure",
+            help="用于敏感性分析；当前未接入真实养殖场坐标和养殖密度。",
         )
         norway_translation = build_norway_risk_translation(
             norway_replay["stations"], norway_production, norway_exposure
@@ -1053,10 +1048,9 @@ with tab_real:
             environmental.columns = ["环境变量", "平均", "标准差", "最小", "中位", "最大"]
             st.dataframe(environmental, width="stretch", hide_index=True)
 
-        st.markdown("#### 注册前向回顾基准：环境状态能否提前排出下一次监测优先级？")
+        st.markdown("#### 前向回顾验证")
         st.caption(
-            "这一组指标是基于完整2006–2019监测序列预先注册的严格前向基准，"
-            "用于审计模型能力，因此不随上方回放日期/区域筛选变化；上方回放KPI才绑定当前筛选。"
+            "前向基准基于完整2006–2019监测序列固定计算，与上方回放筛选独立；模型与阈值选择仅使用训练期数据。"
         )
         benchmark_summary = norway_benchmark["summary"]
         st.markdown(
@@ -1102,7 +1096,7 @@ with tab_real:
             })
             fold_chart = px.bar(
                 fold_chart_data, x="test_window", y="average_precision", color="method",
-                barmode="group", title="四个前向时间窗：改进是否稳定？",
+                barmode="group", title="四个前向时间窗的Average Precision",
                 labels={"test_window": "测试年份", "average_precision": "Average Precision（AP）", "method": "方法"},
                 color_discrete_map={"训练期内层选择模型": "#0b7c78",
                                     "固定参考模型": "#d9a441", "季节基线": "#b8c8cc"},
@@ -1111,24 +1105,20 @@ with tab_real:
             fold_chart.update_layout(height=360, margin={"l": 5, "r": 5, "t": 55, "b": 5})
             st.plotly_chart(fold_chart, width="stretch", config={"displayModeBar": False})
         with rb2:
-            st.markdown("##### 结果如何解读")
-            st.markdown(
-                f"""
-                - 当前前向模型使用生态交互、稀有事件权重和时间衰减候选，但只在训练期内部选择；
-                  外层测试窗从不参与调参。
-                - 合并前向AP为 **{benchmark_summary['model_average_precision']:.3f}**，95%自助区间为
-                  **{benchmark_summary['model_average_precision_ci95'][0]:.3f}–{benchmark_summary['model_average_precision_ci95'][1]:.3f}**；
-                  相比固定参考模型提升 **{benchmark_summary['relative_improvement_over_reference']:.1%}**。
-                - 模型在 **{benchmark_summary['folds_beating_seasonal_average_precision']}/{benchmark_summary['valid_folds']}**
-                  个时间窗高于季节基线；标签置换参照 *p* = **{benchmark_summary['permutation_p']:.3f}**。
-                - Brier误差为 **{benchmark_summary['model_brier']:.4f}**，季节基线为
-                  **{benchmark_summary['seasonal_brier']:.4f}**。
-                - 最弱时间窗是 **{benchmark_summary['weakest_fold']}**（AP
-                  **{benchmark_summary['weakest_fold_average_precision']:.3f}**），说明跨时期稳定性仍不足。
-                - AP绝对值仍属初步研究信号；这是回顾性“下一次已观测样本”排序，不是连续14天业务预报。
-                """
-            )
-            with st.expander("检查四项防泄漏规则"):
+            st.markdown("##### 验证结果")
+            norway_result_table = pd.DataFrame([
+                ["Average Precision", f"{benchmark_summary['model_average_precision']:.3f}"],
+                ["AP 95%区间", f"{benchmark_summary['model_average_precision_ci95'][0]:.3f}–{benchmark_summary['model_average_precision_ci95'][1]:.3f}"],
+                ["固定参考模型 AP", f"{benchmark_summary['reference_average_precision']:.3f}"],
+                ["季节基线 AP", f"{benchmark_summary['seasonal_average_precision']:.3f}"],
+                ["高于季节基线的时间窗", f"{benchmark_summary['folds_beating_seasonal_average_precision']}/{benchmark_summary['valid_folds']}"],
+                ["标签置换 p", f"{benchmark_summary['permutation_p']:.3f}"],
+                ["Brier误差", f"{benchmark_summary['model_brier']:.4f}"],
+                ["最弱时间窗", f"{benchmark_summary['weakest_fold']} · AP {benchmark_summary['weakest_fold_average_precision']:.3f}"],
+            ], columns=["指标", "结果"])
+            st.dataframe(norway_result_table, width="stretch", hide_index=True)
+            st.caption("模型选择仅使用训练期数据；外层测试窗不参与调参。该任务为回顾性下一样本排序。")
+            with st.expander("验证约束"):
                 for rule in benchmark_summary["leakage_controls"]:
                     st.markdown(f"- {rule}")
         rbd1, rbd2, rbd3 = st.columns(3)
@@ -1143,13 +1133,13 @@ with tab_real:
             "norway_forward_benchmark_folds.csv", "text/csv",
         )
         rbd3.download_button(
-            "下载基准审计卡",
+            "下载前向验证卡",
             json.dumps(benchmark_summary, ensure_ascii=False, indent=2).encode("utf-8"),
             "norway_forward_benchmark_card.json", "application/json",
         )
         st.markdown("#### 监测区域排序")
         st.caption(
-            "相对危害指数仅比较当前回放窗口内各区域的对数丰度，不是地方毒素阈值；养殖暴露仍为演示情景。"
+            "相对危害指数基于当前回放窗口内的对数丰度；不对应地方毒素阈值。"
         )
         st.dataframe(
             norway_aqua[[
@@ -1193,10 +1183,9 @@ with tab_real:
 
 
     elif case_choice.startswith("Florida/Gulf"):
-        st.markdown("#### Florida/Gulf of Mexico：Karenia真实流场约束STS回顾验证")
+        st.markdown("#### Florida/Gulf of Mexico：Karenia流场约束回顾分析")
         st.caption(
-            "第一阶段使用真实Karenia brevis细胞计数与真实连续流场检验‘先在上游出现的高丰度信号，"
-            "是否在候选时滞后沿流向与后续下游观测更一致’。这里是回顾性关联验证，不把单步流速投影当成完整粒子追踪。"
+            "将Karenia brevis细胞计数与表层流场按候选时滞进行上游—下游匹配，并与无流向和反向流对照比较。流场位移采用一阶投影，不等同于完整粒子追踪。"
         )
         st.dataframe(FLORIDA_SOURCE_CATALOG, width="stretch", hide_index=True)
         st.markdown(
@@ -1336,22 +1325,21 @@ with tab_real:
                     st.caption("位置为最新观测点按局地表层流速作的一阶欧拉投影，仅用于形成下一批采样候选，不等同于业务粒子轨迹预报。")
                 fd1, fd2 = st.columns(2)
                 fd1.download_button(
-                    "下载Florida时滞审计", lag_summary.to_csv(index=False).encode("utf-8-sig"),
+                    "下载Florida时滞结果", lag_summary.to_csv(index=False).encode("utf-8-sig"),
                     "florida_gulf_sts_lag_summary.csv", "text/csv",
                 )
                 fd2.download_button(
                     "下载最佳流向匹配", best_pairs.to_csv(index=False).encode("utf-8-sig"),
                     "florida_gulf_sts_best_pairs.csv", "text/csv",
                 )
-            st.caption("结论边界：这一阶段把真实连续流场与真实但不规则的Karenia细胞计数对齐；它比合成路径更接近现实，但仍不是连续毒素/生物响应的前向现场验证。")
+            st.caption("该分析使用不规则Karenia观测与连续流场进行回顾性匹配；未包含连续毒素或生物响应观测。")
         elif florida_result is not None:
-            st.warning("时间范围、阈值、时滞或数据来源已经变化，请重新运行；旧Florida结果不会继续作为当前结果显示。")
+            st.warning("时间范围、阈值、时滞或数据来源已变化，请重新运行。")
 
     else:
-        st.markdown("#### 现场前向验证接口：为后续出海与合作场站直接接入数据")
+        st.markdown("#### 现场前向验证")
         st.caption(
-            "第二阶段不是预填一个未来结果，而是把现场数据接入协议和前向验证规则固定下来："
-            "较早时间块只用于选择lag，后续时间块一次性评估；数据不足则defer。"
+            "上传连续站点观测与流场数据。训练时段用于选择传播时滞，后续时段仅用于独立评估；样本量、时间连续性或流场覆盖不足时返回DEFER。"
         )
         t1, t2 = st.columns(2)
         t1.download_button(
@@ -1388,11 +1376,11 @@ with tab_real:
                 readiness = field_quality_gate(field_obs, field_cur, float(field_threshold), strict_forward=True)
                 kpi_grid([
                     ("现场观测", f"{readiness['observations']:,}", f"{readiness['sampling_dates']}个日期"),
-                    ("空间位置", f"{readiness['locations']}", "建议至少上游/中间/下游3站"),
+                    ("空间位置", f"{readiness['locations']}", "至少3个空间位置"),
                     ("事件观测", f"{readiness['events']}", f"阈值 {int(field_threshold):,}"),
                     ("流场日期覆盖", f"{readiness['current_date_overlap']:.1%}", "越高越适合前向分析"),
                     ("时间跨度", f"{readiness['date_span_days']}天", "建议覆盖多个传播窗口"),
-                    ("前向门控", readiness["status"].upper(), "不满足则defer"),
+                    ("质量状态", readiness["status"].upper(), "不满足条件时DEFER"),
                 ])
                 if readiness["reasons"]:
                     st.warning("当前还不能进入严格前向验证：" + "；".join(readiness["reasons"]))
@@ -1416,7 +1404,7 @@ with tab_real:
                         fs = field_result["test_summary"]
                         kpi_grid([
                             ("训练期选择lag", f"{field_result['selected_lag']}天", f"截止 {pd.Timestamp(field_result['cut_date']).date()} 前选择"),
-                            ("前向测试AP", f"{fs['flow_ap']:.3f}", "后续时间块一次性评估"),
+                            ("前向测试AP", f"{fs['flow_ap']:.3f}", "独立后续时间块"),
                             ("无流向对照AP", f"{fs['no_flow_ap']:.3f}", f"增量 {fs['flow_vs_no_flow']:+.3f}"),
                             ("反向流对照AP", f"{fs['reverse_ap']:.3f}", f"增量 {fs['flow_vs_reverse']:+.3f}"),
                             ("测试配对", f"{fs['samples']}", f"{fs['events']}个事件"),
@@ -1435,13 +1423,13 @@ with tab_real:
                             )
                             pf.update_layout(height=430, margin={"l": 0, "r": 0, "t": 10, "b": 0})
                             st.plotly_chart(pf, width="stretch", config={"displayModeBar": False})
-                        st.success("现场数据已经通过质量门控并完成严格前向测试。结果仍需与毒素、连续生物观测和现场水团追踪共同解释。")
+                        st.success("前向验证完成。结果需结合毒素、生物观测和水团追踪资料解释。")
                     else:
-                        st.warning("系统返回DEFER：" + "；".join(field_result["quality"]["reasons"]))
+                        st.warning("状态：DEFER。" + "；".join(field_result["quality"]["reasons"]))
             except Exception as exc:
                 st.error(f"现场数据解析失败：{exc}")
         else:
-            st.info("上传两张CSV后，系统会先显示数据质量门控；只有满足时间、空间、事件和流场覆盖条件才允许运行前向验证。")
+            st.info("上传观测与流场CSV后进行质量检查；满足时间、空间、事件和流场覆盖条件后可运行前向验证。")
 
 with tab_bio:
     st.markdown("### 网箱鱼生物响应沙盘")
@@ -1469,7 +1457,7 @@ with tab_bio:
     )
     st.caption(
         "青色点可进入网箱鱼情景比较；橙色和紫色点用于呈现全球捕捞或贝类生产背景。"
-        "洪堡流和西印度洋不属于网箱鱼模型的适用对象，因此只在地图中保留。"
+        "洪堡流和西印度洋不进入网箱鱼模型，仅保留区域背景。"
     )
 
     bio_control, bio_result = st.columns([1.0, 2.15], gap="large")
@@ -1481,8 +1469,8 @@ with tab_bio:
         if bio_preset_name == "区域背景情景":
             bio_preset = region_profile
             bio_source_note = (
-                f"当前示范对象：{region_profile['representative_stock']}。"
-                "初始值用于区域间情景比较，可继续调整；不是实时场站观测或当地运营阈值。"
+                f"代表对象：{region_profile['representative_stock']}。"
+                "初始值为区域情景参数，可调整；不对应实时场站观测或运营阈值。"
             )
         else:
             bio_preset = BIO_SCENARIO_PRESETS[bio_preset_name]
@@ -1492,7 +1480,7 @@ with tab_bio:
             "藻华危害压力（0–100）", 0.0, 100.0,
             float(bio_preset["hab_pressure"]), 1.0,
             key=f"bio_hab_{bio_key}",
-            help="无量纲外部压力。真实事件锚点只表示所选回放内的相对峰值，不是毒素或死亡阈值。",
+            help="无量纲外部压力。真实事件锚点仅表示所选回放内的相对峰值，不对应毒素或死亡阈值。",
         )
         bio_mhw = st.slider(
             "海洋热浪强度（°C）", 0.0, 5.0,
@@ -1503,13 +1491,13 @@ with tab_bio:
             "场景溶解氧（mg L⁻¹）", 1.0, 10.0,
             float(bio_preset["dissolved_oxygen_mg_l"]), .1,
             key=f"bio_do_{bio_key}",
-            help="情景输入，不代表当前真实养殖场观测。",
+            help="情景输入，不对应实时养殖场观测。",
         )
         bio_density = st.slider(
             "养殖密度（kg m⁻³）", 2.0, 45.0,
             float(bio_preset["stocking_density_kg_m3"]), 1.0,
             key=f"bio_density_{bio_key}",
-            help="用于模拟密度相关氧负荷；不是推荐养殖密度。",
+            help="用于模拟密度相关氧负荷，不作为养殖密度建议。",
         )
         bio_feed = st.slider(
             "计划投喂水平（%）", 0.0, 120.0,
@@ -1574,7 +1562,7 @@ with tab_bio:
                 "区域名称和生产对象提供情景背景，环境与养殖参数为可调整初始值。"
             )
         else:
-            anchor_text = "本情景全部输入均为可调整的科研演示值，不代表具体养殖场。"
+            anchor_text = "当前输入为可调整情景参数，未对应具体养殖场观测。"
         st.markdown(
             f'<div class="case-card"><span class="case-badge">数据来源</span><br>'
             f'{html.escape(anchor_text)}</div>', unsafe_allow_html=True,
@@ -1582,7 +1570,7 @@ with tab_bio:
         kpi_grid([
             ("当前生产情景", selected_bio_region, str(region_profile["representative_stock"])),
             ("基准峰值压力", f"{baseline['peak_pressure_index']:.1f}/100", "维持监测情景"),
-            ("沙盘最低压力方案", str(lowest["intervention"]), "仅为情景比较，不是自动建议"),
+            ("最低压力情景", str(lowest["intervention"]), "情景比较结果"),
         ])
         kpi_grid([
             ("累计压力变化", f"−{lowest['pressure_load_reduction_vs_baseline_pct']:.1f}%", "相对维持监测基准"),
@@ -1698,9 +1686,7 @@ with tab_bio:
     robustness_summary = bio_robustness["summary"]
     robustness_card = bio_robustness["card"]
     st.markdown(
-        '<div class="signal"><b>邻域压力测试：</b>系统自动组合HAB压力±10%、MHW±0.4°C、'
-        'DO±0.5 mg L⁻¹和密度±10%，形成81个邻近情景。报告帕累托出现率，'
-        '而不是强行给出一个“唯一最佳操作”。</div>',
+        '<div class="signal">HAB压力±10%、MHW±0.4°C、DO±0.5 mg L⁻¹和密度±10%组合形成81个邻近情景，并计算各干预的帕累托出现率。</div>',
         unsafe_allow_html=True,
     )
     robustness_chart = px.scatter(
@@ -1754,8 +1740,7 @@ with tab_bio:
         },
     )
     st.caption(
-        "帕累托出现率高表示该方案在“降低相对压力”和“保留摄食机会”两个目标上较少被其他方案同时压过；"
-        "它不是现场有效率或推荐概率。"
+        "帕累托出现率表示方案在“降低相对压力”和“保留摄食机会”两目标下处于非劣解的频率，不表示现场有效率或推荐概率。"
     )
 
     st.markdown("#### 干预情景对照表")
@@ -1806,7 +1791,7 @@ with tab_bio:
             "但尚未通过具体鱼种的死亡、生长或代谢数据进行现场标定。"
         )
         evidence_rows = [
-            ["藻华危害压力", "真实回放相对峰值" if "真实" in bio_preset_name else "科研情景", "危害外部输入"],
+            ["藻华危害压力", "真实回放相对峰值" if "真实" in bio_preset_name else "情景参数", "危害外部输入"],
             ["MHW强度", "情景假设", "热压力输入"],
             ["溶解氧", "情景假设", "低氧压力输入"],
             ["养殖密度", "情景假设", "密度与耗氧代理"],
@@ -1844,8 +1829,7 @@ with tab_bio:
         "cage_fish_intervention_robustness.csv", "text/csv",
     )
     st.warning(
-        "能力边界：本模块不输出死亡率、真实生物量损失、毒素浓度或养殖场级预测；"
-        "降低投喂、增氧和转移等措施必须由养殖人员结合真实DO、鱼群行为、鳃部状态、设备能力和监管要求决定。"
+        "本模块输出相对压力与情景对照，不计算死亡率、生物量损失或毒素浓度；现场措施需结合实测DO、鱼群状态、设备能力和管理要求。"
     )
     st.caption(
         "架构参考：[Føre等，Computers and Electronics in Agriculture（2024）]"
@@ -1856,15 +1840,13 @@ with tab_bio:
     )
 
 with tab_methods:
-    st.markdown("### 重大科学问题：生态响应为什么会与冲击发生地错位？")
+    st.markdown("### 冲击—输运—响应关系")
     st.markdown(
-        '<div class="formula">传统假设：环境异常 A(t) → A(t) 的生态响应　｜　'
-        '本项目检验：Shock A(t) → Transport → Response B(t + τ)</div>',
+        '<div class="formula">Local: Shock A(t) → Response A(t)　｜　Transport: Shock A(t) → Transport → Response B(t + τ)</div>',
         unsafe_allow_html=True,
     )
     st.caption(
-        "因此模型不只问某个站点是否异常，还要同时识别冲击持续多久、数据是否支持传播分析、"
-        "最可能的方向与时滞，以及影响是否扩展到邻近海区。"
+        "依次检验异常持续时间、分析条件、传播方向与时滞，以及邻近区域关联。"
     )
     st.markdown("### 异常识别与跨区域影响")
     st.caption("以下分析共享同一套时空数据、时间窗口和验证设置。")
@@ -1981,7 +1963,7 @@ with tab_methods:
     te_chart.add_vline(x=14, line_dash="dot", line_color="#6a4c93")
     te_chart.update_layout(height=350, margin={"l": 5, "r": 5, "t": 20, "b": 5})
     st.plotly_chart(te_chart, width="stretch", config={"displayModeBar": False})
-    st.success(f"本轮结果指向约 {peak_lag} 天的跨区域传播窗口；是否等于合成数据预先植入的14天模式由当前运行结果决定。")
+    st.caption(f"当前峰值时滞：{peak_lag}天。14天为合成生成器预设真值，仅用于事后核验。")
     te_display = te_cte_network[[
             "source_region", "target_region", "lag_days", "te_bits", "cte_bits",
             "reverse_cte_bits", "net_directionality_bits", "permutation_p", "fdr_q",
@@ -2038,7 +2020,7 @@ with tab_methods:
     ])
     st.caption(
         "区域传播关系根据预设输运方向标准化；14天窗口来自前述风险模式和传播路径结果。"
-        "这里量化的是合成环境中的关联强度，用于验证影响分解流程。"
+        "效应值表示合成环境中的关联强度，用于空间影响分解。"
     )
     visible_effects = effect_plot[[
         "变量", "影响", "effect_per_1sd", "ci90_lower", "ci90_upper"
@@ -2080,8 +2062,8 @@ with tab_agent:
     with c2:
         st.markdown("#### 随机探索参照")
         kpi_grid([
-            ("随机探索识别14天模式", f"{float(random_ref['hidden_signal_recovery_rate']):.1%}", "识别到预先植入14天沿流模式的重复比例"),
-            ("随机探索中位效用", f"{float(random_ref['median_best_utility']):.3f}", "用于判断Agent选择增益"),
+            ("随机探索识别14天模式", f"{float(random_ref['hidden_signal_recovery_rate']):.1%}", "识别生成器14天真值的重复比例"),
+            ("随机探索中位效用", f"{float(random_ref['median_best_utility']):.3f}", "随机策略的最佳效用分布"),
             ("重复对照次数", f"{int(random_ref['repeats'])}", "每次使用相同候选空间"),
         ])
         st.caption(
@@ -2094,10 +2076,9 @@ with tab_agent:
             width="stretch", hide_index=True,
         )
 
-    st.markdown("#### Agent策略Benchmark：同一24候选、同一预算，谁更会选下一项实验？")
+    st.markdown("#### 实验选择策略对比")
     st.caption(
-        "这里不改变任何预测模型或合成数据，只替换实验选择策略。Bayesian Expected Improvement、"
-        "Bayesian Information Gain和Thompson Sampling只看到已经执行实验的反馈；14天隐藏真值只在整条轨迹结束后用于评分。"
+        "在相同候选空间和实验预算下比较启发式、Bayesian Expected Improvement、Bayesian Information Gain、Thompson Sampling与随机策略。14天真值不参与策略选择。"
     )
     policy_key = (
         int(active_config["days"]), int(active_config["seed"]), int(active_config["budget"]),
@@ -2105,7 +2086,7 @@ with tab_agent:
     )
     run_policy_bench = st.button("运行当前设置的Agent策略对比", key="run_agent_policy_benchmark")
     if run_policy_bench:
-        with st.spinner("正在用同一实验景观比较启发式、贝叶斯和随机策略……"):
+        with st.spinner("正在比较实验选择策略……"):
             st.session_state["agent_policy_benchmark"] = cached_policy_benchmark(
                 catalog, int(active_config["budget"]), int(active_config["seed"])
             )
@@ -2145,13 +2126,12 @@ with tab_agent:
             available_cols = [c for c in trace_cols if c in policy_bench["trajectory"].columns]
             st.dataframe(policy_bench["trajectory"][available_cols], width="stretch", hide_index=True)
         st.caption(
-            "当前对比属于同一合成实验景观上的策略审计：它回答‘同样只有这些反馈和8步预算时，下一项实验怎么选更高效’，"
-            "不代表贝叶斯策略已经在真实海洋中优于其他科研策略。"
+            "策略比较基于同一合成实验空间；14天真值不参与策略选择，真实数据上的策略效率需单独验证。"
         )
     elif policy_bench is not None:
-        st.warning("当前合成探索设置已经变化，请重新运行Agent策略Benchmark；旧策略结果不会冒充当前结果。")
+        st.warning("当前探索设置已变化，请重新运行策略对比。")
 
-    st.markdown("#### 完整探索轨迹：正结果、负结果和成本均保留")
+    st.markdown("#### 完整探索轨迹")
     display = log[[
         "step", "hypothesis", "action_id", "status", "pr_auc", "pr_auc_gain",
         "brier_skill", "ece", "false_positive_rate_at_top20",
@@ -2170,10 +2150,9 @@ with tab_agent:
     st.line_chart(plot, height=320)
     st.caption("Top20%报警是固定容量排名，不使用留出标签选择阈值。")
 
-    st.markdown("#### 模型对比与科学结构改进")
+    st.markdown("#### 模型对比")
     st.caption(
-        "这里不是只比较模型大小，而是比较三种建模思想：经典线性基线、非线性树模型，以及把沿流传导与营养背景显式写入结构的STS交互模型。"
-        "前三个模型直接使用当前候选、当前留出海区和当前前向测试窗动态计算；更深的STS-Gated TCN通过下方5随机种子精细对照按需运行。"
+        "Logistic、Random Forest和STS-Interaction GLM使用当前候选、留出海区和前向测试窗计算；时序深度模型在完整Benchmark中按需运行。"
     )
     selected_pair = catalog[
         catalog["route"].eq(str(best["route"]))
@@ -2209,15 +2188,15 @@ with tab_agent:
 
     current_models = [
         {
-            "模型": "Logistic", "模型思想": "经典线性基线",
-            "科学结构": "当前候选的环境/季节特征",
+            "模型": "Logistic", "模型类型": "线性基线",
+            "特征结构": "当前候选的环境/季节特征",
             "Average Precision": float(logistic_current["pr_auc"]),
             "Brier Skill": float(logistic_current["brier_skill"]), "ECE": float(logistic_current["ece"]),
             "测试记录": int(logistic_current["test_rows"]), "测试事件": int(logistic_current["test_events"]),
         },
         {
-            "模型": "Random Forest", "模型思想": "非线性集成学习",
-            "科学结构": "允许变量间非线性与高阶分裂",
+            "模型": "Random Forest", "模型类型": "树集成",
+            "特征结构": "变量非线性与高阶分裂",
             "Average Precision": float(rf_current["pr_auc"]),
             "Brier Skill": float(rf_current["brier_skill"]), "ECE": float(rf_current["ece"]),
             "测试记录": int(rf_current["test_rows"]), "测试事件": int(rf_current["test_events"]),
@@ -2225,8 +2204,8 @@ with tab_agent:
     ]
     if interaction_available:
         current_models.append({
-            "模型": "STS-Interaction GLM", "模型思想": "科学结构交互模型",
-            "科学结构": "沿流热异常 + 营养背景 + 显式交互项",
+            "模型": "STS-Interaction GLM", "模型类型": "结构化GLM",
+            "特征结构": "沿流热异常 + 营养背景 + 显式交互项",
             "Average Precision": float(interaction_current["pr_auc"]),
             "Brier Skill": float(interaction_current["brier_skill"]), "ECE": float(interaction_current["ece"]),
             "测试记录": int(interaction_current["test_rows"]), "测试事件": int(interaction_current["test_events"]),
@@ -2234,21 +2213,16 @@ with tab_agent:
     current_model_frame = pd.DataFrame(current_models)
     st.dataframe(current_model_frame, width="stretch", hide_index=True)
 
-    st.markdown("##### 为什么要加入STS-Interaction GLM")
+    st.markdown("##### STS-Interaction GLM 结构")
     st.write(
-        "普通模型主要从特征中学习统计关系；STS-Interaction GLM把当前科学假设直接写进模型："
-        "上游滞后热异常经输运门控形成传导信号，营养盐形成背景条件，两者再通过显式交互项共同影响HAB风险。"
-        "因此它检验的是科学结构是否比单纯增加模型容量更有价值，而不是简单把网络做深。"
+        "模型包含上游滞后热异常、输运门控、营养背景及其显式交互项；正则参数仅在训练时段内选择。"
     )
-    st.markdown("##### 完整Benchmark：从统计基线到科学结构模型")
+    st.markdown("##### 完整模型Benchmark")
     st.caption(
-        "为了让不同学科评委都能直接判断模型改进是否成立，完整Benchmark覆盖规则/统计基线、非线性统计、经典机器学习、"
-        "树集成、Boosting、神经网络和STS科学结构模型。所有方法使用当前lag、完全相同的留出海区和前向测试窗；"
-        "需要选择超参数的方法只在外层训练期最后20%的时间块上选择，不读取留出标签。"
+        "Benchmark覆盖规则/统计基线、非线性统计、经典机器学习、树集成、Boosting、神经网络和STS结构模型。所有方法使用相同lag、留出海区和前向测试窗；超参数仅在训练时段内部选择。"
     )
     st.caption(
-        "说明：上方Logistic/RF属于24候选Agent主搜索中的固定候选；完整Benchmark是独立的公平模型审计，"
-        "允许各成熟方法仅在训练期内部选择小型超参数，因此Benchmark中的RF等数值可能与主搜索卡片略有不同。"
+        "上方Logistic/RF为候选搜索中的固定配置；完整Benchmark允许在训练时段内进行小型超参数选择，因此同名模型的数值可能略有不同。"
     )
     catalogue_view = benchmark_catalogue()
     with st.expander(f"查看将参与比较的 {len(catalogue_view)} 种方法", expanded=False):
@@ -2261,7 +2235,7 @@ with tab_agent:
     b1, b2 = st.columns([1, 1])
     with b1:
         run_core_benchmark = st.button(
-            "运行完整Benchmark（成熟/经典方法）", key="run_broad_benchmark_core", type="primary"
+            "运行非深度模型Benchmark", key="run_broad_benchmark_core", type="primary"
         )
     with b2:
         run_deep_benchmark = st.button(
@@ -2302,12 +2276,12 @@ with tab_agent:
         if best_classic is not None:
             summary_cards.append(("最佳经典机器学习", f"{best_classic['model']} · {best_classic['ap']:.3f}", "同一测试集"))
         if best_boost is not None:
-            summary_cards.append(("最佳Boosting", f"{best_boost['model']} · {best_boost['ap']:.3f}", "成熟强基线"))
-        summary_cards.append(("STS-Interaction GLM", f"{sts_row['ap']:.3f}", "科学结构模型；当前动态结果"))
+            summary_cards.append(("最佳Boosting", f"{best_boost['model']} · {best_boost['ap']:.3f}", "当前留出集"))
+        summary_cards.append(("STS-Interaction GLM", f"{sts_row['ap']:.3f}", "当前留出集"))
         kpi_grid(summary_cards)
 
         st.caption(
-            f"公平性检查：{int(card['model_count'])}种方法；测试集 {int(card['test_rows'])} 条记录 / "
+            f"测试集一致性：{int(card['model_count'])}种方法；测试集 {int(card['test_rows'])} 条记录 / "
             f"{int(card['test_events'])} 个事件；完全留出 {active_holdout}；前向切分日期 {card['cut_date']}。"
         )
 
@@ -2450,29 +2424,11 @@ with tab_agent:
             st.dataframe(broad["tuning_trace"], width="stretch", hide_index=True)
             st.dataframe(broad["seed_results"], width="stretch", hide_index=True)
     elif broad is not None:
-        st.warning("当前序列长度、lag、留出区或测试比例已经变化。请重新运行Benchmark；旧结果不会继续作为当前结果显示。")
+        st.warning("当前序列长度、lag、留出区或测试比例已变化，请重新运行Benchmark。")
 
-    st.markdown("##### 补充：注册容量审计")
-    st.caption(
-        "下方轻量TCN注册试跑只作为独立容量敏感性证据。它不替代上面的当前动态完整Benchmark，也不会伪装成当前参数下的实时结果。"
-    )
-    registered_default = (
-        int(active_config["days"]) == 720
-        and int(active_config["seed"]) == 42
-        and int(active_config["budget"]) == 8
-        and active_config["holdout_region"] == "Synthetic_Region_D"
-        and abs(float(active_config["test_fraction"]) - 0.25) < 1e-9
-    )
-    if registered_default:
-        st.info(
-            "当前设置与轻量TCN注册试跑一致，因此下方5随机种子结果可直接与当前经典模型对照。"
-        )
-    else:
-        st.warning(
-            "当前设置不是轻量TCN注册试跑的默认配置（720天、seed 42、预算8、留出Region D、前向25%）。"
-            "下方TCN结果仅作独立稳健性证据，不与当前卡片混算。"
-        )
-    with st.expander("查看轻量TCN注册试跑：5随机种子与训练区内选择"):
+    st.markdown("##### 轻量TCN容量试验")
+    with st.expander("查看5随机种子结果"):
+        st.caption("固定配置：720天、seed 42、预算8、留出Region D、前向25%；与当前动态Benchmark分开记录。")
         tcn_row = model_complexity_summary[
             model_complexity_summary["model"].eq("轻量TCN")
         ].iloc[0]
@@ -2481,7 +2437,7 @@ with tab_agent:
         ]["ap_median"].max())
         audit_result = "稳定增益" if model_complexity_card["stable_improvement"] else "未见稳定增益"
         st.write(
-            f"容量审计结果：{audit_result}。轻量TCN中位AP {float(tcn_row['ap_median']):.3f}，"
+            f"容量试验结果：{audit_result}。轻量TCN中位AP {float(tcn_row['ap_median']):.3f}，"
             f"经典模型最佳中位AP {classical_ap:.3f}。"
         )
         st.caption(
@@ -2513,7 +2469,7 @@ with tab_agent:
             )
 
 with tab_evidence:
-    st.markdown("### 特殊数据：四层证据融合与质量门控")
+    st.markdown("### 数据融合与质量控制")
     st.write(
         "环境冲击（SST/MHW/NO₃/PO₄/Si） → 输运背景（停留/汇聚代理） → "
         "真实生物危害（qPCR/长期监测） → 养殖脆弱性（DO/密度/响应情景）。"
@@ -2538,11 +2494,11 @@ with tab_evidence:
     ])
     quality_flow = pd.DataFrame([
         ["时间/空间对齐", "统一日尺度与海区索引", "不满足则不进入跨区比较"],
-        ["异常识别", "季节p90 + 7/14/30/60天MAD", "避免用单一固定阈值解释所有海区"],
-        ["缺失与连续性", "完整度、连续性、样本/事件支持", "决定运行、降级或defer"],
-        ["标签/留出质量", "测试窗必须同时含事件与非事件", "不满足则保留上一轮有效结果并提示重算"],
-        ["证据分工", "合成真值 / 事件回放 / 前向监测分层", "避免一份数据同时训练又证明自己"],
-    ], columns=["质量环节", "当前处理", "为什么这样做"])
+        ["异常识别", "季节p90 + 7/14/30/60天MAD", "至少2个尺度一致"],
+        ["缺失与连续性", "完整度、连续性、样本/事件支持", "不满足阈值时降级或DEFER"],
+        ["标签/留出质量", "测试窗必须同时含事件与非事件", "不满足时不计算验证指标"],
+        ["数据用途", "合成真值 / 事件回放 / 前向监测分层", "各数据层独立报告"],
+    ], columns=["质量环节", "处理方法", "判定规则"])
     st.dataframe(quality_flow, width="stretch", hide_index=True)
 
     st.markdown("### 数据来源与结果复核")
@@ -2560,48 +2516,39 @@ with tab_evidence:
             )
             st.markdown(f'[论文]({case_row["url"]}) · [开放数据]({case_row["data_url"]})')
 
-    st.markdown("### 结论与证据对应关系")
+    st.markdown("### 结果与证据")
     claim_ledger = pd.DataFrame([
-        ["Agent能重新识别预先植入的14天沿流模式", "匿名合成真值", "完整留区+前向阻断；随机搜索与时间置换", "软件正确性通过；不代表真实海洋性能"],
-        ["真实环境状态包含有限但可复核的下一次监测排序信号", "挪威2006–2019开放监测", "训练期内层选择；四个前向窗；AP区间；容量/误报分解", "AP绝对值与弱窗限制明显；不是业务报警"],
-        ["南澳事件危害证据可定位到时间、地点和藻种", "115条现场qPCR", "原始工作簿、派生表、哈希与事件卡", "采样峰值；不代表全海域连续最大值"],
-        ["真实危害可以转为现场复核顺序", "真实丰度+显式暴露/脆弱性假设", "证据矩阵逐项标注观测、假设和缺口", "不是损失概率、毒素阈值或监管指令"],
+        ["14天沿流模式可被重新识别", "匿名合成真值", "完整留区+前向阻断；随机搜索与时间置换", "仅用于方法验证"],
+        ["前向监测排序具有有限区分能力", "挪威2006–2019开放监测", "训练期内层选择；四个前向窗；AP区间；容量/误报分解", "不作为业务报警"],
+        ["南澳qPCR可定位时间、地点和藻种", "115条现场qPCR", "原始工作簿、派生表、哈希与事件卡", "峰值仅对应采样记录"],
+        ["丰度与暴露参数可形成复核排序", "真实丰度+设定暴露/脆弱性参数", "观测、参数与缺失项分开记录", "不对应损失概率、毒素阈值或监管指令"],
         ["网箱鱼干预存在压力—摄食权衡", "公开方程与参数设定", "±15%参数包络+81个邻近输入情景", "尚无物种/场站标定，不预测死亡率"],
-        ["传播方向与邻区影响可被分解", "合成基准", "TE/CTE置换、BH-FDR与Durbin效应分解", "关联与传播线索，不宣称因果"],
-    ], columns=["可公开结论", "证据来源", "检查方式", "不能据此宣称"])
+        ["传播方向与邻区影响可分解", "合成基准", "TE/CTE置换、BH-FDR与Durbin效应分解", "关联分析，不作因果解释"],
+    ], columns=["结果", "证据来源", "检查方式", "适用边界"])
     st.dataframe(
         claim_ledger, width="stretch", hide_index=True,
         column_config={
-            "可公开结论": st.column_config.TextColumn("可公开结论", width="large"),
+            "结果": st.column_config.TextColumn("结果", width="large"),
             "证据来源": st.column_config.TextColumn("证据来源", width="medium"),
             "检查方式": st.column_config.TextColumn("检查方式", width="large"),
-            "不能据此宣称": st.column_config.TextColumn("不能据此宣称", width="large"),
+            "适用边界": st.column_config.TextColumn("适用边界", width="large"),
         },
     )
 
-    st.markdown("### 环境信息如何转化为可读风险线索")
+    st.markdown("### 环境变量与风险表征")
     st.markdown(
         """
         <div class="product-grid">
           <div class="product-card"><b>海温异常识别</b><p>基于逐日季节气候态和高温阈值，
           量化海表温度偏离正常背景的幅度、持续时间与累积影响。</p></div>
-          <div class="product-card"><b>营养环境画像</b><p>分别保留硝酸盐、磷酸盐和硅酸盐信息，
+          <div class="product-card"><b>营养盐背景</b><p>分别保留硝酸盐、磷酸盐和硅酸盐信息，
           描述不同营养条件对藻华形成与物种竞争的支持背景。</p></div>
-          <div class="product-card"><b>输运与汇聚线索</b><p>利用微塑料浓度的有界代理表达水团停留、
-          汇聚与输运背景，用于判断风险信号可能向哪里传播。</p></div>
+          <div class="product-card"><b>输运与汇聚代理</b><p>利用微塑料浓度的有界代理表达水团停留、
+          汇聚与输运背景，作为跨区域分析的辅助变量。</p></div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-
-    st.markdown("### 现实与商业应用潜力：把风险分数变成资源排序")
-    application_table = pd.DataFrame([
-        ["海洋监管/监测机构", "调查船、qPCR、毒素检测预算有限", "哪些海区和时间窗优先加密采样", "减少平均铺开式监测，把资源集中到高信息增益位置"],
-        ["水产养殖企业", "藻华、高温和低氧叠加时准备窗口短", "哪些网箱/对象优先复核、缺什么现场证据", "提前组织监测、增氧能力和转移准备，不替代场站SOP"],
-        ["海洋牧场/渔业企业", "区域风险迁移导致巡检范围难确定", "是否需要扩大到上游/邻区同步监测", "优化巡检和采样路线"],
-        ["保险与风险管理", "缺少统一的危害—暴露—脆弱性结构", "未来可形成参数化风险分区的输入层", "需真实损失标签后才能进入定价，不在当前Demo直接报价"],
-    ], columns=["潜在使用方", "现实痛点", "系统当前能提供什么", "潜在价值与边界"])
-    st.dataframe(application_table, width="stretch", hide_index=True)
 
     st.markdown("### 下载结果与复核材料")
     card_bytes = json.dumps(card, ensure_ascii=False, indent=2, default=str).encode("utf-8")
@@ -2642,7 +2589,7 @@ with tab_evidence:
     d2.download_button(
         "下载证据包 JSON",
         json.dumps(evidence_bundle, ensure_ascii=False, indent=2, default=str).encode("utf-8"),
-        "semifinal_evidence_bundle.json",
+        "evidence_bundle.json",
         "application/json",
     )
     with st.expander("查看结构化结果"):
@@ -2652,13 +2599,9 @@ st.divider()
 st.markdown(
     """
     <div class="footer-boundary">
-      <b>能力边界：</b>合成基准用于检验能否重新识别预先植入的14天沿流模式、跨区域评估和机制模块的软件正确性；
-      南澳大利亚使用真实qPCR作事件回放；挪威长期监测另设严格前向的回顾性下一样本基准，
-      均不与合成数据混合。
-      生物响应沙盘采用公开文献支持的参数结构，尚未经物种/场站标定；风险地图、复核顺序和干预对照
-      不构成死亡率或损失预测、业务预报、因果结论、统一毒素阈值或自动运营指令。
-      <br>GlobalHAB-Agent v4.1 GOAI Semifinal · constrained data fusion + dynamic model comparison + synthetic recovery + Bayesian experiment design + real-flow validation + field-forward interface + biological-response sandbox ·
-      no mortality, operational, causal or automatic action claim
+      <b>结果边界：</b>合成数据用于方法验证；真实事件回放与前向验证单独报告。
+      生物响应参数尚未按具体物种或场站标定。页面结果不等同于业务预报、死亡率或损失预测、
+      统一毒素阈值、因果结论或自动控制指令。
     </div>
     """,
     unsafe_allow_html=True,

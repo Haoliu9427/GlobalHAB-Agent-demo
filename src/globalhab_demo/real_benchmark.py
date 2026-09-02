@@ -4,7 +4,7 @@ The task is deliberately narrow: using only the current monitoring visit,
 rank whether the next observed sample from the same region (1--14 days later)
 meets the study-defined HAB criterion. This is not a continuous forecast.
 
-v3.7 adds nested, training-only model selection. The preceding two years form
+The current benchmark uses nested, training-only model selection. The preceding two years form
 an inner validation window; the outer test window never tunes the model. The
 reported ranking metric is Average Precision (AP), matching sklearn's
 ``average_precision_score`` implementation.

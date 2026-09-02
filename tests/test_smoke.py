@@ -36,6 +36,7 @@ from globalhab_demo.real_replay import (  # noqa: E402
 from globalhab_demo.real_benchmark import run_forward_monitoring_benchmark  # noqa: E402
 from globalhab_demo.scenario import project_synthetic_scenario  # noqa: E402
 from globalhab_demo.workflow import run_exploration  # noqa: E402
+from globalhab_demo.sts_gated_tcn import run_dynamic_model_comparison  # noqa: E402
 
 
 @pytest.fixture(scope="session")
@@ -327,3 +328,23 @@ def test_cage_fish_sandbox_is_bounded_and_interventions_are_honest():
     assert set(robustness["summary"]["intervention"]) == set(INTERVENTIONS)
     assert robustness["summary"]["pareto_frequency"].between(0, 100).all()
     assert robustness["summary"]["lowest_pressure_frequency"].between(0, 100).all()
+
+
+def test_dynamic_science_model_comparison_uses_same_blocked_rows(exploration_result):
+    result = run_dynamic_model_comparison(
+        frame=exploration_result["frame"],
+        lag_days=int(exploration_result["best"]["lag_days"]),
+        holdout_region="Synthetic_Region_D",
+        test_fraction=0.25,
+        seeds=(17, 42),
+    )
+    summary = result["summary"].set_index("model")
+    assert {"Logistic", "Random Forest", "STS-Interaction GLM", "STS-Gated TCN"}.issubset(summary.index)
+    assert summary["test_rows"].nunique() == 1
+    assert summary["test_events"].nunique() == 1
+    assert result["card"]["test_rows"] == 177
+    assert result["card"]["test_events"] == 26
+    assert result["card"]["interaction_glm_C_selected_inside_training"] in {0.1, 0.3, 1.0, 3.0}
+    # A scientifically structured model may or may not win on another seed/config;
+    # the test checks that the result is computed and retained, not hard-coded.
+    assert pd.notna(summary.loc["STS-Interaction GLM", "ap_median"])

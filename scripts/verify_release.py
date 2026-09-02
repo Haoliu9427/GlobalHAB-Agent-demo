@@ -20,6 +20,7 @@ REQUIRED_FILES = (
     "src/globalhab_demo/workflow.py",
     "src/globalhab_demo/bio_response.py",
     "src/globalhab_demo/real_benchmark.py",
+    "src/globalhab_demo/sts_gated_tcn.py",
     "data/real_case/derived/sa_qpcr_observations.csv",
     "data/real_case_norway/derived/norway_hab_observations.csv",
 )
@@ -29,6 +30,7 @@ REQUIRED_MODULES = (
     "globalhab_demo.event_risk",
     "globalhab_demo.bio_response",
     "globalhab_demo.real_benchmark",
+    "globalhab_demo.sts_gated_tcn",
 )
 
 
@@ -41,8 +43,8 @@ def main() -> None:
         importlib.import_module(name)
         imported.append(name)
     version_text = (ROOT / "VERSION.md").read_text(encoding="utf-8")
-    if "3.7.1" not in version_text:
-        raise SystemExit("VERSION.md does not declare v3.7.1")
+    if "4.0" not in version_text:
+        raise SystemExit("VERSION.md does not declare v4.0")
     print(json.dumps({
         "status": "pass",
         "required_files": len(REQUIRED_FILES),

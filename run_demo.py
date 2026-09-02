@@ -1,4 +1,4 @@
-"""Run the complete GlobalHAB-Agent v3.9 evidence workflow."""
+"""Run the complete GlobalHAB-Agent v4.0 evidence workflow."""
 
 from __future__ import annotations
 
@@ -248,7 +248,7 @@ def main() -> None:
         json.dumps(card, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
     )
     manifest = {
-        "version": "3.9.2-dynamic-run-state",
+        "version": "4.0-science-value-model-fusion",
         "config_sha256": _sha256(config_path),
         "data_sha256": _sha256(data_path),
         "real_qpcr_sha256": _sha256(data_dir / "real_case" / "derived" / "sa_qpcr_observations.csv"),
@@ -339,7 +339,7 @@ def main() -> None:
         f"{norway_benchmark['summary']['top10_precision']:.1%}，为事件率的 "
         f"{norway_benchmark['summary']['top10_precision_lift']:.1f}倍\n"
         f"- 挪威前向AP：{norway_benchmark['summary']['model_average_precision']:.3f}；"
-        f"v3.6参考模型 {norway_benchmark['summary']['reference_average_precision']:.3f}；"
+        f"固定参考模型 {norway_benchmark['summary']['reference_average_precision']:.3f}；"
         f"季节基线 {norway_benchmark['summary']['seasonal_average_precision']:.3f}\n"
         f"- 南澳现场复核最高优先级：{sa_translation['summary']['priority']}\n"
         f"- 挪威加密监测最高优先级：{norway_translation['summary']['priority']}\n"

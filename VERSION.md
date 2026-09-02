@@ -1,113 +1,34 @@
-# Version 3.9.2-dynamic-run-state
+# Version 4.0 — science-value-model-fusion
 
-- 数据序列长度由540/720/900三档改为365–900天任意整数输入
-- 新增长度/种子/留出区组合的异常保护：若阻断测试窗只含单一类别，保留上一轮结果并提示调整参数，不再让Streamlit整页报错
-- “科学解释”页所有KPI改为当前运行结果：当前海区异常事件、异常日、峰值强度、尺度一致性、路由门控、TE/CTE与Durbin实际效应
-- 真实事件回放卡片改为显示当前筛选窗口/深度/区域，不再用固定“现场数据”状态占位
-- “探索与验证”中的Logistic/Random Forest容量卡片绑定当前留出区、前向测试窗与当前最佳候选
-- 轻量TCN的5随机种子结果明确标记为注册默认试跑；非默认设置下不再伪装成当前运行结果
-- “恢复14天信号”改写为“重新识别预先植入的14天沿流模式”，避免把软件合成真值测试误解为真实海洋恢复过程
-- 修复侧边栏参数已改变但尚未重算时，随机探索说明错误使用新budget而非当前实际运行budget的问题
-- 生物响应全球生产区地图新增北阿拉斯加湾与北大西洋中部捕捞渔业背景，全球空间背景扩展至13个代表区
+GlobalHAB-Agent v4.0 keeps the six-module scientific workflow and the existing dynamic KPI behavior, while making four competition-facing strengths explicit: special multi-source data, science-structured model improvement, the cross-region HAB propagation question, and practical monitoring/aquaculture value.
 
-## Previous: Version 3.9.0-global-production-context
+## What is preserved
 
-- 情景推演由7个海区扩展至12个代表性生产区，新增东地中海、西印度洋、洪堡流、智利峡湾和挪威海
-- 地图悬停显示渔业或养殖生产背景，并继续明确所有情景锚点均非实时观测
-- 首页移除“预设传播信号—已恢复”的内部基准表述，改为沿流关联、反证检查和当前运行设置
-- 侧边栏设置改变但尚未重算时给出明确提示，防止将上一轮结果误解为固定数值
-- 生物响应沙盘新增全球主要生产区地图、网箱养殖区选择和区域化可调初始值
-- 地中海、智利、挪威、南澳及亚太网箱区可进入鱼类响应模型；洪堡流和西印度洋捕捞区仅作风险背景
-- 生物响应概览与KPI全部绑定当前海区、对象、输入和干预结果，并优化为两行三列显示
-- 新增可下载的`global_production_regions.csv`及自动化适用边界检查
+- Risk-scenario and cage-fish controls remain instant dynamic calculations.
+- Sidebar exploration settings still require an explicit recalculation and preserve the last valid run until the new run finishes.
+- Dynamic anomaly, router, TE/CTE, Durbin, Logistic and Random-Forest results remain bound to the current active run.
+- Registered audit evidence remains clearly separated from current-run results.
+- The 24-candidate / limited-budget Agent search is unchanged.
 
-## Previous: Version 3.8.1-deployment-safe-model-evidence
+## Data fusion and quality gate
 
-- 修复GitHub未上传`outputs/model_complexity_*.csv/json`时网页启动失败的问题
-- `app.py`优先读取可下载结果文件，缺失时使用同一次注册试跑的内置证据副本
-- 缺失输出只影响外部文件下载来源，不改变TCN指标、结论或24项主搜索
-- 已在同时移除四个模型容量结果文件的条件下通过Streamlit启动测试
+The evidence page now exposes a four-layer fusion logic: environment shock, transport/residence background, biological hazard observations, and aquaculture vulnerability. Current-run quality indicators report completeness, daily continuity, MHW-day share, multiscale anomaly-day share and event rate. Data that fail continuity, class-balance or evidence-support requirements are degraded or deferred instead of being forced through every model.
 
-## Previous: Version 3.8.0-model-capacity-robustness
+## Model comparison and improvement
 
-- 保持24项候选、8步预算及沿流14天主要结论不变
-- 新增独立的轻量因果时间卷积网络容量敏感性检查
-- TCN结构与训练轮数仅在外层训练区内部选择，完整留区和前向测试窗不参与调参
-- 使用5个固定随机种子，与Logistic和Random Forest共享完全相同的177条留出记录和26个事件
-- 同时报告Average Precision、Brier、ECE、训练时间和模型规模
-- 默认结果未显示TCN具有跨随机种子的稳定增益，作为负结果完整保留
-- TCN采用NumPy CPU实现，不引入PyTorch/TensorFlow，不增加Streamlit部署依赖
+A new on-demand current-configuration comparison uses the same held-out region and forward test rows for all compared models and repeats the stochastic models across five seeds. Hyperparameters are selected only inside the outer training era.
 
-## Previous: Version 3.7.1-product-facing-ui
+- Logistic: transparent baseline candidate model.
+- Random Forest: nonlinear classical benchmark.
+- STS-Interaction GLM: explicitly represents transported MHW signal, nutrient context and their interaction.
+- STS-Gated TCN: dual temporal branches for local/upstream histories with a transport-driven learnable gate and science-structured residual features.
 
-- 移除首页流程化的演示路径与脚本化文案
-- 首屏只保留科学问题、核心结果和自然的产品功能入口
-- 将页面内部说明改为面向使用者的结果解释
+The deeper model is not assumed to win. Negative results are displayed rather than hidden; the purpose is to test whether scientific structure or additional capacity contributes under the same leakage-safe split.
 
-## Previous: Version 3.7.0-rare-event-interpretability
+## Scientific and application narrative
 
-- 将真实前向排序指标统一命名为Average Precision（AP），与代码实现一致
-- 增加训练期内层两年模型选择；外层四个前向测试窗完全不参与调参
-- 预注册七个轻量候选，检查生态交互、稀有事件权重和五年时间衰减
-- 对类别权重概率执行先验赔率修正，避免把重加权分数误当校准概率
-- 真实前向AP由v3.6参考模型0.079提升至约0.102，同时保留逐窗与不确定区间
-- 将Top10%结果拆为检查容量、命中事件、非事件、命中率、事件覆盖和精确率提升
-- 明确呈现Top10覆盖小幅下降与2014–2015弱窗，不把单一指标提升包装成业务突破
-- 策略与FAQ新增稀有事件指标、误报代价、模型选择防泄漏和跨时期稳定性答辩
+The interface now states the central question in non-specialist language: can an environmental shock move across regions and appear days or weeks later as downstream ecological risk, and under limited monitoring resources where should the next sample be taken? A capability comparison and application table connect the research outputs to monitoring agencies, aquaculture operators, fisheries and future risk-management use without claiming operational deployment.
 
-## Previous: Version 3.6.0-finalist-readiness
+## Boundary
 
-- 首屏收束为一个可证伪的核心科学问题，并补充结果链路说明
-- 新增挪威真实监测“下一次实际观测样本”前向回顾基准
-- 使用四个扩展时间窗，严格禁止当前藻细胞计数和未来环境值进入模型
-- 新增季节基线、200次标签置换、PR-AUC自助区间与Top10%监测容量覆盖
-- 新增81个邻近输入情景的网箱鱼干预稳健性与帕累托出现率
-- 新增机器可读结论账本，逐项绑定证据、检查方式和禁止外推内容
-- 新增发布完整性检查脚本与GitHub Actions自动编译/测试
-- 新增统一Streamlit主题配置和Python 3.12 Docker环境
-- 页面与输出明确区分合成性能、真实回放和真实前向回顾基准
-
-## Previous: Version 3.5.0-biological-response-sandbox
-
-- 新增以通用海水网箱鱼为示范对象的可检查生物响应沙盘
-- 联合模拟HAB危害压力、MHW强度、溶解氧、养殖密度和计划投喂
-- 新增维持监测、降低投喂40%、启动增氧、转移准备（未执行）和联合干预五项对照
-- 输出48/72/96小时相对生理压力、综合挑战、有效DO、摄食机会与准备响应时间
-- 新增±15%参数敏感性包络及压力缓解—摄食机会权衡图
-- 南澳与挪威真实事件峰值可作为藻华压力锚点；其他养殖输入仍明确标记为情景假设
-- “转移准备”不改变生理轨迹，只缩短准备时间，避免虚构未执行行动的生物收益
-- 所有方程、参数、证据属性、排除性声明和机器可读沙盘卡均可下载检查
-- 明确不输出死亡率、生物量损失、毒素浓度、场站级预报或自动运营指令
-
-- 新增南澳与挪威统一的“真实观测—危害证据—养殖暴露—对象脆弱性—复核行动”证据链
-- 所有真实事件输入逐项标识为真实观测、事件/文献证据、情景假设、参数设定或待补数据
-- 南澳回放将真实qPCR丰度转译为现场复核顺序，并明确不代表损失概率或停采阈值
-- 挪威回放新增真实藻细胞计数到区域加密监测顺序的可运行转译
-- 新增两个真实事件的风险证据矩阵与养殖监测优先级下载文件
-- 网页真实观测页增加统一研判链路、行动建议和结论边界，避免回放沦为孤立数据展示
-
-- GOAI AI for Research开放探索复赛版
-- 新增24项候选实验与8步预算搜索
-- 新增季节/持续性基线、200次随机搜索、反向路径和时间置换负对照
-- 新增Brier Skill、ECE、Top20%固定容量报警指标
-- 新增HAB—海水养殖响应优先级与不确定区间
-- 新增南澳大利亚Karenia真实事件证据卡
-- 新增运行SHA-256清单、模型卡和复赛材料检查表
-- 接入7/14/30/60天过去窗口多尺度异常检测与事件合并
-- 接入六项数据诊断驱动的两阶段自适应方法路由
-- 接入边级TE/CTE网络、圆周移位置换、反向路径和BH-FDR
-- 接入空间Durbin W矩阵、rho网格诊断及直接/间接/总影响分解
-- 新增上述模块的网页图表、CLI输出、发现卡字段和自动测试
-- 新增Murray等人Zenodo CC BY 4.0真实qPCR数据及不可变原始工作簿
-- 新增南澳115样本、22日期、22地点的可运行时空回放
-- 新增真实数据自适应路由，明确run/defer及数据不足原因
-- 新增基于真实观测丰度的海水养殖现场复核优先级
-- 新增OISST重建适配脚本、来源清单、哈希和真实事件自动测试
-- 首屏重构为面向研究使用的成果转化叙事，移除方法名堆叠与顶部能力边界框
-- 所有核心指标改为响应式卡片，解决最佳候选、Top20%覆盖、峰值丰度和检测尺度截断
-- 合成区域在界面中显示为带“合成”标识的大洋情景区，不冒充真实观测
-- 科学方法标题改写为“信号如何传播”和“邻区影响多大”等业务可读问题
-- 新增Silva等人CC BY 4.0挪威沿岸真实监测数据
-- 新增5,919条观测、868个日期、35个区域的可运行监测回放
-- 新增南澳、挪威、Salish Sea及全球HAEDAT/OBIS Nature Portfolio证据地图
-- 能力边界统一移至网页底部版本区
+Synthetic results verify software and hypothesis-recovery behavior. South Australia is a real-event replay. Norway provides a separate retrospective forward benchmark. The biological-response sandbox is not calibrated mortality prediction, and no page provides automatic farm operation or regulatory instructions.

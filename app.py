@@ -1,4 +1,4 @@
-"""GlobalHAB-Agent v3.9.2 dynamic-run-state demo."""
+"""GlobalHAB-Agent v4.0 dynamic scientific exploration demo."""
 
 from __future__ import annotations
 
@@ -69,6 +69,7 @@ if len(getattr(_scenario_module, "DEMO_ZONES", ())) < 12:
 SCENARIO_PRESETS = _scenario_module.SCENARIO_PRESETS
 project_synthetic_scenario = _scenario_module.project_synthetic_scenario
 from globalhab_demo.workflow import run_exploration  # noqa: E402
+from globalhab_demo.sts_gated_tcn import run_dynamic_model_comparison  # noqa: E402
 
 
 REGION_LABELS = {
@@ -188,6 +189,16 @@ def cached_exploration(
 @st.cache_data(show_spinner=False)
 def cached_norway_benchmark(observations: pd.DataFrame):
     return run_forward_monitoring_benchmark(observations)
+
+
+@st.cache_data(show_spinner=False)
+def cached_dynamic_model_comparison(
+    frame: pd.DataFrame, lag_days: int, holdout_region: str, test_fraction: float
+):
+    return run_dynamic_model_comparison(
+        frame=frame, lag_days=lag_days, holdout_region=holdout_region,
+        test_fraction=test_fraction,
+    )
 
 
 def kpi_grid(items: list[tuple[str, str, str]]) -> None:
@@ -444,12 +455,18 @@ st.markdown(
     <div class="hero">
       <div class="eyebrow" style="color:#a7eee2">GOAI · AI FOR RESEARCH</div>
       <h1>GlobalHAB-Agent</h1>
-      <p class="tagline">让Agent发现跨区域藻华信号，并把证据转化为可复核的养殖响应</p>
-      <p class="value"><b>研究目标：</b>在事件稀有、观测稀疏且证据异质的条件下，
-      识别具有时间方向的HAB传播信号，并将结果用于风险研判和网箱鱼干预情景比较。</p>
+      <p class="tagline">从“这里有没有风险”推进到“风险往哪里走、多久到达、下一次先查哪里”</p>
+      <p class="value"><b>研究链：</b>环境—输运—生物危害—养殖脆弱性多源证据融合 →
+      受约束的模型与Agent探索 → 跨区域传播与时滞解释 → 现场采样和养殖复核优先级。</p>
     </div>
     """,
     unsafe_allow_html=True,
+)
+st.markdown(
+    "**特别数据**（环境 + 输运 + qPCR/监测 + 养殖响应）  →  "
+    "**科学结构模型**（基线 → RF → STS交互 → 时序门控）  →  "
+    "**重大科学问题**（冲击是否跨区迁移、何时到达）  →  "
+    "**现实价值**（有限船时与检测预算下先查哪里）"
 )
 
 with st.sidebar:
@@ -647,6 +664,15 @@ tab_alert, tab_real, tab_bio, tab_methods, tab_agent, tab_evidence = st.tabs([
 ])
 
 with tab_alert:
+    st.markdown("### 一眼看懂：它与常见HAB预测有什么不同")
+    capability_comparison = pd.DataFrame([
+        ["回答重点", "当前站点是否异常", "未来风险排序", "风险是否沿流迁移、多久到达、下一次先查哪里"],
+        ["空间处理", "同地同期", "时空特征", "局地/沿流竞争路径 + 完整留区"],
+        ["实验过程", "一次拟合", "模型调参", "有限预算Agent选择 + 失败/停止日志"],
+        ["证据边界", "通常只报性能", "通常只报最佳模型", "合成真值、真实回放、前向验证分工"],
+        ["现场输出", "风险值", "风险地图", "采样/养殖复核优先级，不直接下运营指令"],
+    ], columns=["能力", "传统站点模型", "一般时空机器学习", "GlobalHAB-Agent"])
+    st.dataframe(capability_comparison, width="stretch", hide_index=True)
     st.markdown("### 未来7/14/30天藻华风险情景推演")
     st.caption(
         "地图覆盖12个代表性海洋生产区，包括东地中海、西/东印度洋、秘鲁—智利洪堡流和"
@@ -997,8 +1023,8 @@ with tab_real:
              f"事件率 {benchmark_summary['event_rate']:.2%} 的 {benchmark_summary['top10_precision_lift']:.1f} 倍"),
             ("Average Precision", f"{benchmark_summary['model_average_precision']:.3f}",
              "严格前向留出；越高越好"),
-            ("v3.6参考模型", f"{benchmark_summary['reference_average_precision']:.3f}",
-             f"v3.7 AP 提升 {benchmark_summary['relative_improvement_over_reference']:.1%}"),
+            ("固定参考模型", f"{benchmark_summary['reference_average_precision']:.3f}",
+             f"当前前向模型相对提升 {benchmark_summary['relative_improvement_over_reference']:.1%}"),
             ("季节基线 AP", f"{benchmark_summary['seasonal_average_precision']:.3f}",
              "仅使用训练期月份概率"),
             ("留出事件率", f"{benchmark_summary['event_rate']:.2%}",
@@ -1021,16 +1047,16 @@ with tab_real:
                 var_name="method", value_name="average_precision",
             )
             fold_chart_data["method"] = fold_chart_data["method"].map({
-                "model_average_precision": "v3.7内层选择模型",
-                "reference_average_precision": "v3.6参考模型",
+                "model_average_precision": "训练期内层选择模型",
+                "reference_average_precision": "固定参考模型",
                 "seasonal_average_precision": "季节基线",
             })
             fold_chart = px.bar(
                 fold_chart_data, x="test_window", y="average_precision", color="method",
                 barmode="group", title="四个前向时间窗：改进是否稳定？",
                 labels={"test_window": "测试年份", "average_precision": "Average Precision（AP）", "method": "方法"},
-                color_discrete_map={"v3.7内层选择模型": "#0b7c78",
-                                    "v3.6参考模型": "#d9a441", "季节基线": "#b8c8cc"},
+                color_discrete_map={"训练期内层选择模型": "#0b7c78",
+                                    "固定参考模型": "#d9a441", "季节基线": "#b8c8cc"},
                 hover_data={"test_events": True},
             )
             fold_chart.update_layout(height=360, margin={"l": 5, "r": 5, "t": 55, "b": 5})
@@ -1039,11 +1065,11 @@ with tab_real:
             st.markdown("##### 结果如何解读")
             st.markdown(
                 f"""
-                - v3.7使用生态交互、稀有事件权重和时间衰减候选，但只在训练期内部选择；
+                - 当前前向模型使用生态交互、稀有事件权重和时间衰减候选，但只在训练期内部选择；
                   外层测试窗从不参与调参。
                 - 合并前向AP为 **{benchmark_summary['model_average_precision']:.3f}**，95%自助区间为
                   **{benchmark_summary['model_average_precision_ci95'][0]:.3f}–{benchmark_summary['model_average_precision_ci95'][1]:.3f}**；
-                  相比v3.6参考模型提升 **{benchmark_summary['relative_improvement_over_reference']:.1%}**。
+                  相比固定参考模型提升 **{benchmark_summary['relative_improvement_over_reference']:.1%}**。
                 - 模型在 **{benchmark_summary['folds_beating_seasonal_average_precision']}/{benchmark_summary['valid_folds']}**
                   个时间窗高于季节基线；标签置换参照 *p* = **{benchmark_summary['permutation_p']:.3f}**。
                 - Brier误差为 **{benchmark_summary['model_brier']:.4f}**，季节基线为
@@ -1529,6 +1555,16 @@ with tab_bio:
     )
 
 with tab_methods:
+    st.markdown("### 重大科学问题：生态响应为什么会与冲击发生地错位？")
+    st.markdown(
+        '<div class="formula">传统假设：环境异常 A(t) → A(t) 的生态响应　｜　'
+        '本项目检验：Shock A(t) → Transport → Response B(t + τ)</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "因此模型不只问某个站点是否异常，还要同时识别冲击持续多久、数据是否支持传播分析、"
+        "最可能的方向与时滞，以及影响是否扩展到邻近海区。"
+    )
     st.markdown("### 异常识别与跨区域影响")
     st.caption("以下分析共享同一套时空数据、时间窗口和验证设置。")
 
@@ -1775,7 +1811,79 @@ with tab_agent:
     st.line_chart(plot, height=320)
     st.caption("Top20%报警是固定容量排名，不使用留出标签选择阈值。")
 
-    st.markdown("#### 模型容量敏感性")
+    st.markdown("#### 模型阶梯与科学结构改进")
+    st.caption(
+        "这里不把‘更深’默认当作‘更好’。点击运行后，所有模型都使用当前最佳时滞、当前留出海区、"
+        "当前前向测试窗；STS结构模型只在外层训练期内部选择超参数，并使用5个随机种子复核。"
+    )
+    model_key = (
+        int(active_config["days"]), int(active_config["seed"]), int(best["lag_days"]),
+        active_config["holdout_region"], float(active_config["test_fraction"])
+    )
+    run_model_compare = st.button(
+        "运行当前设置下的模型改进对照", key="run_dynamic_model_compare", type="secondary"
+    )
+    if run_model_compare:
+        with st.spinner("正在当前阻断留出集上运行5随机种子模型对照……"):
+            st.session_state["dynamic_model_comparison"] = cached_dynamic_model_comparison(
+                frame, int(best["lag_days"]), active_config["holdout_region"],
+                float(active_config["test_fraction"]),
+            )
+            st.session_state["dynamic_model_comparison_key"] = model_key
+    dynamic_compare = st.session_state.get("dynamic_model_comparison")
+    dynamic_compare_key = st.session_state.get("dynamic_model_comparison_key")
+    if dynamic_compare is not None and dynamic_compare_key == model_key:
+        dynamic_summary = dynamic_compare["summary"].copy()
+        dynamic_card = dynamic_compare["card"]
+        interaction_row = dynamic_summary[dynamic_summary["model"].eq("STS-Interaction GLM")].iloc[0]
+        gated_row = dynamic_summary[dynamic_summary["model"].eq("STS-Gated TCN")].iloc[0]
+        best_classic = dynamic_summary[dynamic_summary["model"].isin(["Logistic", "Random Forest"])]
+        best_classic_ap = float(best_classic["ap_median"].max())
+        kpi_grid([
+            ("当前最佳经典模型AP", f"{best_classic_ap:.3f}", "5随机种子中位数；同一留出集"),
+            ("STS交互模型AP", f"{float(interaction_row['ap_median']):.3f}",
+             f"相对经典模型 {float(interaction_row['ap_median']-best_classic_ap):+.3f}"),
+            ("STS-Gated TCN AP", f"{float(gated_row['ap_median']):.3f}",
+             "241参数；更深模型是否增益由当前运行决定"),
+        ])
+        model_plot = px.bar(
+            dynamic_summary, x="model", y="ap_median", error_y="ap_sd",
+            title="当前严格留出集：模型复杂度与科学结构对照",
+            labels={"model": "模型", "ap_median": "5随机种子AP中位数", "ap_sd": "AP标准差"},
+            text_auto=".3f",
+        )
+        model_plot.update_layout(height=390, margin={"l": 5, "r": 5, "t": 55, "b": 5}, showlegend=False)
+        st.plotly_chart(model_plot, width="stretch", config={"displayModeBar": False})
+        st.dataframe(
+            dynamic_summary.rename(columns={
+                "model": "模型", "seeds": "随机种子数", "ap_median": "AP中位数",
+                "ap_sd": "AP标准差", "brier_mean": "Brier均值", "ece_mean": "ECE均值",
+                "fit_seconds_mean": "平均拟合秒数", "complexity": "模型规模",
+                "test_rows": "测试记录", "test_events": "测试事件",
+            }), width="stretch", hide_index=True,
+        )
+        if float(dynamic_card["interaction_glm_ap_gain_vs_best_classical_median"]) > 0:
+            st.success(
+                "当前运行中，显式写入‘沿流传导 × 营养背景’的STS交互模型获得增益；"
+                "更深的Gated TCN结果同时保留，用来检验增加容量是否真的必要。"
+            )
+        else:
+            st.info(
+                "当前运行未显示STS交互模型的稳定增益；模型改进作为负结果保留，不从留出集反向挑结构。"
+            )
+        with st.expander("检查训练期内模型选择与逐种子结果"):
+            st.markdown(
+                f"STS-Interaction GLM 的正则强度 C={dynamic_card['interaction_glm_C_selected_inside_training']:.2g}；"
+                f"STS-Gated TCN 的训练轮数={dynamic_card['epochs_selected_inside_training_window']}。"
+                "两者均只使用外层训练期内部验证选择。"
+            )
+            st.dataframe(dynamic_compare["interaction_tuning_trace"], width="stretch", hide_index=True)
+            st.dataframe(dynamic_compare["tuning_trace"], width="stretch", hide_index=True)
+            st.dataframe(dynamic_compare["seed_results"], width="stretch", hide_index=True)
+    elif dynamic_compare is not None:
+        st.warning("当前运行设置已经变化。请重新运行模型改进对照；旧结果不会作为当前卡片继续显示。")
+
+    st.markdown("#### 模型容量敏感性（注册审计证据）")
     st.caption(
         "主搜索中的Logistic与Random Forest使用当前页面的同一留出海区和前向测试窗，因此下面三张卡随本轮设置更新。"
         "轻量TCN的5随机种子检查属于注册的默认试跑证据，单独标记，不伪装成当前设置的实时结果。"
@@ -1863,6 +1971,38 @@ with tab_agent:
             )
 
 with tab_evidence:
+    st.markdown("### 特殊数据：四层证据融合与质量门控")
+    st.markdown(
+        "**环境冲击**（SST/MHW/NO₃/PO₄/Si） → **输运背景**（停留/汇聚代理） → "
+        "**真实生物危害**（qPCR/长期监测） → **养殖脆弱性**（DO/密度/响应情景）。"
+    )
+    numeric_quality = [
+        "mhw_intensity_c", "nitrate_mmol_m3", "phosphate_mmol_m3",
+        "silicate_mmol_m3", "circulation_residence_proxy", "hab_event",
+    ]
+    completeness_now = 1.0 - float(frame[numeric_quality].isna().mean().mean())
+    event_rate_now = float(frame["hab_event"].mean())
+    mhw_day_rate = float(frame["is_mhw"].mean())
+    anomaly_day_rate = float(anomaly_daily["anomaly_event"].mean())
+    dates_per_region = frame.groupby("region")["date"].nunique()
+    continuity_now = float(dates_per_region.min() / max(1, active_config["days"]))
+    kpi_grid([
+        ("当前融合记录", f"{len(frame):,}", f"{frame['region'].nunique()}个匿名海区 × {active_config['days']}天"),
+        ("核心变量完整度", f"{completeness_now:.1%}", "当前运行的非缺失比例"),
+        ("日序列连续度", f"{continuity_now:.1%}", "按当前最短海区序列计算"),
+        ("MHW日占比", f"{mhw_day_rate:.1%}", "超过季节p90后才计为MHW"),
+        ("多尺度异常日", f"{anomaly_day_rate:.1%}", "7/14/30/60天MAD稳健异常"),
+        ("HAB事件率", f"{event_rate_now:.1%}", "当前seed生成的合成标签比例"),
+    ])
+    quality_flow = pd.DataFrame([
+        ["时间/空间对齐", "统一日尺度与海区索引", "不满足则不进入跨区比较"],
+        ["异常识别", "季节p90 + 7/14/30/60天MAD", "避免用单一固定阈值解释所有海区"],
+        ["缺失与连续性", "完整度、连续性、样本/事件支持", "决定运行、降级或defer"],
+        ["标签/留出质量", "测试窗必须同时含事件与非事件", "不满足则保留上一轮有效结果并提示重算"],
+        ["证据分工", "合成真值 / 事件回放 / 前向监测分层", "避免一份数据同时训练又证明自己"],
+    ], columns=["质量环节", "当前处理", "为什么这样做"])
+    st.dataframe(quality_flow, width="stretch", hide_index=True)
+
     st.markdown("### 数据来源与结果复核")
     st.caption("现场观测用于事件回放，全球数据用于背景校准，公开研究用于补充预警信号。")
     case_columns = st.columns(4)
@@ -1912,6 +2052,15 @@ with tab_evidence:
         unsafe_allow_html=True,
     )
 
+    st.markdown("### 现实与商业应用潜力：把风险分数变成资源排序")
+    application_table = pd.DataFrame([
+        ["海洋监管/监测机构", "调查船、qPCR、毒素检测预算有限", "哪些海区和时间窗优先加密采样", "减少平均铺开式监测，把资源集中到高信息增益位置"],
+        ["水产养殖企业", "藻华、高温和低氧叠加时准备窗口短", "哪些网箱/对象优先复核、缺什么现场证据", "提前组织监测、增氧能力和转移准备，不替代场站SOP"],
+        ["海洋牧场/渔业企业", "区域风险迁移导致巡检范围难确定", "是否需要扩大到上游/邻区同步监测", "优化巡检和采样路线"],
+        ["保险与风险管理", "缺少统一的危害—暴露—脆弱性结构", "未来可形成参数化风险分区的输入层", "需真实损失标签后才能进入定价，不在当前Demo直接报价"],
+    ], columns=["潜在使用方", "现实痛点", "系统当前能提供什么", "潜在价值与边界"])
+    st.dataframe(application_table, width="stretch", hide_index=True)
+
     st.markdown("### 下载结果与复核材料")
     card_bytes = json.dumps(card, ensure_ascii=False, indent=2, default=str).encode("utf-8")
     d1, d2 = st.columns(2)
@@ -1933,6 +2082,14 @@ with tab_evidence:
         "cage_fish_robustness": robustness_card,
         "claim_ledger": claim_ledger.to_dict("records"),
         "global_nature_portfolio_evidence": evidence_cases.to_dict("records"),
+        "current_data_quality": {
+            "completeness": completeness_now, "continuity": continuity_now,
+            "mhw_day_rate": mhw_day_rate, "multiscale_anomaly_day_rate": anomaly_day_rate,
+            "hab_event_rate": event_rate_now,
+        },
+        "dynamic_model_comparison": (
+            dynamic_compare if dynamic_compare is not None and dynamic_compare_key == model_key else None
+        ),
     }
     d2.download_button(
         "下载证据包 JSON",
@@ -1952,7 +2109,7 @@ st.markdown(
       均不与合成数据混合。
       生物响应沙盘采用公开文献支持的参数结构，尚未经物种/场站标定；风险地图、复核顺序和干预对照
       不构成死亡率或损失预测、业务预报、因果结论、统一毒素阈值或自动运营指令。
-      <br>GlobalHAB-Agent v3.9.2 GOAI Semifinal · synthetic recovery + nested real forward benchmark + event replay + global production context + biological-response sandbox ·
+      <br>GlobalHAB-Agent v4.0 GOAI Semifinal · constrained data fusion + dynamic model comparison + synthetic recovery + real forward benchmark + biological-response sandbox ·
       no mortality, operational, causal or automatic action claim
     </div>
     """,

@@ -1888,10 +1888,10 @@ with tab_agent:
     st.dataframe(current_model_frame, width="stretch", hide_index=True)
 
     st.markdown("##### 为什么要加入STS-Interaction GLM")
-    st.markdown(
+    st.write(
         "普通模型主要从特征中学习统计关系；STS-Interaction GLM把当前科学假设直接写进模型："
-        "**上游滞后热异常经输运门控形成传导信号，营养盐形成背景条件，两者再通过显式交互项共同影响HAB风险。** "
-        "因此它检验的是‘科学结构是否比单纯增加模型容量更有价值’，而不是简单把网络做深。"
+        "上游滞后热异常经输运门控形成传导信号，营养盐形成背景条件，两者再通过显式交互项共同影响HAB风险。"
+        "因此它检验的是科学结构是否比单纯增加模型容量更有价值，而不是简单把网络做深。"
     )
     st.markdown("##### 完整Benchmark：从统计基线到科学结构模型")
     st.caption(
@@ -1964,26 +1964,99 @@ with tab_agent:
             f"{int(card['test_events'])} 个事件；完全留出 {active_holdout}；前向切分日期 {card['cut_date']}。"
         )
 
+        # 图1：完整性能排名。模型名只出现在纵轴，避免在图内重复堆叠标签。
         chart_data = bench.sort_values("ap", ascending=True).copy()
         fig_bench = px.bar(
             chart_data, x="ap", y="model", color="category", orientation="h",
-            title="当前严格留出集：多方法Average Precision对比",
+            title="模型性能排名：同一严格留出集上的 Average Precision",
             labels={"ap": "Average Precision", "model": "模型", "category": "方法类别"},
             text_auto=".3f",
         )
-        fig_bench.update_layout(height=max(500, 32 * len(chart_data)), margin={"l": 5, "r": 5, "t": 55, "b": 5})
+        fig_bench.update_traces(textposition="outside", cliponaxis=False)
+        fig_bench.update_layout(
+            height=max(560, 34 * len(chart_data)),
+            margin={"l": 10, "r": 55, "t": 70, "b": 10},
+            legend_title_text="方法类别",
+            legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "left", "x": 0},
+        )
         st.plotly_chart(fig_bench, width="stretch", config={"displayModeBar": False})
 
+        # 图2：性能—成本权衡。所有模型保留为点，但只给少数关键模型加文字，
+        # 其余模型通过悬停查看，避免19个标签互相遮挡。
         scatter = bench.dropna(subset=["fit_seconds"]).copy()
         scatter["fit_seconds_plot"] = scatter["fit_seconds"].clip(lower=0.001)
         fig_eff = px.scatter(
-            scatter, x="fit_seconds_plot", y="ap", color="category", text="model",
-            log_x=True, title="性能—计算成本：复杂模型是否真的值得",
-            labels={"fit_seconds_plot": "平均拟合时间（秒，对数轴）", "ap": "Average Precision", "category": "方法类别"},
+            scatter,
+            x="fit_seconds_plot",
+            y="ap",
+            color="category",
+            log_x=True,
+            hover_name="model",
+            hover_data={
+                "fit_seconds_plot": ":.4f",
+                "ap": ":.3f",
+                "brier_skill": ":.3f",
+                "ece": ":.3f",
+                "category": True,
+            },
+            title="性能—计算成本权衡",
+            labels={
+                "fit_seconds_plot": "平均拟合时间（秒，对数轴）",
+                "ap": "Average Precision",
+                "category": "方法类别",
+            },
         )
-        fig_eff.update_traces(textposition="top center")
-        fig_eff.update_layout(height=500, margin={"l": 5, "r": 5, "t": 55, "b": 5})
+        fig_eff.update_traces(marker={"size": 10, "opacity": 0.72}, text=None)
+
+        # 动态计算Pareto前沿：更高AP、更低拟合时间为优。
+        pareto = scatter.sort_values(["fit_seconds_plot", "ap"], ascending=[True, False]).copy()
+        running_best = float("-inf")
+        keep = []
+        for idx, row in pareto.iterrows():
+            if float(row["ap"]) > running_best + 1e-12:
+                keep.append(idx)
+                running_best = float(row["ap"])
+        pareto = pareto.loc[keep].sort_values("fit_seconds_plot")
+        if len(pareto) >= 2:
+            fig_eff.add_scatter(
+                x=pareto["fit_seconds_plot"],
+                y=pareto["ap"],
+                mode="lines",
+                name="Pareto前沿",
+                hoverinfo="skip",
+                line={"width": 2, "dash": "dot"},
+            )
+
+        # 只标注少量关键点：当前最优、最佳经典/Boosting，以及两个STS模型。
+        key_models = set()
+        if not scatter.empty:
+            key_models.add(str(scatter.sort_values("ap", ascending=False).iloc[0]["model"]))
+        classic_pool = scatter[scatter["category"].isin(["经典机器学习", "树集成", "Boosting强基线"])]
+        if not classic_pool.empty:
+            key_models.add(str(classic_pool.sort_values("ap", ascending=False).iloc[0]["model"]))
+        for name in ["STS-Interaction GLM", "STS-Gated TCN"]:
+            if name in set(scatter["model"]):
+                key_models.add(name)
+        labels_df = scatter[scatter["model"].isin(key_models)].copy()
+        if not labels_df.empty:
+            fig_eff.add_scatter(
+                x=labels_df["fit_seconds_plot"],
+                y=labels_df["ap"],
+                mode="markers+text",
+                text=labels_df["model"],
+                textposition="top center",
+                name="关键模型",
+                marker={"size": 14, "symbol": "diamond"},
+                hoverinfo="skip",
+            )
+
+        fig_eff.update_layout(
+            height=520,
+            margin={"l": 10, "r": 20, "t": 70, "b": 10},
+            legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "left", "x": 0},
+        )
         st.plotly_chart(fig_eff, width="stretch", config={"displayModeBar": False})
+        st.caption("排名图用于比较预测性能；成本图用于观察性能提升是否值得额外计算开销。未标注模型可悬停查看。")
 
         display_bench = bench.rename(columns={
             "model": "模型", "category": "方法类别", "ap": "AP", "ap_sd": "AP标准差",
@@ -1995,12 +2068,9 @@ with tab_agent:
 
         logistic_row = bench[bench["model"].eq("Logistic")].iloc[0]
         delta = float(sts_row["ap"] - logistic_row["ap"] )
-        st.markdown("##### 如何读这张Benchmark")
-        st.markdown(
-            f"- **统计/经济视角：** Seasonal、Persistence、Logistic、GAM提供从朴素规则到非线性统计的参照。  \n"
-            f"- **计算机视角：** kNN、SVM、树模型、Random Forest、Extra Trees、AdaBoost、Gradient Boosting、HistGradientBoosting、XGBoost、LightGBM和MLP覆盖常见成熟算法谱系。  \n"
-            f"- **科学结构视角：** STS-Interaction GLM相对同一留出集Logistic的AP变化为 **{delta:+.3f}**；它是否优于所有成熟模型由当前数据直接决定，而不是预设结论。  \n"
-            f"- **深度模型视角：** 点击右侧按钮后再加入Lightweight TCN和STS-Gated TCN的当前动态结果；多随机种子稳健性仍由下方注册审计单独报告。"
+        st.caption(
+            f"当前同一留出集上，STS-Interaction GLM 相对 Logistic 的 AP 变化为 {delta:+.3f}。"
+            "所有模型均使用同一测试集；需要选参的方法只在训练期内部选择。"
         )
         if bool(st.session_state.get("broad_benchmark_deep")):
             st.info("当前表已经包含两个时序深度模型的当前动态结果；两者使用同一外层阻断留出集，且固定结构不依据测试标签调参。")
@@ -2037,9 +2107,10 @@ with tab_agent:
         classical_ap = float(model_complexity_summary[
             model_complexity_summary["model"].ne("轻量TCN")
         ]["ap_median"].max())
-        st.markdown(
-            f"**注册结论：**{'稳定增益' if model_complexity_card['stable_improvement'] else '未见稳定增益'}；"
-            f"轻量TCN中位AP {float(tcn_row['ap_median']):.3f}，经典模型最佳中位AP {classical_ap:.3f}。"
+        audit_result = "稳定增益" if model_complexity_card["stable_improvement"] else "未见稳定增益"
+        st.write(
+            f"容量审计结果：{audit_result}。轻量TCN中位AP {float(tcn_row['ap_median']):.3f}，"
+            f"经典模型最佳中位AP {classical_ap:.3f}。"
         )
         st.caption(
             f"TCN结构和训练轮数仅使用外层训练区内部数据选择；最终结构为"
@@ -2071,9 +2142,9 @@ with tab_agent:
 
 with tab_evidence:
     st.markdown("### 特殊数据：四层证据融合与质量门控")
-    st.markdown(
-        "**环境冲击**（SST/MHW/NO₃/PO₄/Si） → **输运背景**（停留/汇聚代理） → "
-        "**真实生物危害**（qPCR/长期监测） → **养殖脆弱性**（DO/密度/响应情景）。"
+    st.write(
+        "环境冲击（SST/MHW/NO₃/PO₄/Si） → 输运背景（停留/汇聚代理） → "
+        "真实生物危害（qPCR/长期监测） → 养殖脆弱性（DO/密度/响应情景）。"
     )
     numeric_quality = [
         "mhw_intensity_c", "nitrate_mmol_m3", "phosphate_mmol_m3",

@@ -35,3 +35,10 @@ The Exploration & Validation page now keeps the science-structured model compari
 - Fixed a Streamlit `NameError` in the evidence-bundle export caused by a stale `dynamic_compare` reference after the broad-benchmark refactor. The export now reads the current benchmark from session state only when its configuration key matches the active run.
 - Fixed GitHub Actions test discovery in a clean checkout by ensuring `src/` is added to the pytest import path (`tests/conftest.py` and the benchmark test bootstrap).
 
+## Benchmark visualization cleanup
+
+- Reworked the broad-model benchmark visualization for readability with many methods.
+- The first chart now provides a complete AP ranking with model names aligned on the y-axis.
+- The performance-cost chart no longer labels every point; it labels only dynamically selected key models and exposes all other names through hover.
+- Added a dynamic Pareto frontier (higher AP, lower fitting time) to make the performance-efficiency trade-off easier to interpret.
+- Removed the literal Markdown-style registered-conclusion marker from the capacity-audit UI and replaced it with plain interface text.

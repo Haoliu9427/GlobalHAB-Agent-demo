@@ -30,3 +30,8 @@ The Exploration & Validation page now keeps the science-structured model compari
 - All reported scores use the same held-out region and forward test rows; model selection occurs only inside the outer training era.
 - The broad benchmark is dynamic. When sequence length, lag, holdout region or forward-window fraction changes, old scores are invalidated rather than reused.
 - Performance-vs-compute visualisation is included so model complexity is evaluated rather than assumed to be beneficial.
+
+## Stability hotfix
+- Fixed a Streamlit `NameError` in the evidence-bundle export caused by a stale `dynamic_compare` reference after the broad-benchmark refactor. The export now reads the current benchmark from session state only when its configuration key matches the active run.
+- Fixed GitHub Actions test discovery in a clean checkout by ensuring `src/` is added to the pytest import path (`tests/conftest.py` and the benchmark test bootstrap).
+

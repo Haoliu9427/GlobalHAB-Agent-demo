@@ -1,3 +1,9 @@
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
 from globalhab_demo.broad_benchmark import benchmark_catalogue, run_broad_benchmark
 from globalhab_demo.data import generate_demo_data
 

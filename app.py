@@ -2187,7 +2187,13 @@ with tab_evidence:
             "hab_event_rate": event_rate_now,
         },
         "dynamic_model_comparison": (
-            dynamic_compare if dynamic_compare is not None and dynamic_compare_key == model_key else None
+            st.session_state.get("broad_benchmark", {}).get("summary").to_dict("records")
+            if st.session_state.get("broad_benchmark") is not None
+            and st.session_state.get("broad_benchmark_key") == (
+                int(active_config["days"]), int(active_config["seed"]), int(best["lag_days"]),
+                active_config["holdout_region"], float(active_config["test_fraction"])
+            )
+            else None
         ),
     }
     d2.download_button(

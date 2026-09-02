@@ -57,3 +57,40 @@ def test_flow_constrained_retrospective_and_forward_gate():
     summary = forward["test_summary"]
     assert summary["flow_ap"] > summary["reverse_ap"]
     assert summary["flow_ap"] > summary["no_flow_ap"]
+
+
+def test_habsos_fetch_enforces_sample_date_window(monkeypatch):
+    import json
+    from urllib.parse import unquote_plus
+    import globalhab_demo.florida_sts as florida_sts
+
+    captured = {"url": None}
+
+    inside = int(pd.Timestamp("2018-08-15", tz="UTC").timestamp() * 1000)
+    outside = int(pd.Timestamp("2017-01-01", tz="UTC").timestamp() * 1000)
+    payload = {
+        "features": [
+            {"attributes": {
+                "OBJECTID": 1, "LONGITUDE": -84.0, "LATITUDE": 27.5,
+                "STATE_ID": "FL", "SAMPLE_DATE": inside,
+                "GENUS": "Karenia", "SPECIES": "brevis", "CELLCOUNT": 150000,
+            }},
+            {"attributes": {
+                "OBJECTID": 2, "LONGITUDE": -84.1, "LATITUDE": 27.6,
+                "STATE_ID": "FL", "SAMPLE_DATE": outside,
+                "GENUS": "Karenia", "SPECIES": "brevis", "CELLCOUNT": 150000,
+            }},
+        ]
+    }
+
+    def fake_download(url, timeout=45):
+        captured["url"] = url
+        return json.dumps(payload).encode("utf-8")
+
+    monkeypatch.setattr(florida_sts, "_download_bytes", fake_download)
+    result = florida_sts.fetch_habsos("2018-08-01", "2018-08-31", max_records=100)
+    decoded = unquote_plus(captured["url"])
+    assert "SAMPLE_DATE >= TIMESTAMP '2018-08-01 00:00:00'" in decoded
+    assert "SAMPLE_DATE < TIMESTAMP '2018-09-01 00:00:00'" in decoded
+    assert len(result) == 1
+    assert result.iloc[0]["date"] == pd.Timestamp("2018-08-15")

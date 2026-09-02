@@ -39,7 +39,7 @@ The repository MIT license applies to project code only. It does not replace the
 The Florida/Gulf retrospective workflow can request public Harmful Algal BloomS Observing System (HABSOS) records from the NOAA/NCEI ArcGIS REST service. The adapter requests observation coordinates, sample dates, taxonomic fields, cell count and available environmental fields, then normalizes them at runtime. These live records are not relicensed under the repository MIT license and are not bundled as a fabricated fixed performance result.
 
 - NOAA/NCEI product page: https://www.ncei.noaa.gov/products/harmful-algal-blooms-observing-system
-- ArcGIS service used by the adapter: https://gis.ngdc.noaa.gov/arcgis/rest/services/EnvironmentalMonitoring/HABSOSViewBase/MapServer/0
+- ArcGIS service used by the adapter: https://gis.ncdc.noaa.gov/arcgis/rest/services/ms/HABSOS_CellCounts/MapServer/0
 
 ### NOAA CoastWatch sea-surface geostrophic currents
 

@@ -1239,7 +1239,7 @@ with tab_real:
             str(florida_start), str(florida_end), int(florida_threshold), tuple(florida_lags),
             hab_source_mode, current_source_mode,
         )
-        if st.button("读取数据并运行Florida/Gulf STS回顾验证", key="run_florida_sts", type="primary"):
+        if st.button("读取数据并运行回顾分析", key="run_florida_sts", type="primary"):
             if not florida_lags:
                 st.error("至少选择一个候选时滞。")
             else:
@@ -1284,25 +1284,59 @@ with tab_real:
                 ("质量门控", str(fq["status"]).upper(), "不足时只保留defer"),
                 ("最佳回顾时滞", f"{florida_result['best_lag']}天" if florida_result["best_lag"] else "未确定", "由真实流向匹配AP排序"),
             ])
+            reason_map = {
+                "HAB/field observations are too few for the requested validation mode": "HAB观测数量不足",
+                "sampling dates are insufficient": "独立采样日期不足",
+                "at least three spatial locations are required": "空间位置少于3个",
+                "too few event observations at the selected cell-count threshold": "当前阈值下事件观测不足",
+                "current-field temporal coverage is below 45% of observation dates": "流场与HAB观测的日期重叠不足45%",
+                "time span is shorter than 60 days": "观测时间跨度不足60天",
+            }
             if fq["reasons"]:
-                st.warning("质量门控提示：" + "；".join(fq["reasons"]))
+                st.warning("质量门控：" + "；".join(reason_map.get(x, x) for x in fq["reasons"]))
+
+            def _fmt_date(value):
+                return pd.Timestamp(value).strftime("%Y-%m-%d") if pd.notna(value) else "无"
+
+            st.caption(
+                f"HAB观测日期 {_fmt_date(fq.get('observation_start'))}—{_fmt_date(fq.get('observation_end'))}；"
+                f"流场日期 {_fmt_date(fq.get('current_start'))}—{_fmt_date(fq.get('current_end'))}；"
+                f"重叠 {int(fq.get('overlap_dates', 0))}/{int(fq.get('sampling_dates', 0))} 个观测日期。"
+            )
+
             lag_summary = florida_result["lag_summary"].copy()
-            st.markdown("##### 候选时滞：真实流向匹配 vs 无流向/反向流对照")
-            lag_long = lag_summary.melt(
-                id_vars=["lag_days", "samples", "events"],
-                value_vars=["flow_ap", "no_flow_ap", "reverse_ap"],
-                var_name="evidence", value_name="average_precision",
+            evaluable = (
+                not lag_summary.empty
+                and lag_summary["samples"].fillna(0).gt(0).any()
+                and lag_summary[["flow_ap", "no_flow_ap", "reverse_ap"]].notna().any().any()
             )
-            lag_long["evidence"] = lag_long["evidence"].map({
-                "flow_ap": "真实流向约束", "no_flow_ap": "仅空间邻近", "reverse_ap": "反向流负对照",
-            })
-            lag_fig = px.line(
-                lag_long, x="lag_days", y="average_precision", color="evidence", markers=True,
-                labels={"lag_days": "时滞（天）", "average_precision": "Average Precision", "evidence": "证据"},
-            )
-            lag_fig.update_layout(height=380, margin={"l": 10, "r": 10, "t": 20, "b": 45})
-            st.plotly_chart(lag_fig, width="stretch", config={"displayModeBar": False})
-            st.dataframe(lag_summary, width="stretch", hide_index=True)
+            if evaluable:
+                st.markdown("##### 候选时滞：流向约束与对照")
+                lag_long = lag_summary.melt(
+                    id_vars=["lag_days", "samples", "events"],
+                    value_vars=["flow_ap", "no_flow_ap", "reverse_ap"],
+                    var_name="evidence", value_name="average_precision",
+                ).dropna(subset=["average_precision"])
+                lag_long["evidence"] = lag_long["evidence"].map({
+                    "flow_ap": "真实流向约束", "no_flow_ap": "仅空间邻近", "reverse_ap": "反向流负对照",
+                })
+                lag_fig = px.line(
+                    lag_long, x="lag_days", y="average_precision", color="evidence", markers=True,
+                    labels={"lag_days": "时滞（天）", "average_precision": "Average Precision", "evidence": "证据"},
+                )
+                lag_fig.update_yaxes(range=[0, 1])
+                lag_fig.update_layout(height=380, margin={"l": 10, "r": 10, "t": 20, "b": 45})
+                st.plotly_chart(lag_fig, width="stretch", config={"displayModeBar": False})
+                display_lags = lag_summary.rename(columns={
+                    "lag_days": "时滞（天）", "samples": "配对数", "events": "事件数",
+                    "flow_ap": "流向约束AP", "reverse_ap": "反向流AP", "no_flow_ap": "无流向AP",
+                    "flow_vs_no_flow": "相对无流向增量", "flow_vs_reverse": "相对反向流增量",
+                    "median_path_error_km": "路径误差中位数（km）",
+                })
+                st.dataframe(display_lags, width="stretch", hide_index=True)
+            else:
+                st.info("当前数据没有形成可评估的时滞配对。先检查HAB与流场日期覆盖；必要时切换流场数据源或上传同时间段的流场CSV。")
+
             if florida_result["best_lag"] is not None and not florida_result["best_pairs"].empty:
                 best_pairs = florida_result["best_pairs"]
                 st.markdown("##### 最佳时滞下的流向匹配记录")

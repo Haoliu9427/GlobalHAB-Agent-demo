@@ -27,8 +27,8 @@ from sklearn.metrics import average_precision_score, brier_score_loss
 
 
 HABSOS_QUERY_URL = (
-    "https://gis.ngdc.noaa.gov/arcgis/rest/services/"
-    "EnvironmentalMonitoring/HABSOSViewBase/MapServer/0/query"
+    "https://gis.ncdc.noaa.gov/arcgis/rest/services/"
+    "ms/HABSOS_CellCounts/MapServer/0/query"
 )
 COASTWATCH_DATASET = "noaacwBLENDEDNRTcurrentsDaily"
 COASTWATCH_ERDDAP = f"https://coastwatch.noaa.gov/erddap/griddap/{COASTWATCH_DATASET}.csvp"
@@ -83,8 +83,16 @@ def fetch_habsos(
     """Fetch HABSOS cell-count records using the public ArcGIS REST service."""
     start = pd.Timestamp(start_date, tz="UTC") if pd.Timestamp(start_date).tzinfo is None else pd.Timestamp(start_date)
     end = pd.Timestamp(end_date, tz="UTC") if pd.Timestamp(end_date).tzinfo is None else pd.Timestamp(end_date)
-    start_ms = int(start.timestamp() * 1000)
-    end_ms = int((end + pd.Timedelta(days=1) - pd.Timedelta(milliseconds=1)).timestamp() * 1000)
+    # HABSOS Cell Counts is a static feature layer rather than a time-enabled
+    # layer.  Therefore the ArcGIS ``time=`` parameter is not relied on here;
+    # SAMPLE_DATE is constrained explicitly in the SQL WHERE clause and the
+    # returned frame is filtered once more locally below.
+    start_day = start.tz_convert("UTC").strftime("%Y-%m-%d 00:00:00")
+    end_exclusive = (end.tz_convert("UTC").floor("D") + pd.Timedelta(days=1)).strftime("%Y-%m-%d 00:00:00")
+    date_where = (
+        f"SAMPLE_DATE >= TIMESTAMP '{start_day}' AND "
+        f"SAMPLE_DATE < TIMESTAMP '{end_exclusive}'"
+    )
     fields = [
         "OBJECTID", "LONGITUDE", "LATITUDE", "DESCRIPTION", "STATE_ID",
         "SAMPLE_DATE", "SAMPLE_DEPTH", "GENUS", "SPECIES", "CATEGORY",
@@ -96,8 +104,7 @@ def fetch_habsos(
     page_size = 2000
     while offset < max_records:
         params = {
-            "where": f"STATE_ID='{state_id}'",
-            "time": f"{start_ms},{end_ms}",
+            "where": f"STATE_ID='{state_id}' AND {date_where}",
             "outFields": ",".join(fields),
             "returnGeometry": "false",
             "orderByFields": "SAMPLE_DATE ASC",
@@ -113,7 +120,19 @@ def fetch_habsos(
         if len(features) < page_size:
             break
         offset += len(features)
-    return normalize_habsos(pd.DataFrame(rows))
+    result = normalize_habsos(pd.DataFrame(rows))
+    # Defensive post-filter: public services can ignore unsupported temporal
+    # parameters or return cached rows.  Never let observations outside the
+    # user-selected window enter the validation.
+    if not result.empty:
+        start_local = pd.Timestamp(start).tz_convert(None).floor("D")
+        end_local = pd.Timestamp(end).tz_convert(None).floor("D")
+        result = result[result["date"].between(start_local, end_local)].copy()
+        if "state_id" in result.columns:
+            state_mask = result["state_id"].astype(str).str.upper().eq(str(state_id).upper())
+            if state_mask.any():
+                result = result[state_mask].copy()
+    return result.sort_values("date").reset_index(drop=True)
 
 
 def build_coastwatch_url(
@@ -447,8 +466,11 @@ def field_quality_gate(
         reasons.append("at least three spatial locations are required")
     if event_count < 5:
         reasons.append("too few event observations at the selected cell-count threshold")
-    current_dates = set(pd.to_datetime(currents.get("date", pd.Series(dtype="datetime64[ns]"))).dropna())
-    overlap = float(obs["date"].isin(current_dates).mean()) if len(obs) else 0.0
+    current_series = pd.to_datetime(currents.get("date", pd.Series(dtype="datetime64[ns]")), errors="coerce").dropna().dt.floor("D")
+    current_dates = set(current_series)
+    obs_dates = set(pd.to_datetime(obs["date"], errors="coerce").dropna().dt.floor("D")) if len(obs) else set()
+    overlap_dates = obs_dates & current_dates
+    overlap = float(len(overlap_dates) / len(obs_dates)) if obs_dates else 0.0
     if overlap < 0.45:
         reasons.append("current-field temporal coverage is below 45% of observation dates")
     date_span = int((obs["date"].max() - obs["date"].min()).days) if len(obs) else 0
@@ -461,6 +483,12 @@ def field_quality_gate(
         "locations": location_count,
         "events": event_count,
         "current_date_overlap": overlap,
+        "overlap_dates": int(len(overlap_dates)),
+        "current_dates": int(len(current_dates)),
+        "observation_start": obs["date"].min() if len(obs) else pd.NaT,
+        "observation_end": obs["date"].max() if len(obs) else pd.NaT,
+        "current_start": current_series.min() if len(current_series) else pd.NaT,
+        "current_end": current_series.max() if len(current_series) else pd.NaT,
         "date_span_days": date_span,
         "reasons": reasons,
     }

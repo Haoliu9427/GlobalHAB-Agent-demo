@@ -407,6 +407,53 @@ def _aggregate(seed_results: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+
+def evaluate_current_interaction_glm(
+    frame: pd.DataFrame,
+    lag_days: int,
+    holdout_region: str,
+    test_fraction: float,
+) -> dict[str, object]:
+    """Evaluate the science-structured interaction GLM on the current blocked holdout.
+
+    The regularization strength is selected only inside the outer training era.
+    This lightweight current-run result is intended for the always-visible model
+    comparison panel; the deeper four-model / five-seed audit remains on demand.
+    """
+    work = _dual_branch_frame(frame, lag_days)
+    standard_work = _experiment_frame(frame, "downstream", lag_days)
+    _, standard_test, standard_cut = _split(standard_work, holdout_region, test_fraction)
+    outer_train, outer_test, cut = _outer_masks(work, holdout_region, test_fraction)
+    if cut != standard_cut:
+        raise RuntimeError("interaction model cut date is not aligned with Agent split")
+    current_test_keys = set(map(tuple, work.loc[outer_test, ["date", "region"]].to_numpy()))
+    standard_test_keys = set(map(tuple, standard_test[["date", "region"]].to_numpy()))
+    if current_test_keys != standard_test_keys:
+        raise RuntimeError("interaction model test rows are not identical to downstream Agent test rows")
+
+    labels = work["hab_event"].to_numpy(dtype=float)
+    if len(np.unique(labels[outer_train])) < 2 or len(np.unique(labels[outer_test])) < 2:
+        raise ValueError("current blocked split must contain both event and non-event labels")
+
+    selected_c, tuning_trace = _select_interaction_c(work, outer_train)
+    start = perf_counter()
+    model = _fit_interaction_model(work, outer_train, selected_c)
+    probability = model.predict_proba(work.loc[outer_test, INTERACTION_FEATURES])[:, 1]
+    metrics, _ = _metrics(labels[outer_test], probability, float(labels[outer_train].mean()))
+    return {
+        "pr_auc": float(metrics["pr_auc"]),
+        "brier_skill": float(metrics["brier_skill"]),
+        "brier": float(metrics["brier"]),
+        "ece": float(metrics["ece"]),
+        "fit_seconds": float(perf_counter() - start),
+        "selected_c": float(selected_c),
+        "test_rows": int(outer_test.sum()),
+        "test_events": int(labels[outer_test].sum()),
+        "cut_date": cut.date().isoformat(),
+        "tuning_trace": tuning_trace,
+        "features": list(INTERACTION_FEATURES),
+    }
+
 def run_dynamic_model_comparison(
     frame: pd.DataFrame,
     lag_days: int,

@@ -19,3 +19,7 @@ The evidence module now exposes the environment → transport → biological haz
 ## Communication layer
 
 A capability comparison explains how the system differs from station-only prediction and generic spatiotemporal ML. A practical-use table frames monitoring, aquaculture, fisheries and future insurance/risk-management potential without claiming operational readiness.
+
+## Model comparison panel refinement
+
+The Exploration & Validation page now keeps the science-structured model comparison in one visible panel. Logistic, Random Forest and STS-Interaction GLM are evaluated dynamically on the current blocked holdout; STS-Gated TCN is added through the on-demand four-model, five-seed comparison. The registered lightweight-TCN audit remains a separate supplemental audit rather than a current-run result.

@@ -348,3 +348,18 @@ def test_dynamic_science_model_comparison_uses_same_blocked_rows(exploration_res
     # A scientifically structured model may or may not win on another seed/config;
     # the test checks that the result is computed and retained, not hard-coded.
     assert pd.notna(summary.loc["STS-Interaction GLM", "ap_median"])
+
+
+def test_current_interaction_glm_matches_blocked_holdout():
+    from globalhab_demo.data import generate_demo_data
+    from globalhab_demo.sts_gated_tcn import evaluate_current_interaction_glm
+
+    frame = generate_demo_data(days=720, seed=42)
+    result = evaluate_current_interaction_glm(
+        frame, lag_days=14, holdout_region="Synthetic_Region_D", test_fraction=0.25
+    )
+    assert result["test_rows"] == 177
+    assert result["test_events"] == 26
+    assert 0.0 <= result["pr_auc"] <= 1.0
+    assert 0.0 <= result["ece"] <= 1.0
+    assert result["selected_c"] in {0.1, 0.3, 1.0, 3.0}

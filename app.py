@@ -69,7 +69,10 @@ if len(getattr(_scenario_module, "DEMO_ZONES", ())) < 12:
 SCENARIO_PRESETS = _scenario_module.SCENARIO_PRESETS
 project_synthetic_scenario = _scenario_module.project_synthetic_scenario
 from globalhab_demo.workflow import run_exploration  # noqa: E402
-from globalhab_demo.sts_gated_tcn import run_dynamic_model_comparison  # noqa: E402
+from globalhab_demo.sts_gated_tcn import (  # noqa: E402
+    evaluate_current_interaction_glm,
+    run_dynamic_model_comparison,
+)
 
 
 REGION_LABELS = {
@@ -189,6 +192,16 @@ def cached_exploration(
 @st.cache_data(show_spinner=False)
 def cached_norway_benchmark(observations: pd.DataFrame):
     return run_forward_monitoring_benchmark(observations)
+
+
+@st.cache_data(show_spinner=False)
+def cached_current_interaction_glm(
+    frame: pd.DataFrame, lag_days: int, holdout_region: str, test_fraction: float
+):
+    return evaluate_current_interaction_glm(
+        frame=frame, lag_days=lag_days, holdout_region=holdout_region,
+        test_fraction=test_fraction,
+    )
 
 
 @st.cache_data(show_spinner=False)
@@ -1741,79 +1754,6 @@ with tab_methods:
 with tab_agent:
     st.markdown("### 实验对照与探索记录")
 
-    st.markdown("#### 模型对比与改进（动态计算）")
-    st.caption(
-        "点击后按当前序列长度、最佳时滞、留出海区和前向测试窗重新比较 Logistic、Random Forest、"
-        "STS-Interaction GLM 与 STS-Gated TCN；所有结构选择只使用外层训练期内部数据，并以5个随机种子复核。"
-    )
-    model_key = (
-        int(active_config["days"]), int(active_config["seed"]), int(best["lag_days"]),
-        active_config["holdout_region"], float(active_config["test_fraction"])
-    )
-    run_model_compare = st.button(
-        "运行当前设置的模型对比", key="run_dynamic_model_compare", type="secondary"
-    )
-    if run_model_compare:
-        with st.spinner("正在当前阻断留出集上运行5随机种子模型对照……"):
-            st.session_state["dynamic_model_comparison"] = cached_dynamic_model_comparison(
-                frame, int(best["lag_days"]), active_config["holdout_region"],
-                float(active_config["test_fraction"]),
-            )
-            st.session_state["dynamic_model_comparison_key"] = model_key
-    dynamic_compare = st.session_state.get("dynamic_model_comparison")
-    dynamic_compare_key = st.session_state.get("dynamic_model_comparison_key")
-    if dynamic_compare is not None and dynamic_compare_key == model_key:
-        dynamic_summary = dynamic_compare["summary"].copy()
-        dynamic_card = dynamic_compare["card"]
-        interaction_row = dynamic_summary[dynamic_summary["model"].eq("STS-Interaction GLM")].iloc[0]
-        gated_row = dynamic_summary[dynamic_summary["model"].eq("STS-Gated TCN")].iloc[0]
-        best_classic = dynamic_summary[dynamic_summary["model"].isin(["Logistic", "Random Forest"])]
-        best_classic_ap = float(best_classic["ap_median"].max())
-        kpi_grid([
-            ("当前最佳经典模型AP", f"{best_classic_ap:.3f}", "5随机种子中位数；同一留出集"),
-            ("STS交互模型AP", f"{float(interaction_row['ap_median']):.3f}",
-             f"相对经典模型 {float(interaction_row['ap_median']-best_classic_ap):+.3f}"),
-            ("STS-Gated TCN AP", f"{float(gated_row['ap_median']):.3f}",
-             "241参数；更深模型是否增益由当前运行决定"),
-        ])
-        model_plot = px.bar(
-            dynamic_summary, x="model", y="ap_median", error_y="ap_sd",
-            title="当前严格留出集：模型复杂度与科学结构对照",
-            labels={"model": "模型", "ap_median": "5随机种子AP中位数", "ap_sd": "AP标准差"},
-            text_auto=".3f",
-        )
-        model_plot.update_layout(height=390, margin={"l": 5, "r": 5, "t": 55, "b": 5}, showlegend=False)
-        st.plotly_chart(model_plot, width="stretch", config={"displayModeBar": False})
-        st.dataframe(
-            dynamic_summary.rename(columns={
-                "model": "模型", "seeds": "随机种子数", "ap_median": "AP中位数",
-                "ap_sd": "AP标准差", "brier_mean": "Brier均值", "ece_mean": "ECE均值",
-                "fit_seconds_mean": "平均拟合秒数", "complexity": "模型规模",
-                "test_rows": "测试记录", "test_events": "测试事件",
-            }), width="stretch", hide_index=True,
-        )
-        if float(dynamic_card["interaction_glm_ap_gain_vs_best_classical_median"]) > 0:
-            st.success(
-                "当前运行中，STS-Interaction GLM 相对经典模型获得增益；"
-                "STS-Gated TCN 同时保留，用于检验增加时序容量是否带来额外收益。"
-            )
-        else:
-            st.info(
-                "当前运行未显示STS交互模型的稳定增益；模型改进作为负结果保留，不从留出集反向挑结构。"
-            )
-        with st.expander("检查训练期内模型选择与逐种子结果"):
-            st.markdown(
-                f"STS-Interaction GLM 的正则强度 C={dynamic_card['interaction_glm_C_selected_inside_training']:.2g}；"
-                f"STS-Gated TCN 的训练轮数={dynamic_card['epochs_selected_inside_training_window']}。"
-                "两者均只使用外层训练期内部验证选择。"
-            )
-            st.dataframe(dynamic_compare["interaction_tuning_trace"], width="stretch", hide_index=True)
-            st.dataframe(dynamic_compare["tuning_trace"], width="stretch", hide_index=True)
-            st.dataframe(dynamic_compare["seed_results"], width="stretch", hide_index=True)
-    elif dynamic_compare is not None:
-        st.warning("当前运行设置已经变化。请重新运行模型改进对照；旧结果不会作为当前卡片继续显示。")
-
-
     c1, c2 = st.columns([1.15, 1.0], gap="large")
     with c1:
         comparison = pd.concat([
@@ -1869,10 +1809,10 @@ with tab_agent:
     st.line_chart(plot, height=320)
     st.caption("Top20%报警是固定容量排名，不使用留出标签选择阈值。")
 
-    st.markdown("#### 模型容量敏感性（注册审计证据）")
+    st.markdown("#### 模型对比与科学结构改进")
     st.caption(
-        "主搜索中的Logistic与Random Forest使用当前页面的同一留出海区和前向测试窗，因此下面三张卡随本轮设置更新。"
-        "轻量TCN的5随机种子检查属于注册的默认试跑证据，单独标记，不伪装成当前设置的实时结果。"
+        "这里不是只比较模型大小，而是比较三种建模思想：经典线性基线、非线性树模型，以及把沿流传导与营养背景显式写入结构的STS交互模型。"
+        "前三个模型直接使用当前候选、当前留出海区和当前前向测试窗动态计算；更深的STS-Gated TCN通过下方5随机种子精细对照按需运行。"
     )
     selected_pair = catalog[
         catalog["route"].eq(str(best["route"]))
@@ -1882,25 +1822,142 @@ with tab_agent:
     rf_current = selected_pair[selected_pair["model"].eq("random_forest")].iloc[0]
     current_test_rows = int(logistic_current["test_rows"])
     current_test_events = int(logistic_current["test_events"])
-    kpi_grid([
+
+    try:
+        interaction_current = cached_current_interaction_glm(
+            frame, int(best["lag_days"]), active_config["holdout_region"],
+            float(active_config["test_fraction"]),
+        )
+        interaction_available = True
+    except (ValueError, RuntimeError) as exc:
+        interaction_current = None
+        interaction_available = False
+        st.warning(f"当前阻断设置暂不能计算STS-Interaction GLM：{exc}")
+
+    model_cards = [
         ("当前候选", f"{best['route']} · {int(best['lag_days'])}天", f"完全留出 {active_holdout}"),
-        ("当前Logistic AP", f"{float(logistic_current['pr_auc']):.3f}", f"{current_test_rows}条测试记录 / {current_test_events}个事件"),
-        ("当前Random Forest AP", f"{float(rf_current['pr_auc']):.3f}", f"与Logistic完全相同测试集"),
-    ])
-    current_classical = pd.DataFrame([
+        ("Logistic AP", f"{float(logistic_current['pr_auc']):.3f}", f"{current_test_rows}条测试记录 / {current_test_events}个事件"),
+        ("Random Forest AP", f"{float(rf_current['pr_auc']):.3f}", "与Logistic完全相同测试集"),
+    ]
+    if interaction_available:
+        model_cards.append((
+            "STS-Interaction GLM AP", f"{float(interaction_current['pr_auc']):.3f}",
+            f"C={float(interaction_current['selected_c']):.2g}；仅训练期内选择"
+        ))
+    kpi_grid(model_cards)
+
+    current_models = [
         {
-            "模型": "Logistic", "Average Precision": float(logistic_current["pr_auc"]),
+            "模型": "Logistic", "模型思想": "经典线性基线",
+            "科学结构": "当前候选的环境/季节特征",
+            "Average Precision": float(logistic_current["pr_auc"]),
             "Brier Skill": float(logistic_current["brier_skill"]), "ECE": float(logistic_current["ece"]),
             "测试记录": int(logistic_current["test_rows"]), "测试事件": int(logistic_current["test_events"]),
         },
         {
-            "模型": "Random Forest", "Average Precision": float(rf_current["pr_auc"]),
+            "模型": "Random Forest", "模型思想": "非线性集成学习",
+            "科学结构": "允许变量间非线性与高阶分裂",
+            "Average Precision": float(rf_current["pr_auc"]),
             "Brier Skill": float(rf_current["brier_skill"]), "ECE": float(rf_current["ece"]),
             "测试记录": int(rf_current["test_rows"]), "测试事件": int(rf_current["test_events"]),
         },
-    ])
-    st.dataframe(current_classical, width="stretch", hide_index=True)
+    ]
+    if interaction_available:
+        current_models.append({
+            "模型": "STS-Interaction GLM", "模型思想": "科学结构交互模型",
+            "科学结构": "沿流热异常 + 营养背景 + 显式交互项",
+            "Average Precision": float(interaction_current["pr_auc"]),
+            "Brier Skill": float(interaction_current["brier_skill"]), "ECE": float(interaction_current["ece"]),
+            "测试记录": int(interaction_current["test_rows"]), "测试事件": int(interaction_current["test_events"]),
+        })
+    current_model_frame = pd.DataFrame(current_models)
+    st.dataframe(current_model_frame, width="stretch", hide_index=True)
 
+    st.markdown("##### 为什么要加入STS-Interaction GLM")
+    st.markdown(
+        "普通模型主要从特征中学习统计关系；STS-Interaction GLM把当前科学假设直接写进模型："
+        "**上游滞后热异常经输运门控形成传导信号，营养盐形成背景条件，两者再通过显式交互项共同影响HAB风险。** "
+        "因此它检验的是‘科学结构是否比单纯增加模型容量更有价值’，而不是简单把网络做深。"
+    )
+    model_design = pd.DataFrame([
+        ["Logistic", "线性概率模型", "可解释基线", "当前设置实时计算"],
+        ["Random Forest", "非线性树集成", "检验非线性是否带来增益", "当前设置实时计算"],
+        ["STS-Interaction GLM", "传导信号 + 营养背景 + 显式交互", "检验STS科学结构", "当前设置实时计算"],
+        ["STS-Gated TCN", "局地/上游双时序分支 + 输运门控 + 科学残差", "检验更深时序容量", "按需5随机种子动态计算"],
+    ], columns=["模型", "结构", "比较目的", "结果状态"])
+    st.dataframe(model_design, width="stretch", hide_index=True)
+
+    model_key = (
+        int(active_config["days"]), int(active_config["seed"]), int(best["lag_days"]),
+        active_config["holdout_region"], float(active_config["test_fraction"])
+    )
+    run_model_compare = st.button(
+        "运行四模型 × 5随机种子精细对照", key="run_dynamic_model_compare", type="primary"
+    )
+    if run_model_compare:
+        with st.spinner("正在相同阻断留出集上运行四模型5随机种子对照……"):
+            st.session_state["dynamic_model_comparison"] = cached_dynamic_model_comparison(
+                frame, int(best["lag_days"]), active_config["holdout_region"],
+                float(active_config["test_fraction"]),
+            )
+            st.session_state["dynamic_model_comparison_key"] = model_key
+    dynamic_compare = st.session_state.get("dynamic_model_comparison")
+    dynamic_compare_key = st.session_state.get("dynamic_model_comparison_key")
+    if dynamic_compare is not None and dynamic_compare_key == model_key:
+        dynamic_summary = dynamic_compare["summary"].copy()
+        dynamic_card = dynamic_compare["card"]
+        interaction_row = dynamic_summary[dynamic_summary["model"].eq("STS-Interaction GLM")].iloc[0]
+        gated_row = dynamic_summary[dynamic_summary["model"].eq("STS-Gated TCN")].iloc[0]
+        best_classic = dynamic_summary[dynamic_summary["model"].isin(["Logistic", "Random Forest"])]
+        best_classic_ap = float(best_classic["ap_median"].max())
+        kpi_grid([
+            ("最佳经典模型AP", f"{best_classic_ap:.3f}", "5随机种子中位数；同一留出集"),
+            ("STS交互模型AP", f"{float(interaction_row['ap_median']):.3f}",
+             f"相对经典模型 {float(interaction_row['ap_median']-best_classic_ap):+.3f}"),
+            ("STS-Gated TCN AP", f"{float(gated_row['ap_median']):.3f}",
+             "241参数；更深模型是否增益由当前运行决定"),
+        ])
+        model_plot = px.bar(
+            dynamic_summary, x="model", y="ap_median", error_y="ap_sd",
+            title="相同严格留出集：模型结构与复杂度对照",
+            labels={"model": "模型", "ap_median": "5随机种子AP中位数", "ap_sd": "AP标准差"},
+            text_auto=".3f",
+        )
+        model_plot.update_layout(height=390, margin={"l": 5, "r": 5, "t": 55, "b": 5}, showlegend=False)
+        st.plotly_chart(model_plot, width="stretch", config={"displayModeBar": False})
+        st.dataframe(
+            dynamic_summary.rename(columns={
+                "model": "模型", "seeds": "随机种子数", "ap_median": "AP中位数",
+                "ap_sd": "AP标准差", "brier_mean": "Brier均值", "ece_mean": "ECE均值",
+                "fit_seconds_mean": "平均拟合秒数", "complexity": "模型规模",
+                "test_rows": "测试记录", "test_events": "测试事件",
+            }), width="stretch", hide_index=True,
+        )
+        if float(dynamic_card["interaction_glm_ap_gain_vs_best_classical_median"]) > 0:
+            st.success(
+                "当前运行中，STS-Interaction GLM 相对经典模型获得增益；"
+                "更深的STS-Gated TCN同时保留，用来检验额外时序容量是否真的必要。"
+            )
+        else:
+            st.info(
+                "当前运行未显示STS交互模型的稳定增益；该结果仍保留，不从留出集反向挑选结构。"
+            )
+        with st.expander("查看训练期内模型选择与逐种子结果"):
+            st.markdown(
+                f"STS-Interaction GLM正则强度 C={dynamic_card['interaction_glm_C_selected_inside_training']:.2g}；"
+                f"STS-Gated TCN训练轮数={dynamic_card['epochs_selected_inside_training_window']}。"
+                "两者都只在外层训练期内部完成选择。"
+            )
+            st.dataframe(dynamic_compare["interaction_tuning_trace"], width="stretch", hide_index=True)
+            st.dataframe(dynamic_compare["tuning_trace"], width="stretch", hide_index=True)
+            st.dataframe(dynamic_compare["seed_results"], width="stretch", hide_index=True)
+    elif dynamic_compare is not None:
+        st.warning("当前运行设置已经变化。请重新运行四模型精细对照；旧结果不会继续作为当前结果显示。")
+
+    st.markdown("##### 补充：注册容量审计")
+    st.caption(
+        "下方轻量TCN注册试跑只作为独立容量敏感性证据。它不替代上面的当前动态四模型对照，也不会伪装成当前参数下的实时结果。"
+    )
     registered_default = (
         int(active_config["days"]) == 720
         and int(active_config["seed"]) == 42

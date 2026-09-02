@@ -295,4 +295,3 @@ docs/TECHNICAL_NOTE.md
 THIRD_PARTY_DATA.md
 ```
 
-英文版说明保留在 `README_EN.md`。

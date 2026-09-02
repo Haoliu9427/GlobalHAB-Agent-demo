@@ -31,9 +31,9 @@ HABSOS_QUERY_URL = (
     "ms/HABSOS_CellCounts/MapServer/0/query"
 )
 COASTWATCH_DATASET = "noaacwBLENDEDNRTcurrentsDaily"
-COASTWATCH_ERDDAP = f"https://coastwatch.noaa.gov/erddap/griddap/{COASTWATCH_DATASET}.csvp"
+COASTWATCH_ERDDAP_BASE = f"https://coastwatch.noaa.gov/erddap/griddap/{COASTWATCH_DATASET}"
 DEFAULT_LAGS = (3, 7, 14, 21, 30)
-LIVE_ADAPTER_REVISION = "2026-09-02-r2"
+LIVE_ADAPTER_REVISION = "2026-09-02-r3"
 
 PUBLIC_SOURCE_CATALOG = pd.DataFrame([
     {
@@ -152,7 +152,9 @@ def build_coastwatch_url(
     lon_min: float = -86.875,
     lon_max: float = -80.125,
     spatial_stride: int = 2,
+    file_type: str = "json",
 ) -> str:
+    """Build a NOAA ERDDAP griddap request for the Florida/Gulf subset."""
     start = pd.Timestamp(start_date).strftime("%Y-%m-%dT00:00:00Z")
     end = pd.Timestamp(end_date).strftime("%Y-%m-%dT00:00:00Z")
     cube = (
@@ -161,24 +163,78 @@ def build_coastwatch_url(
         f"[({lon_min:.3f}):{int(spatial_stride)}:({lon_max:.3f})]"
     )
     query = f"u_current{cube},v_current{cube}"
-    return f"{COASTWATCH_ERDDAP}?{quote(query, safe='[]():,=.-TZ_')}"
+    ext = str(file_type).lstrip(".")
+    endpoint = f"{COASTWATCH_ERDDAP_BASE}.{ext}"
+    return f"{endpoint}?{quote(query, safe='[]():,=.-TZ_')}"
+
+
+def _coastwatch_json_to_frame(raw: bytes) -> pd.DataFrame:
+    """Parse an ERDDAP JSON table into a normal dataframe."""
+    payload = json.loads(raw.decode("utf-8"))
+    table = payload.get("table", {})
+    columns = table.get("columnNames", [])
+    rows = table.get("rows", [])
+    if not columns or rows is None:
+        return pd.DataFrame()
+    return pd.DataFrame(rows, columns=columns)
+
+
+def _fetch_coastwatch_chunk(
+    start_date: pd.Timestamp,
+    end_date: pd.Timestamp,
+    spatial_stride: int,
+) -> pd.DataFrame:
+    """Fetch one modest-size current chunk; JSON avoids CSV unit/header ambiguity."""
+    url = build_coastwatch_url(
+        start_date, end_date, spatial_stride=spatial_stride, file_type="json"
+    )
+    raw = _download_bytes(url, timeout=60)
+    frame = _coastwatch_json_to_frame(raw)
+    if frame.empty:
+        return pd.DataFrame(columns=["date", "latitude", "longitude", "u_ms", "v_ms"])
+    return normalize_current_frame(frame)
 
 
 def fetch_coastwatch_currents(
     start_date: str | pd.Timestamp,
     end_date: str | pd.Timestamp,
     spatial_stride: int = 2,
+    chunk_days: int = 31,
 ) -> pd.DataFrame:
-    """Fetch a Florida west-shelf daily surface-current subset from NOAA ERDDAP."""
-    start = pd.Timestamp(start_date)
-    end = pd.Timestamp(end_date)
+    """Fetch Florida/Gulf surface currents from NOAA ERDDAP in monthly chunks.
+
+    Chunking avoids one large live request and makes partial service/data gaps
+    visible to the quality gate.  Only successfully parsed finite u/v rows are
+    returned; duplicate grid records at chunk boundaries are removed.
+    """
+    start = pd.Timestamp(start_date).floor("D")
+    end = pd.Timestamp(end_date).floor("D")
     if end < start:
         raise ValueError("end_date must be on/after start_date")
-    if (end - start).days > 240:
-        raise ValueError("live current fetch is limited to 240 days per request")
-    raw = _download_bytes(build_coastwatch_url(start, end, spatial_stride=spatial_stride), timeout=60)
-    return normalize_current_frame(pd.read_csv(BytesIO(raw)))
-
+    if (end - start).days > 366:
+        raise ValueError("live current fetch is limited to 366 days per request")
+    pieces: list[pd.DataFrame] = []
+    cursor = start
+    errors: list[str] = []
+    while cursor <= end:
+        chunk_end = min(end, cursor + pd.Timedelta(days=max(1, int(chunk_days)) - 1))
+        try:
+            part = _fetch_coastwatch_chunk(cursor, chunk_end, spatial_stride)
+            if not part.empty:
+                pieces.append(part)
+        except Exception as exc:
+            errors.append(f"{cursor.date()}–{chunk_end.date()}: {exc}")
+        cursor = chunk_end + pd.Timedelta(days=1)
+    if not pieces:
+        detail = errors[0] if errors else "ERDDAP returned no finite u/v rows"
+        raise RuntimeError(f"NOAA CoastWatch流场读取失败（{detail}）")
+    result = pd.concat(pieces, ignore_index=True)
+    result = result[result["date"].between(start, end)].copy()
+    result = result.drop_duplicates(["date", "latitude", "longitude"], keep="last")
+    result = result.sort_values(["date", "latitude", "longitude"]).reset_index(drop=True)
+    if result.empty:
+        raise RuntimeError("NOAA CoastWatch返回的数据在当前时间窗内没有有限u/v流速值")
+    return result
 
 def _find_column(frame: pd.DataFrame, aliases: Iterable[str]) -> str | None:
     normalized = {str(c).strip().lower().replace(" ", "_"): c for c in frame.columns}

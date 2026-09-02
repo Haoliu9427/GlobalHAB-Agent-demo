@@ -136,3 +136,30 @@ def test_hycom_ncss_url_and_netcdf_parser(tmp_path):
     assert frame["longitude"].min() == -87.0
     assert frame["longitude"].max() == -86.0
     assert frame["u_ms"].notna().all() and frame["v_ms"].notna().all()
+
+
+def test_hycom_fetch_bisects_timeout_and_keeps_partial_rows(monkeypatch):
+    import globalhab_demo.florida_sts as florida_sts
+
+    calls = []
+
+    def fake_chunk(start_date, end_date, lat_min, lat_max, lon_min, lon_max,
+                   horiz_stride, time_stride, timeout=55):
+        calls.append((pd.Timestamp(start_date), pd.Timestamp(end_date)))
+        if pd.Timestamp(start_date) < pd.Timestamp(end_date):
+            raise TimeoutError("synthetic timeout")
+        day = pd.Timestamp(start_date).floor("D")
+        return pd.DataFrame({
+            "date": [day], "latitude": [27.5], "longitude": [-84.0],
+            "u_ms": [0.1], "v_ms": [0.0],
+        })
+
+    monkeypatch.setattr(florida_sts, "_fetch_hycom_gom_chunk", fake_chunk)
+    frame = florida_sts.fetch_hycom_gom_currents(
+        "2018-08-01", "2018-08-04", chunk_days=4,
+        lat_min=27.0, lat_max=28.0, lon_min=-85.0, lon_max=-83.0,
+    )
+    assert frame["date"].nunique() == 4
+    assert len(calls) > 4  # initial block plus recursive subdivisions
+    assert frame.attrs["requested_start"] == pd.Timestamp("2018-08-01")
+    assert frame.attrs["requested_end"] == pd.Timestamp("2018-08-04")

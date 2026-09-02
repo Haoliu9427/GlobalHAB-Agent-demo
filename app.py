@@ -1249,7 +1249,7 @@ with tab_real:
         )
         if st.button("读取数据并运行回顾分析", key="run_florida_sts", type="primary"):
             # A failed live fetch must never leave a previous run visible under the current controls.
-            for _key in ("florida_sts_result", "florida_sts_hab", "florida_sts_current", "florida_sts_key"):
+            for _key in ("florida_sts_result", "florida_sts_hab", "florida_sts_current", "florida_sts_current_warnings", "florida_sts_key"):
                 st.session_state.pop(_key, None)
             if not florida_lags:
                 st.error("至少选择一个候选时滞。")
@@ -1274,7 +1274,19 @@ with tab_real:
                         if florida_hab["date"].min() < _start_day or florida_hab["date"].max() > _end_day:
                             raise ValueError("HABSOS返回日期与当前选择的回顾时间范围不一致。")
                         if current_source_mode.startswith("HYCOM"):
-                            florida_current = fetch_hycom_gom_currents(florida_start, florida_end)
+                            # Limit the live HYCOM subset to the actual HABSOS footprint
+                            # plus a small transport margin; this avoids requesting the
+                            # entire Florida/Gulf grid for every retrospective run.
+                            _lat_min = max(18.2, float(florida_hab["latitude"].min()) - 0.45)
+                            _lat_max = min(32.0, float(florida_hab["latitude"].max()) + 0.45)
+                            _lon_min = max(-98.0, float(florida_hab["longitude"].min()) - 0.45)
+                            _lon_max = min(-76.4, float(florida_hab["longitude"].max()) + 0.45)
+                            florida_current = fetch_hycom_gom_currents(
+                                florida_start, florida_end,
+                                lat_min=_lat_min, lat_max=_lat_max,
+                                lon_min=_lon_min, lon_max=_lon_max,
+                                chunk_days=14,
+                            )
                         elif current_source_mode.startswith("NOAA"):
                             florida_current = fetch_coastwatch_currents(florida_start, florida_end, 2)
                         else:
@@ -1283,14 +1295,16 @@ with tab_real:
                             florida_current = normalize_current_frame(pd.read_csv(current_upload))
                         if florida_current.empty:
                             raise RuntimeError(
-                                f"NOAA流场读取结果为空（适配器 {LIVE_ADAPTER_REVISION}）；请检查部署代码是否已同步更新。"
+                                f"流场读取结果为空（适配器 {LIVE_ADAPTER_REVISION}）；请检查部署代码是否已同步更新。"
                             )
+                        _current_fetch_warnings = list(florida_current.attrs.get("fetch_warnings", []))
                         florida_result = run_retrospective_sts(
                             florida_hab, florida_current, florida_lags, float(florida_threshold)
                         )
                         st.session_state["florida_sts_result"] = florida_result
                         st.session_state["florida_sts_hab"] = florida_hab
                         st.session_state["florida_sts_current"] = florida_current
+                        st.session_state["florida_sts_current_warnings"] = _current_fetch_warnings
                         st.session_state["florida_sts_key"] = florida_run_key
                 except Exception as exc:
                     st.error(f"Florida/Gulf数据读取或验证未完成：{exc}")
@@ -1317,6 +1331,9 @@ with tab_real:
             }
             if fq["reasons"]:
                 st.warning("质量门控：" + "；".join(reason_map.get(x, x) for x in fq["reasons"]))
+            _partial_warnings = st.session_state.get("florida_sts_current_warnings", [])
+            if _partial_warnings:
+                st.caption(f"HYCOM在线读取存在{len(_partial_warnings)}个缺失时间块；当前结果仅使用成功返回的流场日期，并由上方日期覆盖门控决定是否可评估。")
 
             def _fmt_date(value):
                 return pd.Timestamp(value).strftime("%Y-%m-%d") if pd.notna(value) else "无"

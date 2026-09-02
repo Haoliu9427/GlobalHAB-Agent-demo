@@ -384,16 +384,47 @@ def _hycom_netcdf_to_frame(raw: bytes) -> pd.DataFrame:
     return frame.sort_values(["date", "latitude", "longitude"]).reset_index(drop=True)
 
 
+def _fetch_hycom_gom_chunk(
+    start_date: pd.Timestamp,
+    end_date: pd.Timestamp,
+    lat_min: float,
+    lat_max: float,
+    lon_min: float,
+    lon_max: float,
+    horiz_stride: int,
+    time_stride: int,
+    timeout: int = 55,
+) -> pd.DataFrame:
+    """Fetch one bounded HYCOM NCSS chunk and return finite surface u/v rows."""
+    url = build_hycom_gom_url(
+        start_date, end_date,
+        lat_min=lat_min, lat_max=lat_max,
+        lon_min=lon_min, lon_max=lon_max,
+        horiz_stride=horiz_stride, time_stride=time_stride,
+    )
+    raw = _download_bytes(url, timeout=timeout)
+    part = _hycom_netcdf_to_frame(raw)
+    return part[part["date"].between(start_date.floor("D"), end_date.floor("D"))].copy()
+
+
 def fetch_hycom_gom_currents(
     start_date: str | pd.Timestamp,
     end_date: str | pd.Timestamp,
-    horiz_stride: int = 8,
+    horiz_stride: int = 12,
     time_stride: int = 24,
+    lat_min: float = 24.0,
+    lat_max: float = 31.2,
+    lon_min: float = -87.2,
+    lon_max: float = -80.0,
+    chunk_days: int = 14,
 ) -> pd.DataFrame:
-    """Fetch surface currents from the HYCOM-TSIS GOMb0.04 reanalysis.
+    """Fetch retrospective HYCOM Gulf surface currents in small NCSS chunks.
 
-    The reanalysis is the preferred live source for retrospective Florida/Gulf
-    validation. Requests are split by year because the NCSS catalog is year-scoped.
+    HYCOM's yearly NCSS aggregation can be slow when a multi-month spatial cube is
+    requested in one response.  This reader therefore requests short time blocks,
+    retries a timed-out block by bisecting it down to a single day, and returns all
+    successful blocks.  Partial retrieval is deliberate: the downstream quality
+    gate decides whether the resulting date coverage is sufficient for inference.
     """
     start = pd.Timestamp(start_date).floor("D")
     end = pd.Timestamp(end_date).floor("D")
@@ -401,27 +432,66 @@ def fetch_hycom_gom_currents(
         raise ValueError("end_date must be on/after start_date")
     if start < pd.Timestamp("2001-01-01") or end > pd.Timestamp("2024-08-31"):
         raise ValueError("HYCOM GOMb0.04 retrospective coverage is 2001-01-01 to 2024-08-31")
+    # Keep the live request inside the Gulf product domain and avoid accidental
+    # zero-width boxes from a very small observation footprint.
+    lat_min = float(np.clip(lat_min, 18.2, 31.95))
+    lat_max = float(np.clip(lat_max, 18.25, 32.0))
+    lon_min = float(np.clip(lon_min, -98.0, -76.45))
+    lon_max = float(np.clip(lon_max, -97.95, -76.4))
+    if lat_max <= lat_min:
+        lat_max = min(32.0, lat_min + 0.25)
+    if lon_max <= lon_min:
+        lon_max = min(-76.4, lon_min + 0.25)
+
     pieces: list[pd.DataFrame] = []
     errors: list[str] = []
-    for year in range(start.year, end.year + 1):
-        y_start = max(start, pd.Timestamp(f"{year}-01-01"))
-        y_end = min(end, pd.Timestamp(f"{year}-12-31"))
+
+    def fetch_with_bisection(a: pd.Timestamp, b: pd.Timestamp) -> None:
         try:
-            url = build_hycom_gom_url(y_start, y_end, horiz_stride=horiz_stride, time_stride=time_stride)
-            raw = _download_bytes(url, timeout=120)
-            part = _hycom_netcdf_to_frame(raw)
-            part = part[part["date"].between(y_start, y_end)].copy()
+            part = _fetch_hycom_gom_chunk(
+                a, b, lat_min, lat_max, lon_min, lon_max,
+                horiz_stride=max(1, int(horiz_stride)),
+                time_stride=max(1, int(time_stride)),
+            )
             if not part.empty:
                 pieces.append(part)
             else:
-                errors.append(f"{year}: no finite surface u/v rows")
+                errors.append(f"{a.date()}–{b.date()}: no finite surface u/v rows")
+            return
+        except (TimeoutError, OSError) as exc:
+            # For transport-level failures, split only while there is still more
+            # than one day to divide.  This keeps Streamlit responsive without
+            # discarding an otherwise usable month.
+            if a < b:
+                mid = a + pd.Timedelta(days=(b - a).days // 2)
+                fetch_with_bisection(a, mid)
+                fetch_with_bisection(mid + pd.Timedelta(days=1), b)
+                return
+            errors.append(f"{a.date()}: {type(exc).__name__}: {exc}")
         except Exception as exc:
-            errors.append(f"{year}: {type(exc).__name__}: {exc}")
+            errors.append(f"{a.date()}–{b.date()}: {type(exc).__name__}: {exc}")
+
+    # Respect year-scoped NCSS datasets while keeping each request small.
+    for year in range(start.year, end.year + 1):
+        y_start = max(start, pd.Timestamp(f"{year}-01-01"))
+        y_end = min(end, pd.Timestamp(f"{year}-12-31"))
+        cursor = y_start
+        while cursor <= y_end:
+            block_end = min(y_end, cursor + pd.Timedelta(days=max(1, int(chunk_days)) - 1))
+            fetch_with_bisection(cursor, block_end)
+            cursor = block_end + pd.Timedelta(days=1)
+
     if not pieces:
-        raise RuntimeError("HYCOM GOMb0.04流场读取失败（" + "; ".join(errors[:2]) + "）")
+        detail = "; ".join(errors[:3]) if errors else "no finite surface u/v rows"
+        raise RuntimeError("HYCOM GOMb0.04流场读取失败（" + detail + "）")
+
     result = pd.concat(pieces, ignore_index=True)
+    result = result[result["date"].between(start, end)].copy()
     result = result.drop_duplicates(["date", "latitude", "longitude"], keep="last")
     result = result.sort_values(["date", "latitude", "longitude"]).reset_index(drop=True)
+    result.attrs["fetch_warnings"] = errors
+    result.attrs["requested_start"] = start
+    result.attrs["requested_end"] = end
     return result
 
 

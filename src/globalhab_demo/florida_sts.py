@@ -31,9 +31,13 @@ HABSOS_QUERY_URL = (
     "ms/HABSOS_CellCounts/MapServer/0/query"
 )
 COASTWATCH_DATASET = "noaacwBLENDEDNRTcurrentsDaily"
-COASTWATCH_ERDDAP_BASE = f"https://coastwatch.noaa.gov/erddap/griddap/{COASTWATCH_DATASET}"
+COASTWATCH_ERDDAP_BASES = (
+    f"https://coastwatch.noaa.gov/erddap/griddap/{COASTWATCH_DATASET}",
+    f"https://coastwatch.pfeg.noaa.gov/erddap/griddap/{COASTWATCH_DATASET}",
+)
+COASTWATCH_ERDDAP_BASE = COASTWATCH_ERDDAP_BASES[0]
 DEFAULT_LAGS = (3, 7, 14, 21, 30)
-LIVE_ADAPTER_REVISION = "2026-09-02-r3"
+LIVE_ADAPTER_REVISION = "2026-09-02-r4"
 
 PUBLIC_SOURCE_CATALOG = pd.DataFrame([
     {
@@ -153,6 +157,7 @@ def build_coastwatch_url(
     lon_max: float = -80.125,
     spatial_stride: int = 2,
     file_type: str = "json",
+    base_url: str | None = None,
 ) -> str:
     """Build a NOAA ERDDAP griddap request for the Florida/Gulf subset."""
     start = pd.Timestamp(start_date).strftime("%Y-%m-%dT00:00:00Z")
@@ -164,7 +169,8 @@ def build_coastwatch_url(
     )
     query = f"u_current{cube},v_current{cube}"
     ext = str(file_type).lstrip(".")
-    endpoint = f"{COASTWATCH_ERDDAP_BASE}.{ext}"
+    endpoint_base = base_url or COASTWATCH_ERDDAP_BASE
+    endpoint = f"{endpoint_base}.{ext}"
     return f"{endpoint}?{quote(query, safe='[]():,=.-TZ_')}"
 
 
@@ -179,20 +185,42 @@ def _coastwatch_json_to_frame(raw: bytes) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=columns)
 
 
+def _parse_coastwatch_payload(raw: bytes, file_type: str) -> pd.DataFrame:
+    if file_type == "json":
+        return _coastwatch_json_to_frame(raw)
+    if file_type in {"csv", "csvp"}:
+        return pd.read_csv(BytesIO(raw))
+    raise ValueError(f"unsupported CoastWatch response type: {file_type}")
+
+
 def _fetch_coastwatch_chunk(
     start_date: pd.Timestamp,
     end_date: pd.Timestamp,
     spatial_stride: int,
 ) -> pd.DataFrame:
-    """Fetch one modest-size current chunk; JSON avoids CSV unit/header ambiguity."""
-    url = build_coastwatch_url(
-        start_date, end_date, spatial_stride=spatial_stride, file_type="json"
-    )
-    raw = _download_bytes(url, timeout=60)
-    frame = _coastwatch_json_to_frame(raw)
-    if frame.empty:
-        return pd.DataFrame(columns=["date", "latitude", "longitude", "u_ms", "v_ms"])
-    return normalize_current_frame(frame)
+    """Fetch one current chunk with endpoint/format fallbacks."""
+    errors: list[str] = []
+    for base_url in COASTWATCH_ERDDAP_BASES:
+        host = base_url.split("/")[2]
+        for file_type in ("json", "csv"):
+            url = build_coastwatch_url(
+                start_date, end_date, spatial_stride=spatial_stride,
+                file_type=file_type, base_url=base_url,
+            )
+            try:
+                raw = _download_bytes(url, timeout=60)
+                frame = _parse_coastwatch_payload(raw, file_type)
+                if frame.empty:
+                    errors.append(f"{host}/{file_type}: empty response")
+                    continue
+                normalized = normalize_current_frame(frame)
+                if normalized.empty:
+                    errors.append(f"{host}/{file_type}: no finite u/v rows")
+                    continue
+                return normalized
+            except Exception as exc:
+                errors.append(f"{host}/{file_type}: {type(exc).__name__}: {exc}")
+    raise RuntimeError("; ".join(errors[:4]) or "all CoastWatch endpoints returned no data")
 
 
 def fetch_coastwatch_currents(

@@ -41,3 +41,21 @@ def test_coastwatch_live_fetch_raises_clear_error_when_all_chunks_fail(monkeypat
         assert "synthetic network failure" in text
     else:
         raise AssertionError("expected RuntimeError")
+
+
+def test_coastwatch_falls_back_to_csv_when_json_fails(monkeypatch):
+    calls = []
+    def fake_download(url: str, timeout: int = 60):
+        calls.append(url)
+        if '.json?' in url:
+            raise RuntimeError('json unavailable')
+        return (
+            'time,latitude,longitude,u_current,v_current\n'
+            '2018-08-01T00:00:00Z,25.125,-85.125,0.15,-0.04\n'
+        ).encode('utf-8')
+
+    monkeypatch.setattr(florida_sts, '_download_bytes', fake_download)
+    out = florida_sts.fetch_coastwatch_currents('2018-08-01', '2018-08-01')
+    assert len(out) == 1
+    assert any('.json?' in u for u in calls)
+    assert any('.csv?' in u for u in calls)

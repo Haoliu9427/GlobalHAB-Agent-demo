@@ -1251,7 +1251,7 @@ with tab_real:
                 try:
                     with st.spinner("正在读取Karenia观测与真实流场，并构建流向约束的上游—下游匹配……"):
                         if hab_source_mode.startswith("NOAA"):
-                            florida_hab = cached_habsos_live(florida_start, florida_end, "FL")
+                            florida_hab = fetch_habsos(florida_start, florida_end, "FL")
                         else:
                             if hab_upload is None:
                                 raise ValueError("请先上传Karenia观测CSV。")
@@ -1268,13 +1268,15 @@ with tab_real:
                         if florida_hab["date"].min() < _start_day or florida_hab["date"].max() > _end_day:
                             raise ValueError("HABSOS返回日期与当前选择的回顾时间范围不一致。")
                         if current_source_mode.startswith("NOAA"):
-                            florida_current = cached_coastwatch_live(florida_start, florida_end, 2)
+                            florida_current = fetch_coastwatch_currents(florida_start, florida_end, 2)
                         else:
                             if current_upload is None:
                                 raise ValueError("请先上传流场CSV。")
                             florida_current = normalize_current_frame(pd.read_csv(current_upload))
                         if florida_current.empty:
-                            raise ValueError("所选时间范围内没有读取到有效流场记录。")
+                            raise RuntimeError(
+                                f"NOAA流场读取结果为空（适配器 {LIVE_ADAPTER_REVISION}）；请检查部署代码是否已同步更新。"
+                            )
                         florida_result = run_retrospective_sts(
                             florida_hab, florida_current, florida_lags, float(florida_threshold)
                         )

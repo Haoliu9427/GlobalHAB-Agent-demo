@@ -1,42 +1,46 @@
 # GlobalHAB-Agent
 
-GlobalHAB-Agent is a research prototype for cross-region harmful algal bloom (HAB) analysis. It combines environmental conditions, transport information, biological observations and aquaculture response variables in a common workflow for scenario analysis, lag testing, model comparison and forward validation.
+GlobalHAB-Agent 是一个面向跨区域有害藻华（Harmful Algal Bloom, HAB）研究的可运行原型。系统将环境条件、输运信息、生物观测和水产养殖响应放在同一分析流程中，用于情景分析、传播时滞检验、模型比较和严格前向验证。
 
-## Main functions
+## 1. 主要功能
 
-The Streamlit interface contains six workspaces:
+Streamlit 界面包含六个工作区：
 
-1. **Risk assessment** — 7/14/30-day scenario maps and relative risk ranking across representative marine regions.
-2. **Observed-event analysis** — South Australia qPCR replay, Norway long-term monitoring, Florida/Gulf flow-constrained retrospective analysis, and field-data forward validation.
-3. **Biological-response sandbox** — cage-fish pressure trajectories under HAB, temperature, dissolved oxygen, density and feeding scenarios.
-4. **Scientific analysis** — multiscale anomalies, routing diagnostics, TE/CTE lag analysis and spatial Durbin decomposition.
-5. **Exploration and validation** — constrained experiment selection, Bayesian policy comparison, negative controls, model benchmark and blocked holdout evaluation.
-6. **Data and provenance** — data-quality metrics, sources, result boundaries and downloadable evidence files.
+1. **风险研判**：对代表性海区进行 7 / 14 / 30 天情景推演和相对风险排序。
+2. **真实事件回放**：包括南澳 qPCR 事件回放、挪威长期监测前向验证、Florida/Gulf 真实流场约束回顾分析，以及现场数据前向验证。
+3. **生物响应沙盘**：比较 HAB、高温、低溶解氧、养殖密度和投喂情景下的网箱鱼相对压力变化。
+4. **科学分析**：包括多尺度异常检测、传播路径诊断、TE/CTE 时滞分析和空间 Durbin 效应分解。
+5. **探索与验证**：包括有限预算实验选择、Bayesian 策略比较、负对照、模型 Benchmark 和严格留出验证。
+6. **数据与溯源**：展示数据质量、数据来源、结果边界和可下载证据文件。
 
-## Data structure
+## 2. 数据结构
 
-The synthetic benchmark contains four anonymous regions and daily records of:
+### 2.1 机制约束型合成基准
 
-- sea-surface temperature and seasonal climatology;
-- marine heatwave status and intensity;
-- nitrate, phosphate and silicate;
-- a bounded transport/residence/convergence proxy;
-- HAB event labels generated from an upstream lagged signal, nutrient background and stochastic noise.
+默认合成基准包含 4 个匿名区域和日尺度序列，主要变量包括：
 
-The default generator contains a 14-day upstream-to-downstream lag as a known synthetic reference. That value is not available to the experiment-selection policy and is used only after a trajectory is complete to evaluate recovery.
+- 海表温度（SST）及季节气候态；
+- 海洋热浪状态与强度；
+- 硝酸盐、磷酸盐和硅酸盐；
+- 有界的输运 / 停留 / 汇聚代理；
+- HAB 事件标签。
 
-Observed-data modules are kept separate from the synthetic benchmark:
+默认生成器预先设置一个 **14 天的上游—下游统计信号**。该真值在实验选择过程中不可见，只在完整探索轨迹结束后用于评价是否恢复预设结构。
 
-- South Australia: 115 qPCR observations from the 2025 Karenia event;
-- Norway: 5,919 observations from 2006–2019 toxic-algae and environmental monitoring;
-- Florida/Gulf: NOAA HABSOS `Karenia brevis` observations combined by default with the HYCOM-TSIS GOMb0.04 Gulf reanalysis; NOAA CoastWatch and uploaded Copernicus/HF-radar current fields remain alternative sources;
-- field forward validation: user-supplied station observations and current fields.
+### 2.2 真实观测数据
 
-Third-party data attribution is documented in `THIRD_PARTY_DATA.md`.
+真实数据模块与合成基准分开使用：
 
-## Experiment space
+- **South Australia**：115 条 qPCR 观测，用于真实事件回放；
+- **Norway**：5,919 条 2006–2019 年有害藻及环境监测记录，用于严格前向排序验证；
+- **Florida/Gulf**：NOAA HABSOS `Karenia brevis` 观测，默认结合 HYCOM GOMb0.04 Gulf reanalysis 流场；同时保留 NOAA CoastWatch 和上传 Copernicus / HF-radar 流场的入口；
+- **现场前向验证**：接受用户上传的连续站点观测和流场数据。
 
-The core experiment space is:
+第三方数据来源、许可和引用方式见 `THIRD_PARTY_DATA.md`。
+
+## 3. 核心实验空间
+
+核心实验空间定义为：
 
 ```text
 route ∈ {local, downstream}
@@ -44,132 +48,182 @@ lag   ∈ {3, 7, 14, 21, 30, 45} days
 model ∈ {logistic, random_forest}
 ```
 
-This gives 24 candidate experiments. The default budget is 8 experiments.
+共 24 个候选实验，默认实验预算为 8 步。
 
-The experiment-selection page can compare:
+实验选择策略可以比较：
 
-- constrained heuristic policy;
-- Bayesian Expected Improvement;
-- Bayesian Information Gain proxy;
-- Thompson Sampling;
-- Random selection.
+- 当前受约束策略；
+- Bayesian Expected Improvement；
+- Bayesian Information Gain 代理；
+- Thompson Sampling；
+- Random。
 
-All policies use the same candidate table and budget. The synthetic 14-day reference is excluded from acquisition functions.
+所有策略使用同一候选表、同一预算和同一已观察反馈。合成基准中的 14 天真值不进入 Bayesian 采集函数或其他动作选择规则。
 
-## Model benchmark
+## 4. 模型 Benchmark
 
-The model benchmark uses the same blocked holdout rows for all methods and includes statistical, machine-learning and compact neural models, including:
+完整模型 Benchmark 在**相同的外层留出样本**上比较统计方法、经典机器学习、Boosting 和轻量深度模型，包括：
 
-- Seasonal / persistence baselines;
-- Logistic Regression;
-- GAM;
-- Gaussian Naive Bayes;
-- kNN;
-- RBF-SVM;
-- Decision Tree;
-- Random Forest;
-- Extra Trees;
-- AdaBoost;
-- Gradient Boosting;
-- HistGradientBoosting;
-- XGBoost;
-- LightGBM;
-- MLP;
-- STS-Interaction GLM;
-- Lightweight TCN;
-- STS-Gated TCN.
+- Seasonal / Persistence baselines；
+- Logistic Regression；
+- GAM；
+- Gaussian Naive Bayes；
+- kNN；
+- RBF-SVM；
+- Decision Tree；
+- Random Forest；
+- Extra Trees；
+- AdaBoost；
+- Gradient Boosting；
+- HistGradientBoosting；
+- XGBoost；
+- LightGBM；
+- MLP；
+- STS-Interaction GLM；
+- Lightweight TCN；
+- STS-Gated TCN。
 
-Hyperparameter selection is restricted to the training period. The final holdout is not used for tuning.
+需要模型选择的方法只允许在外层训练时段内部调参，最终留出集不参与参数选择。
 
-## Validation
+## 5. 验证设计
 
-Synthetic benchmark validation uses:
+合成基准的核心验证包括：
 
-- a completely held-out region;
-- a forward temporal test block;
-- seasonal and persistence baselines;
-- equal-budget random-search comparison;
-- reverse-path and time-permutation controls;
-- Average Precision, Brier Skill, ECE and fixed-capacity Top-k metrics.
+- 完全留出区域；
+- 前向时间测试块；
+- Seasonal Climatology 和 Event Persistence 基线；
+- 同预算 Random 搜索；
+- Reverse-path 和时间置换负对照；
+- Average Precision、Brier Skill、ECE 和固定容量 Top-k 指标。
 
-The Norway module uses expanding forward windows. The Florida/Gulf module compares flow-constrained, no-flow and reverse-flow matching across candidate lags.
+挪威数据采用扩展式前向窗口。Florida/Gulf 模块比较：
 
-## Field forward validation
+```text
+真实流场约束
+vs.
+无流向空间匹配
+vs.
+反向流对照
+```
 
-Templates are provided in `data/field_validation/`.
+并在候选 lag 上进行回顾性比较。
 
-Minimum observation fields:
+## 6. 现场前向验证
+
+数据模板位于：
+
+```text
+data/field_validation/
+```
+
+观测数据最低字段：
 
 ```text
 date, station_id, latitude, longitude, cell_count
 ```
 
-Minimum current fields:
+流场数据最低字段：
 
 ```text
 date, latitude, longitude, u_ms, v_ms
 ```
 
-Optional fields include toxin concentration, SST, salinity, dissolved oxygen, nitrate, phosphate, silicate, chlorophyll and biological-response variables.
+可选字段包括：
 
-The field workflow checks sample count, temporal coverage, spatial support, event count and current-field overlap. When the quality criteria are met, an earlier time block is used for lag selection and a later block is used once for forward evaluation. Insufficient data return `DEFER`.
+```text
+toxin_value
+water_temp_c
+salinity
+dissolved_oxygen_mg_l
+nitrate_mmol_m3
+phosphate_mmol_m3
+silicate_mmol_m3
+chlorophyll
+```
 
-## Biological-response model
+系统首先检查样本量、时间连续性、空间支持、事件数和流场日期覆盖。满足条件后，较早时间块用于选择传播 lag，后续时间块仅用于一次独立前向评价；数据不足时返回 `DEFER`。
 
-The cage-fish sandbox updates a relative pressure state using a bounded hourly process:
+## 7. 生物响应模型
+
+网箱鱼沙盘使用有界的相对压力状态：
 
 ```text
 P(t+1) = clip[P(t) + 1.45*C(t)*(1-P(t)/100)
               - 0.55*(1-C(t))*P(t)/100, 0, 100]
 ```
 
-`C(t)` is a 0–1 composite challenge term and `P(t)` is a 0–100 relative physiological-pressure state. Parameters are transparent and listed in `outputs/cage_fish_sandbox_parameters.csv`. They are not species- or farm-calibrated.
+其中：
 
-## Quick start
+- `C(t)`：0–1 的综合环境挑战项；
+- `P(t)`：0–100 的相对生理压力状态。
 
-Install dependencies:
+参数公开记录在：
+
+```text
+outputs/cage_fish_sandbox_parameters.csv
+```
+
+该模块用于情景相对比较，不代表特定物种、生命阶段或养殖场的校准死亡率模型。
+
+## 8. 快速开始
+
+### 8.1 安装依赖
+
+推荐 Python 3.12。
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-Start the web interface:
+### 8.2 启动网页
 
 ```bash
 streamlit run app.py
 ```
 
-Run the default command-line workflow:
+### 8.3 默认命令行流程
 
 ```bash
 python run_demo.py --config config/demo.json
 ```
 
-Minimal synthetic reproduction:
+### 8.4 最小离线复现
 
 ```bash
 python scripts/run_minimal_reproduction.py
 ```
 
-Experiment-selection policy comparison:
+该命令用于快速检查：
+
+- 24 个候选实验；
+- 8 步预算；
+- 完全留出区域与前向时间阻断；
+- 默认配置下对预注册 `downstream / 14-day` 合成结构的恢复；
+- 同预算 Random、平凡基线和负对照。
+
+### 8.5 Agent 策略比较
 
 ```bash
 python scripts/run_agent_policy_benchmark.py
 ```
 
-Full model benchmark:
+### 8.6 完整模型 Benchmark
 
 ```bash
 python scripts/run_broad_benchmark_audit.py
 ```
 
-Florida/Gulf retrospective analysis:
+### 8.7 Florida/Gulf 回顾分析
+
+在线模式：
 
 ```bash
 python scripts/run_florida_sts_validation.py --online
 ```
 
-Field forward validation:
+在线模块依赖 NOAA / HYCOM 服务状态。公开服务不可用时，可改用导出的 HABSOS 和 HYCOM / Copernicus / HF-radar CSV。
+
+### 8.8 现场前向验证
 
 ```bash
 python scripts/run_field_forward_validation.py \
@@ -177,14 +231,26 @@ python scripts/run_field_forward_validation.py \
   --currents <field_currents.csv>
 ```
 
-## Release checks
+## 9. 发布检查
+
+快速发布检查：
 
 ```bash
 python scripts/verify_release.py
-python -m pytest -q tests/test_release_smoke_fast.py tests/test_bayesian_design.py tests/test_florida_sts.py tests/test_broad_benchmark.py
+python -m pytest -q \
+  tests/test_release_smoke_fast.py \
+  tests/test_bayesian_design.py \
+  tests/test_florida_sts.py \
+  tests/test_broad_benchmark.py
 ```
 
-## Repository layout
+完整离线测试：
+
+```bash
+python -m pytest -q
+```
+
+## 10. 工程目录
 
 ```text
 app.py
@@ -199,16 +265,34 @@ src/globalhab_demo/
 tests/
 ```
 
-See `docs/MINIMAL_REPRODUCTION.md` for the shortest reproducible workflows and `docs/TECHNICAL_NOTE.md` for method details.
+最短复现说明见：
 
-## Result boundaries
+```text
+docs/MINIMAL_REPRODUCTION.md
+```
 
-- Synthetic results are method-validation results, not real-ocean forecast performance.
-- South Australia is an event replay and is not used to train the synthetic models.
-- The Florida/Gulf flow matching uses a first-order surface-current displacement and is not a full 3-D particle-tracking model.
-- The cage-fish response parameters are not calibrated to a specific species, life stage or farm.
-- Outputs do not constitute mortality estimates, toxin thresholds, regulatory alerts or automatic operational commands.
+方法细节见：
 
-## License
+```text
+docs/TECHNICAL_NOTE.md
+```
 
-Code is released under the MIT License. Third-party datasets retain their original licenses; see `THIRD_PARTY_DATA.md`.
+## 11. 结果边界
+
+- 合成基准结果用于检验方法和探索环境，不代表真实海洋预报性能。
+- 南澳模块是事件回放，不用于训练合成模型。
+- Florida/Gulf 当前采用一阶表层流场位移约束，不等同于完整三维 Lagrangian 粒子追踪。
+- 生物响应参数未针对特定物种、生命阶段或养殖场进行校准。
+- 当前输出不构成死亡率估计、毒素监管阈值、业务预警或自动控制指令。
+
+## 12. 许可证与第三方数据
+
+代码采用 MIT License。
+
+第三方数据仍遵循其原始许可证和引用要求，详见：
+
+```text
+THIRD_PARTY_DATA.md
+```
+
+英文版说明保留在 `README_EN.md`。

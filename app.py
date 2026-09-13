@@ -513,6 +513,7 @@ def real_qpcr_map(frame: pd.DataFrame) -> go.Figure:
     return fig
 
 
+#st.sidebar.caption("GlobalHAB-Agent · API工作台 2026.09.13")
 workspace_mode = st.sidebar.radio("工作区", ["研究与验证", "自有数据分析"], key="workspace_mode")
 if workspace_mode == "自有数据分析":
     st.title("自有数据分析")

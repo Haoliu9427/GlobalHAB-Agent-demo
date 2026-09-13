@@ -27,6 +27,7 @@ def render(root):
     folder=st.selectbox('验证任务',folders,format_func=lambda p:labels.get(p.name,p.name),key='real_eval_task')
     manifest=json.loads((folder/'split_manifest.json').read_text())
     df=pd.read_csv(folder/'metrics.csv')
+    df['model']=df['model'].replace({'Chronos':'Chronos-Bolt-small','Chronos+EcoFusion':'Chronos-Bolt-small + EcoFusion'})
     st.write('香港任务预测的是报告发生；HABSOS任务预测的是有复测记录位置的浓度阈值事件。两个任务的AP不能直接比较。')
     counts=manifest['counts'];columns=st.columns(4)
     for col,key,title in zip(columns,['train','validation','calibration','test'],['训练样本','选模样本','校准样本','时间留出样本']):
@@ -49,7 +50,7 @@ def render(root):
         with st.expander('配对置信区间与模型比较'):
             st.dataframe(pd.read_csv(audit),hide_index=True,use_container_width=True)
             st.caption('按季度整块重采样；区间跨0时不能宣称稳定胜出。不是因果效应。')
-    views=st.tabs(['时间与区域','稳定性','输入贡献','实验选择','Qwen语言模型','自有观测'])
+    views=st.tabs(['时间与区域','稳定性','输入贡献','实验选择','基础模型对照'])
     with views[0]:
         st.write('三个分界日期：'+' / '.join(manifest['cutoffs']))
         rows=pd.read_csv(folder/f'{splitname}_rows.csv')
@@ -63,8 +64,9 @@ def render(root):
             with st.expander('实测变量覆盖与缺测比例'):
                 st.dataframe(pd.read_csv(folder/'input_availability.csv'),hide_index=True,use_container_width=True)
     with views[1]:
-        values=pd.read_csv(folder/'stability.csv');model=st.selectbox('查看模型',sorted(values.model.unique()),key='real_stability_model')
-        st.dataframe(values[values.model==model],hide_index=True,use_container_width=True)
+        values=pd.read_csv(folder/'stability.csv');model=st.selectbox('查看模型',sorted(values.model.unique()),format_func=lambda n:{'Chronos':'Chronos-Bolt-small','Chronos+EcoFusion':'Chronos-Bolt-small + EcoFusion'}.get(n,n),key='real_stability_model')
+        shown=values[values.model==model].copy();shown['model']=shown['model'].replace({'Chronos':'Chronos-Bolt-small','Chronos+EcoFusion':'Chronos-Bolt-small + EcoFusion'})
+        st.dataframe(shown,hide_index=True,use_container_width=True)
         st.caption('missing20与noise01为人为输入扰动；observed_high_temperature为训练温度90分位以上的实测子集，并非所有极端天气。')
     with views[2]:
         imp=pd.read_csv(folder/'explainability.csv').groupby('feature',as_index=False).AP_drop.mean()
@@ -74,17 +76,24 @@ def render(root):
         st.dataframe(pd.read_json(folder/'real_agent_log.jsonl',lines=True),hide_index=True,use_container_width=True)
         st.caption('受约束实验控制器根据验证反馈调整网络容量；测试标签不进入选择规则。原24候选、8步合成探索保留独立。')
     with views[4]:
-        llm=base/'china_hk_llm';status=llm/'status.json'
-        if status.exists():
-            status=json.loads(status.read_text());st.write('语言模型：'+status.get('model','')+'；状态：'+status['status'])
-            if status['status']=='completed':
-                llm_results=pd.read_csv(llm/'metrics.csv')
-                llm_results['model']=llm_results['model'].replace({'LLM':'Qwen2.5-0.5B-Instruct','LLM+EcoFusion':'Qwen2.5-0.5B-Instruct + EcoFusion'})
-                st.dataframe(llm_results,hide_index=True,use_container_width=True)
-                st.caption('这是香港固定留出集的对照，与当前选择的其他海域结果不混合。小型语言模型不代表所有LLM；公开预训练数据的重叠无法独立排除。')
-            with st.expander('模型及提示词记录'):st.json(status)
-        else:st.info('尚未运行语言模型对照。Chronos为时序基础模型，不是聊天LLM。')
-    with views[5]:
-        from .own_observations import render as render_own
-        render_own()
-    st.download_button('下载当前实验指标',data=(folder/'metrics.csv').read_bytes(),file_name=folder.name+'_metrics.csv')
+        chosen=st.selectbox('基础模型', ['Qwen2.5-0.5B-Instruct','Chronos-Bolt-small'],key='published_foundation_model')
+        if chosen=='Qwen2.5-0.5B-Instruct':
+            exp=base/'china_hk_llm';statusfile=exp/'status.json'
+        else:
+            exp=base/'china_hk_foundation_v2';statusfile=exp/'foundation_status.json'
+        if statusfile.exists():
+            status=json.loads(statusfile.read_text())
+            st.write(chosen+' · '+('已完成' if status.get('status')=='completed' else '尚未完成'))
+            if status.get('status')=='completed' and (exp/'metrics.csv').exists():
+                scores=pd.read_csv(exp/'metrics.csv')
+                if chosen.startswith('Chronos'):
+                    scores=scores[scores.model.isin(['Chronos','Chronos+EcoFusion'])]
+                scores['model']=scores['model'].replace({'LLM':'Qwen2.5-0.5B-Instruct','LLM+EcoFusion':'Qwen2.5-0.5B-Instruct + EcoFusion',
+                    'Chronos':'Chronos-Bolt-small','Chronos+EcoFusion':'Chronos-Bolt-small + EcoFusion'})
+                st.dataframe(scores,hide_index=True,use_container_width=True)
+                st.download_button('下载模型对照指标',data=scores.to_csv(index=False).encode('utf-8-sig'),file_name=chosen+'_metrics.csv')
+            st.caption('这里是香港固定留出实验，与上方其他海域任务分开。Qwen是语言模型，Chronos是时序基础模型。预训练语料重叠不能独立排除。')
+            with st.expander('模型及运行记录'):st.json(status)
+        else:st.info('当前工程尚无该模型的已完成实验记录。')
+        st.caption('分析自己的观测数据，请在左侧工作区选择“自有数据分析”。')
+    st.download_button('下载当前实验指标',data=df.to_csv(index=False).encode('utf-8-sig'),file_name=folder.name+'_metrics.csv')

@@ -513,6 +513,14 @@ def real_qpcr_map(frame: pd.DataFrame) -> go.Figure:
     return fig
 
 
+workspace_mode = st.sidebar.radio("工作区", ["研究与验证", "自有数据分析"], key="workspace_mode")
+if workspace_mode == "自有数据分析":
+    st.title("自有数据分析")
+    st.caption("使用现场观测训练模型、比较预测结果，并下载本次分析。")
+    from globalhab_demo.real_training.own_observations import render as render_own_observations
+    render_own_observations()
+    st.stop()
+
 st.markdown(
     """
     <div class="hero">

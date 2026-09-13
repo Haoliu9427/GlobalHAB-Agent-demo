@@ -1,0 +1,9 @@
+{
+  "exceptions": 0,
+  "independent_workspace_skips_exploration": true,
+  "visible_models": [
+    "Qwen2.5-0.5B-Instruct",
+    "Chronos-Bolt-small"
+  ],
+  "upload_logic_changed": false
+}

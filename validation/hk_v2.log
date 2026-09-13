@@ -1,0 +1,16 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/143 [00:00<?, ?it/s]Loading weights: 100%|██████████| 143/143 [00:00<00:00, 4760.77it/s]
+china_hk_7d seed 17 training 1905
+china_hk_7d seed 42 training 1905
+china_hk_7d seed 73 training 1905
+                             AP_mean    AP_std  Brier_mean  Brier_std  ECE_mean   ECE_std  seconds_mean  seconds_std  top10_recall_mean  top10_recall_std
+model                split                                                                                                                               
+Chronos              test   0.470671  0.000000    0.190276   0.000000  0.040628  0.000000      8.736019     0.000000           0.219780          0.000000
+Chronos+EcoFusion    test   0.607753  0.009215    0.163368   0.001682  0.048000  0.007028     10.638897     0.128773           0.285714          0.010989
+EcoFusion            test   0.607753  0.009215    0.163368   0.001682  0.048000  0.007028      1.902878     0.128773           0.285714          0.010989
+EcoTemporalNet       test   0.607753  0.009215    0.163368   0.001682  0.048000  0.007028      1.642304     0.130708           0.285714          0.010989
+HistGradientBoosting test   0.546159  0.000000    0.180110   0.000000  0.048117  0.000000      0.260573     0.022894           0.252747          0.000000
+Logistic             test   0.595248  0.000000    0.170772   0.000000  0.063340  0.000000      0.074061     0.078034           0.285714          0.000000
+Persistence          test   0.433306  0.000000    0.179510   0.000000  0.016570  0.000000      0.000000     0.000000           0.230769          0.000000
+RandomForest         test   0.569088  0.001623    0.178649   0.000928  0.067657  0.016705      0.333172     0.021027           0.263736          0.010989
+Seasonal             test   0.517350  0.000000    0.178344   0.000000  0.050697  0.000000      0.000000     0.000000           0.219780          0.000000

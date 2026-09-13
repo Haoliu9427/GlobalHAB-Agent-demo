@@ -1,0 +1,10 @@
+{
+  "task": "habsos_7d",
+  "vs_HistGradientBoosting": {
+    "EcoFusion": "no_stable_superiority_demonstrated",
+    "EcoTemporalNet": "no_stable_superiority_demonstrated"
+  },
+  "criterion": "AP paired calendar-quarter bootstrap lower bound > 0 for every seed; Brier/ECE tradeoffs shown separately",
+  "limits": "First observed same-cell sample 7\u201310 days later; Karenia brevis >= 100000 cells/L. 0.1 degree cells; sampled-target prediction, not continuous daily bloom forecast. Sample availability assumed at collection; no publication-latency archive.",
+  "calibration": "Separate pre-test chronological window; empirical conformal coverage not an IID guarantee."
+}

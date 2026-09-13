@@ -711,10 +711,14 @@ st.caption(
     "情景输入即时更新；合成探索设置需点击“应用设置并重新计算”。"
 )
 
-tab_alert, tab_real, tab_bio, tab_methods, tab_agent, tab_evidence = st.tabs([
+tab_alert, tab_real, tab_bio, tab_methods, tab_agent, tab_evidence, tab_training = st.tabs([
     "风险研判", "真实事件回放", "生物响应沙盘",
-    "科学解释", "探索与验证", "数据来源与复核",
+    "科学解释", "探索与验证", "数据来源与复核", "真实数据训练与验证",
 ])
+
+with tab_training:
+    from globalhab_demo.real_training.ui import render as render_real_training
+    render_real_training(ROOT)
 
 with tab_alert:
     st.markdown("### 未来7/14/30天藻华风险情景推演")

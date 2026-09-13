@@ -1,0 +1,11 @@
+{
+  "focused_tests": 11,
+  "focused_tests_passed": 11,
+  "application_startup_exceptions": 0,
+  "original_output_files_compared": 62,
+  "original_output_files_changed": 0,
+  "compiled_new_python_modules": true,
+  "saved_model_inference_reproduced": true,
+  "github_writes": false,
+  "online_deployment_changed": false
+}

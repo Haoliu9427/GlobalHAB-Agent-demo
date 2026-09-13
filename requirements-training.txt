@@ -1,0 +1,6 @@
+# Install the normal application dependencies first, then these CPU training extras.
+torch>=2.5,<3
+chronos-forecasting>=2,<3
+transformers>=4.50,<6
+httpx[socks]>=0.28,<1
+pytest>=8,<10

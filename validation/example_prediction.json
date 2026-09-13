@@ -1,0 +1,11 @@
+{
+  "task": "china_hk_7d",
+  "model": "EcoFusion",
+  "seed": 42,
+  "probabilities": [
+    0.15050886093819663
+  ],
+  "missing_fraction": 0.0,
+  "meaning": "Next calendar week contains >=1 AFCD red-tide report. A zero means no report in this archive, not monitored biological absence. Retrospective as-of report date; historical publication revisions unknown. China Hong Kong waters only; not a validation for all Chinese seas.",
+  "operational_status": "Research inference; deployment requires local prospective validation and monitoring."
+}

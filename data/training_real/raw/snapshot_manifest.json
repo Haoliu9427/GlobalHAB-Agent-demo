@@ -1,0 +1,22 @@
+{
+  "retrieved_utc": "2026-09-12T15:53:44.414018+00:00",
+  "habsos": {
+    "source": "https://gis.ncdc.noaa.gov/arcgis/rest/services/ms/HABSOS_CellCounts/MapServer/0/query",
+    "records": 223394,
+    "frozen_ids": 223394,
+    "complete_snapshot": true,
+    "date_min": "1953-08-19 00:00:00",
+    "date_max": "2026-09-10 16:15:00",
+    "license": "US NOAA public data; original contributors retained"
+  },
+  "hong_kong": {
+    "source": "https://redtide.afcd.gov.hk/data/RTMS_ob_RTLE.csv",
+    "records": 1931,
+    "license": "Hong Kong Government open data terms; attribution required"
+  },
+  "sha256": {
+    "habsos.csv.gz": "c63aebab9b9f6e2fe71582d3e717c2c7f126c9bee85ee5332d7d59de02daec22",
+    "hong_kong_red_tide.csv": "0ac868a142887e26b13c2b559b10656d80a0effb99455267f45eca42b40e13e9",
+    "habsos_object_ids.json": "1a1a318ffd9e86deffaa2e45f4db803cca5a95d4d01a6eea44d8aab4e044cc37"
+  }
+}

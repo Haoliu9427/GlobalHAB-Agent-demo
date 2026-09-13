@@ -1,0 +1,15 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 5043.09it/s]
+LLM scored 1 / 675
+LLM scored 81 / 675
+LLM scored 161 / 675
+LLM scored 241 / 675
+LLM scored 321 / 675
+LLM scored 401 / 675
+LLM scored 481 / 675
+LLM scored 561 / 675
+LLM scored 641 / 675
+                     AP     Brier       ECE
+model                                      
+LLM            0.499249  0.192190  0.097028
+LLM+EcoFusion  0.607753  0.163368  0.048000

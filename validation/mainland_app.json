@@ -1,0 +1,42 @@
+[
+  {
+    "marker": "ITS1",
+    "sea": "渤海",
+    "exceptions": 0
+  },
+  {
+    "marker": "ITS1",
+    "sea": "黄海",
+    "exceptions": 0
+  },
+  {
+    "marker": "ITS1",
+    "sea": "东海",
+    "exceptions": 0
+  },
+  {
+    "marker": "ITS1",
+    "sea": "南海",
+    "exceptions": 0
+  },
+  {
+    "marker": "18S V4",
+    "sea": "渤海",
+    "exceptions": 0
+  },
+  {
+    "marker": "18S V4",
+    "sea": "黄海",
+    "exceptions": 0
+  },
+  {
+    "marker": "18S V4",
+    "sea": "东海",
+    "exceptions": 0
+  },
+  {
+    "marker": "18S V4",
+    "sea": "南海",
+    "exceptions": 0
+  }
+]

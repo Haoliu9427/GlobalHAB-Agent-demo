@@ -1,0 +1,16 @@
+{
+  "torch": "2.14.0+cpu",
+  "chronos-forecasting": "2.3.2",
+  "transformers": "5.17.0",
+  "numpy": "2.3.5",
+  "scipy": "1.17.0",
+  "pandas": "2.2.3",
+  "scikit-learn": "1.8.0",
+  "streamlit": "1.63.0",
+  "plotly": "7.0.0",
+  "joblib": "1.5.3",
+  "pyarrow": "24.0.0",
+  "inference_device": "CPU",
+  "temporal_torch_threads": 2,
+  "note": "CPU training environment; application requirements preserve compatible original pins. Foundation downloads are external."
+}

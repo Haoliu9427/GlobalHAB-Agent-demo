@@ -49,7 +49,7 @@ def render(root):
         with st.expander('配对置信区间与模型比较'):
             st.dataframe(pd.read_csv(audit),hide_index=True,use_container_width=True)
             st.caption('按季度整块重采样；区间跨0时不能宣称稳定胜出。不是因果效应。')
-    views=st.tabs(['时间与区域','稳定性','输入贡献','实验选择','语言模型','自有观测'])
+    views=st.tabs(['时间与区域','稳定性','输入贡献','实验选择','Qwen语言模型','自有观测'])
     with views[0]:
         st.write('三个分界日期：'+' / '.join(manifest['cutoffs']))
         rows=pd.read_csv(folder/f'{splitname}_rows.csv')
@@ -78,19 +78,13 @@ def render(root):
         if status.exists():
             status=json.loads(status.read_text());st.write('语言模型：'+status.get('model','')+'；状态：'+status['status'])
             if status['status']=='completed':
-                st.dataframe(pd.read_csv(llm/'metrics.csv'),hide_index=True,use_container_width=True)
+                llm_results=pd.read_csv(llm/'metrics.csv')
+                llm_results['model']=llm_results['model'].replace({'LLM':'Qwen2.5-0.5B-Instruct','LLM+EcoFusion':'Qwen2.5-0.5B-Instruct + EcoFusion'})
+                st.dataframe(llm_results,hide_index=True,use_container_width=True)
                 st.caption('这是香港固定留出集的对照，与当前选择的其他海域结果不混合。小型语言模型不代表所有LLM；公开预训练数据的重叠无法独立排除。')
             with st.expander('模型及提示词记录'):st.json(status)
         else:st.info('尚未运行语言模型对照。Chronos为时序基础模型，不是聊天LLM。')
     with views[5]:
-        st.write('上传连续现场观测CSV，先检查是否具备时间留出验证条件。缺失事件标签不作为阴性。')
-        uploaded=st.file_uploader('现场观测CSV',type=['csv'],key='real_training_upload')
-        if uploaded is not None:
-            try:
-                from .data import field,split
-                ds=field(uploaded);parts,info=split(ds)
-                st.success(f'形成{len(ds.rows):,}条未来目标样本，可按时间与站点分割。')
-                st.json(info['counts']);st.caption('上传仅在当前会话解析，未训练、未写入仓库。用scripts/train_real.py --dataset china_field --input 文件路径执行完整实验。')
-            except Exception as exc:st.error('数据检查未通过：'+str(exc))
-        st.download_button('下载字段模板',data='station_id,date,available_at,latitude,longitude,observed_event,value,source,temperature,salinity,dissolved_oxygen\n',file_name='field_observations_template.csv')
+        from .own_observations import render as render_own
+        render_own()
     st.download_button('下载当前实验指标',data=(folder/'metrics.csv').read_bytes(),file_name=folder.name+'_metrics.csv')

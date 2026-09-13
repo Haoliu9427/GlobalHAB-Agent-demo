@@ -358,3 +358,7 @@ THIRD_PARTY_DATA.md
 ## 中国近海补充验证
 
 在“真实数据训练与验证”工作区选择“中国近海调查”，查看渤海、黄海、东海、南海的实测覆盖、跨年分子检出检验与来源。此页不是中国内地提前7天藻华预警成绩。详情见 `CHINA_MAINLAND_VALIDATION.md`。运行 `python scripts/validate_mainland.py` 重算。
+
+## 上传自有观测运行模型
+
+在“真实数据训练与验证 → 连续观测预测 → 自有观测”上传CSV，使用“训练与验证”或“基础模型对照”。支持传统模型、轻量TCN，以及Chronos-Bolt-small和Qwen2.5-0.5B-Instruct本地推理。安装、输入要求和下载结果说明见 `OWN_OBSERVATIONS_GUIDE.md`。这两个入口使用本次上传数据计算，不调用已封存的香港实验分数。

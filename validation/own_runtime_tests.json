@@ -1,0 +1,17 @@
+{
+  "tests": "20 passed",
+  "python": "3.12.14",
+  "packages": {
+    "torch": "2.14.0+cpu",
+    "chronos-forecasting": "2.3.2",
+    "transformers": "5.17.0",
+    "streamlit": "1.63.0",
+    "scikit-learn": "1.8.0"
+  },
+  "base_archive": "GlobalHAB-Agent_完整代码工程_中国近海验证版.zip",
+  "modified_existing_files": [
+    "README.md",
+    "src/globalhab_demo/real_training/ui.py"
+  ],
+  "missing_previous_files": []
+}

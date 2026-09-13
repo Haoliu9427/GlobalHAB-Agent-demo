@@ -1,0 +1,81 @@
+{
+  "tests": "26 passed",
+  "models_count": 35,
+  "model_inventory": [
+    "Seasonal Climatology",
+    "Event Persistence",
+    "Logistic",
+    "GAM (Spline Logistic)",
+    "Gaussian Naive Bayes",
+    "kNN",
+    "RBF-SVM",
+    "Decision Tree",
+    "Random Forest",
+    "Extra Trees",
+    "AdaBoost",
+    "Gradient Boosting",
+    "HistGradientBoosting",
+    "MLP",
+    "XGBoost",
+    "LightGBM",
+    "Lightweight TCN",
+    "EcoTemporalNet",
+    "STS-Interaction GLM",
+    "STS-Gated TCN",
+    "Chronos-Bolt-tiny",
+    "Chronos-Bolt-small",
+    "Chronos-Bolt-base",
+    "Qwen2.5-0.5B-Instruct",
+    "Qwen2.5-1.5B-Instruct",
+    "Qwen2.5-3B-Instruct",
+    "SmolLM2-360M-Instruct",
+    "EcoFusion",
+    "Chronos-Bolt-tiny + EcoFusion",
+    "Chronos-Bolt-small + EcoFusion",
+    "Chronos-Bolt-base + EcoFusion",
+    "Qwen2.5-0.5B-Instruct + EcoFusion",
+    "Qwen2.5-1.5B-Instruct + EcoFusion",
+    "Qwen2.5-3B-Instruct + EcoFusion",
+    "SmolLM2-360M-Instruct + EcoFusion"
+  ],
+  "non_classifier_methods": {
+    "分子物种检出率基线": "需要分子调查的物种与检测方法字段；请使用中国近海调查模块。",
+    "空间Durbin模型": "空间效应解释，需空间权重矩阵；不是统一二分类预测器。",
+    "TE/CTE信息流": "方向及时滞检验；不输出同一目标的分类概率。",
+    "生物响应过程模型": "生理压力情景模拟；请进入生物响应沙盘。",
+    "养殖风险投影": "危害、暴露与脆弱性组合；请进入风险研判。",
+    "Bayesian EI/IG、Thompson、Random探索策略": "实验选择策略，不是观测分类器；请进入探索与验证。"
+  },
+  "pretrained_ids": {
+    "Chronos-Bolt-tiny": "amazon/chronos-bolt-tiny",
+    "Chronos-Bolt-small": "amazon/chronos-bolt-small",
+    "Chronos-Bolt-base": "amazon/chronos-bolt-base",
+    "Qwen2.5-0.5B-Instruct": "Qwen/Qwen2.5-0.5B-Instruct",
+    "Qwen2.5-1.5B-Instruct": "Qwen/Qwen2.5-1.5B-Instruct",
+    "Qwen2.5-3B-Instruct": "Qwen/Qwen2.5-3B-Instruct",
+    "SmolLM2-360M-Instruct": "HuggingFaceTB/SmolLM2-360M-Instruct"
+  },
+  "pretrained_real_weight_smoke_passed": [
+    "Chronos-Bolt-tiny",
+    "Chronos-Bolt-small",
+    "Qwen2.5-0.5B-Instruct",
+    "SmolLM2-360M-Instruct"
+  ],
+  "pretrained_configured_not_weight_smoke_tested": [
+    "Chronos-Bolt-base",
+    "Qwen2.5-1.5B-Instruct",
+    "Qwen2.5-3B-Instruct"
+  ],
+  "smoke_data": "Synthetic software fixtures, not real-world accuracy evidence",
+  "packages": {
+    "torch": "2.14.0+cpu",
+    "transformers": "5.17.0",
+    "chronos-forecasting": "2.3.2",
+    "xgboost": "3.4.1",
+    "lightgbm": "4.7.0",
+    "scikit-learn": "1.8.0",
+    "streamlit": "1.63.0"
+  },
+  "original_data_and_results_unchanged": true,
+  "missing_previous_files": []
+}

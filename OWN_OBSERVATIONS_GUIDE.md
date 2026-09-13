@@ -1,53 +1,82 @@
-# 自有观测：模型训练与基础模型对照
+# 自有数据分析：完整模型目录、历史验证与未来预测
 
-入口位置：左侧工作区 → 自有数据分析。上传CSV后，可在“训练与验证”和“基础模型对照”之间选择。原有中国近海页和已封存实验保持独立，网页运行不覆盖原实验文件。
+入口：左侧工作区 → 自有数据分析。原有研究工作区与已封存成绩独立，上传过程保持CSV方式，没有修改网络上传设置。
 
-## 两个入口
+## 操作
 
-- 训练与验证：Logistic、RandomForest、HistGradientBoosting、EcoTemporalNet可多选。前三种参数固定，TCN宽度16、参数少于50000，使用验证期早停；全部运行17/42/73三个种子。
-- 基础模型对照：Chronos-Bolt-small、Qwen2.5-0.5B-Instruct可多选，并可加入传统模型/TCN同场对照。使用本次上传数据推理，独立校准，不复用香港模型或成绩。不是可任意加载所有厂商大模型的通用接口。
+1. 上传有标签的历史观测CSV。填写物种、事件阈值与value含义/单位。
+2. 选择“历史预测验证”，或“历史验证 + 最新时点未来预测”。
+3. 选择7/14/30天时效，从完整目录多选模型。融合模型会自动运行其组件，页面明确列出实际执行列表；季节基线始终同时运行。
+4. 开始分析，查看本次输入哈希、指标、未来概率与结果解读，下载结果包。数据或设置改变后旧成绩隐藏，不匹配的结果不复用。
 
-Chronos为时序基础模型，输入为连续逐日的历史0/1事件标签，预测所选第N天。必须所有历史连续、目标恰好在第N天；不满足条件会阻止运行，不伪造重采样标签。Qwen是语言模型，输入为字段名称、原始历史值、历史事件、采样间隔和用户填写的事件定义，读取0/1两个token的相对分数。两者均固定推理种子42；不是训练了三个大模型。
+## 全部模型如何对应
 
-## 数据和目标
+- 基线：Seasonal Climatology、Event Persistence。
+- 统计/机器学习：Logistic、GAM (Spline Logistic)、Gaussian Naive Bayes、kNN、RBF-SVM、Decision Tree、Random Forest、Extra Trees、AdaBoost、Gradient Boosting、HistGradientBoosting、MLP、XGBoost、LightGBM。
+- 时序与科学结构：Lightweight TCN、EcoTemporalNet、STS-Interaction GLM、STS-Gated TCN。
+- 时序基础模型：Chronos-Bolt-tiny、small、base。
+- 语言模型：Qwen2.5-0.5B/1.5B/3B-Instruct、SmolLM2-360M-Instruct。
+- 融合：EcoFusion，以及上述七个基础模型分别与EcoFusion融合。
 
-必需字段：station_id,date,available_at,latitude,longitude,observed_event,value,source。可选环境变量：temperature,salinity,dissolved_oxygen,nitrate,phosphate,silicate,u_current,v_current。页面可下载空模板。还需填写物种、事件阈值和value含义/单位，避免把不同端点混为一谈。
+共35个可执行模型/方案条目。以模型家族计数，不把不同历史任务的超参数组合重复算作模型。过去的RandomForest与Random Forest统一为后者，LLM统一使用真实模型名。基础模型的选择数不等于已证明有效的模型数。
 
-日期必须正确；同站同日只能有一条记录。observed_event只允许明确0/1，未知留空且不补0。当前适配器要求available_at不晚于观测日期，延迟数据必须先按实际可用时间处理。每条样本用12次过去观测预测N至N+3天内首次复测的标签，不是这段时间内任何一次事件。
+空间Durbin、TE/CTE、生物响应过程、养殖风险投影及Bayesian/Thompson/Random探索策略在同一目录说明其用途与原模块入口；它们不是同一目标的分类模型，不编造AP。中国近海分子检出率基线需要物种/检测方法数据，保留在中国近海调查。
 
-按时间分训练/验证/校准/测试；标签越过分界的样本删除。有至少10个站点时启用额外站点留出。训练、验证、校准和时间测试各至少20条且有两类标签。预处理仅拟合训练期；概率校准仅拟合校准期；测试记录和哈希对所有模型一致。两入口使用同一数据、同一目标时划分一致，但不同模型的原生输入形式不同，协议有记录。
+原始合成环境模型在自有数据上重新训练。Lightweight TCN沿用两层因果卷积结构，输入维数随上传字段变化，因此参数量不是原合成六变量情况下的119。STS-Gated沿用原NumPy双分支和门控实现，但用本次训练期标准化的实测变量；不会把合成场景的常数当作真实海洋参数。这些适配不改写原实验成绩。
 
-## 运行环境
+## 字段与适用条件
 
-基础网页依赖保持原requirements.txt。传统模型即可运行，无需安装大模型。TCN需要torch；基础模型需要可选环境。在工程根目录执行：
+必需：station_id,date,available_at,latitude,longitude,observed_event,value,source。
+可选：temperature,salinity,dissolved_oxygen,nitrate,phosphate,silicate,u_current,v_current。
+
+observed_event只能是明确0/1，未知留空，不补0。同站同日只能一条记录。每个样本使用12次过去观测，包括历史事件和时间间隔；未来标签不进入特征。available_at不得晚于date，延迟观测需先按真实可用时间对齐。
+
+STS另需local_raw_signal、upstream_raw_signal、circulation_residence_proxy、nitrate、phosphate、silicate，以及upstream_available_at。信号必须由提供者按物理上游方向和历史时滞预先对齐；代码检查字段、有限值和可用时间，不假装自动恢复真实流场。缺少条件时目录说明不适用，不能直接选择运行。
+
+Chronos使用连续逐日的历史事件序列，要求所有历史连续、标签复测恰好在第N天。其他模型预测N至N+3天内首次复测的标签，不是期间任意事件。基础模型输入形式不同：Chronos只使用历史事件；语言模型使用字段和原始历史；其融合方案另用EcoFusion的环境信息。
+
+## 划分、融合与解释
+
+训练/验证/校准/时间测试按日期隔离并剔除标签跨界样本；有至少10站时另做站点留出。四个时间分区各至少20条且有两类。缺测处理和标准化只拟合训练期。表格模型参数固定，时序早停/训练预算及融合权重仅由验证期选择，概率校准只在校准期完成。
+
+所有模型共享同一测试ID与哈希。非基础模型运行17/42/73三个种子；基础模型固定种子42推理一次，不宣称重复训练了三次LLM。融合权重0、0.25、0.5、0.75、1以验证期log-loss选取；即使选出0也保留结果。七种融合方案不能被解释为同时都优于组件。
+
+结果解读根据本次指标生成，不调用语言模型编写泛泛的评价。提供AP、Brier、ECE、Top10%覆盖和按季度整块重采样的AP差值区间。少于4个季度，或区间未稳定高于0，或训练出现警告时，不宣称稳定优势。基线比较不是因果证明。
+
+若运行表格模型，用验证期log-loss选择一个解释模型，逐变量遮蔽输入，报告测试AP变化；选择解释模型不看测试排名。这是预测敏感性，不是因果贡献。MLP等未收敛警告会保存在training_warnings.csv并写入解释。
+
+## 未来预测的准确含义
+
+未来预测使用各站最新有标签的12次历史观测；起点是origin_date，不自动等于今天。模型维持训练期权重，使用最新历史输入推理，不为凑预测而填未来事件标签。
+
+future_predictions.csv的y和target_value为空，不计算未来AP、Brier或准确率。label_date表示目标窗口起点；一般任务目标为N至N+3天首次复测，Chronos对应第N天。预测是经历史校准的事件概率，不是死亡率、置信保证或自动运营指令。若历史不足，或无法形成有效训练/校准/测试，则不提供未经检验的预测。
+
+## 安装与成本
+
+先安装requirements.txt。时序模型和基础模型需要可选依赖：
 
 ```bash
-python -m pip install -r requirements.txt
 python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 python -m pip install -r requirements-training.txt
 python -m streamlit run app.py
 ```
 
-模型在运行Streamlit的主机上推理；不会调用远程聊天推理API。首次使用从Hugging Face下载权重并缓存在该主机，需要网络；权重未打包。Qwen采用CPU float32，模型参数约占2GB，运行仍需额外内存，建议使用内存充足的本机。Streamlit Cloud的实际资源额度未在本次验证；缺依赖会给出提示，资源不足可能使主机终止进程。
+基础模型首次从Hugging Face下载到运行主机，本地CPU推理，不将观测送到远程聊天API。权重不包含在工程ZIP。大规格模型需要更多内存，例如3B float32权重约12GB，尚有额外运行内存；不要在内存不足的主机一次选择全部基础模型。公开预训练数据的重叠不能独立排除。模型标识与运行revision保存在审计文件。
 
-官方模型来源：https://huggingface.co/amazon/chronos-bolt-small 和 https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct 。下载后记录实际revision。预训练数据与公开观测的重叠不能独立排除。
+网页限20MB/100000条原始记录，基础模型限2000条评估历史；超过上限不会偷偷抽取更小测试集。运行耗时可能较长，尤其语言模型逐条评分。融合耗时为组件成本之和，重用组件时可能重复计数，不是整项任务的墙钟时间。
 
-## 结果与操作
+## 下载与复现
 
-点击对应运行按钮后显示进度。CSV上限20MB/100000行；基础模型评估历史上限2000条，超出会拒绝整次运行，不自动缩减共同留出集。运行是同步的，重模型可能需要较长时间。任何失败不显示部分成绩为成功结果；切换数据或配置后旧成绩不会冒充当前成绩。
-
-结果包括各模型/种子的AP、Brier、ECE、Top10%命中指标、耗时、参数量。基础模型和经典模型计算方式不同，耗时包含各自训练/加载与推理及校准，预处理时间另记。全局/空间测试分别报告；不根据单个最佳分数自动宣称稳定改进。要发表稳定优势需增加独立航次、配对区间和重复外部检验。
-
-下载结果ZIP含协议、输入CSV哈希、分割行表、逐条预测、指标、训练权重和校准器；基础模型权重不包含。输入CSV不放入结果ZIP，请自行保留。临时运行目录自动清理，完成后的结果ZIP保存在当前会话内以供下载，不写入仓库。ZIP包含站点与结果信息，请自行决定分享范围。
-
-命令行调用同一运行逻辑，输出文件必须未存在：
+ZIP包含protocol.json、metrics.csv、逐条测试预测、future_predictions.csv、paired_intervals.csv、input_sensitivity.csv、training_warnings.csv、融合选择、解释文本、训练权重和校准器。输入CSV请自行保留，包内记录其SHA256。临时目录清理，结果ZIP留在当前会话供下载，不写入GitHub。
 
 ```bash
-python scripts/run_own_observations.py --input observations.csv --models Logistic HistGradientBoosting --description "填写真实的物种、阈值和变量单位" --output my_results.zip
+python scripts/run_own_observations.py --input observations.csv --models Logistic "Random Forest" EcoFusion --description "填写真实事件定义" --future --output user_results.zip
 ```
 
-## Qwen在哪里
+对照软件测试使用显式合成单元测试数据，不是新增的真实海域成绩。模型目录的可选择状态仅检查依赖与数据条件，不代表所有规格都已完成真实生态数据评测；本轮基础模型检查范围见validation里的smoke记录。
 
-已完成的香港Qwen实验位于“研究与验证 → 真实数据训练与验证 → 连续观测预测 → 基础模型对照”，显示完整模型名Qwen2.5-0.5B-Instruct以及与EcoFusion的组合。原始证据文件保留LLM/LLM+EcoFusion命名，页面显示名称不改变实验数据。运行自有数据请选择“自有数据分析 → 基础模型对照”，Qwen与Chronos均在选择框中显示。
+## 本轮交付检查范围
 
-该模块独立于合成探索设置，进入时不会执行研究工作区的情景计算。上传逻辑与上一版一致。这里的预测结果是基于带标签历史数据的留出验证，尚不提供对无标签未来数据的一键运营预报。
+26项软件测试通过，包含完整模型目录核对、传统/时序/STS/融合运行、共同留出样本、未来标签为空、数据改变后重算。工作区与上传后的运行界面检查通过。真实权重小样本推理检查覆盖Chronos-tiny、Chronos-small、Qwen-0.5B、SmolLM2-360M；Chronos-base、Qwen-1.5B和3B已配置接口，本轮未逐个加载权重测试，也不填入虚构成绩。测试数据不作为新增海域验证结果。
+
+逐条输出的outside_training_range_features为超出训练期1%—99%范围的字段数，missing_fraction为历史输入缺测比例；它们是分布提示，不是预测出错概率。

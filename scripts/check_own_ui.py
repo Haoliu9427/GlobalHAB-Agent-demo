@@ -18,12 +18,12 @@ with tempfile.TemporaryDirectory() as tmp:
     p=Path(tmp)/'app.py';p.write_text(source)
     a=AppTest.from_file(str(p),default_timeout=120).run()
     assert not a.exception,[e.message for e in a.exception]
-    a.text_area(key='own_description').set_value('Synthetic interface test only').run()
-    a.button(key='own_run_basic').click().run()
+    a.text_area(key='user_description').set_value('Synthetic interface test only').run()
+    a.button(key='user_run').click().run()
     assert not a.exception,[e.message for e in a.exception]
-    assert 'own_result' in a.session_state
-    rows=len(a.session_state['own_result'][1]);assert rows==6
-    a.selectbox(key='own_horizon').set_value(14).run()
+    assert 'user_result' in a.session_state
+    rows=len(a.session_state['user_result'][1][0]);assert rows==9
+    a.selectbox(key='user_horizon').set_value(14).run()
     assert any('旧结果' in i.value for i in a.info)
     (ROOT/'validation/own_ui_smoke.json').write_text(json.dumps({'synthetic_fixture':True,'exceptions':0,'training_result_rows':rows,'stale_result_hidden':True}))
     print('UI upload, model execution, result download state and stale-result hiding passed')

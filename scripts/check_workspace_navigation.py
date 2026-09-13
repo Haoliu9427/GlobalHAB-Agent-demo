@@ -7,7 +7,7 @@ a=AppTest.from_file(str(ROOT/'app.py'),default_timeout=180)
 a.session_state['workspace_mode']='自有数据分析';a.run()
 assert not a.exception,[e.message for e in a.exception]
 assert 'exploration' not in a.session_state
-assert a.multiselect(key='own_foundation').value==['Chronos-Bolt-small','Qwen2.5-0.5B-Instruct']
+assert {'Chronos-Bolt-small','Qwen2.5-0.5B-Instruct'} <= set(a.multiselect(key='user_models').options)
 a.radio(key='workspace_mode').set_value('研究与验证').run()
 assert not a.exception,[e.message for e in a.exception]
 for name in ['Qwen2.5-0.5B-Instruct','Chronos-Bolt-small']:

@@ -1,0 +1,31 @@
+[
+  {
+    "name": "Chronos-Bolt-tiny",
+    "status": "passed_real_weights",
+    "rows": 2,
+    "model_id": "amazon/chronos-bolt-tiny",
+    "parameters": 8652672,
+    "revision": "a0e552de83495b5c28c14c71c374f3e33280b340",
+    "input": "past verified binary events only; daily cadence",
+    "protocol": "horizon-day quantile interpolation at 0.5; pre-test Platt calibration",
+    "seconds": 26.995948578000025,
+    "seed": 42,
+    "seed_note": "Frozen deterministic inference, not multiple retrainings",
+    "pretraining_overlap": "Not independently excluded"
+  },
+  {
+    "name": "SmolLM2-360M-Instruct",
+    "status": "passed_real_weights",
+    "rows": 2,
+    "model_id": "HuggingFaceTB/SmolLM2-360M-Instruct",
+    "parameters": 361821120,
+    "revision": "a10cc1512eabd3dde888204e902eca88bddb4951",
+    "prompt_template": "Predict the binary observed_event at the first sampled date between 7 and 10 days after the last history row. Only past observations are supplied, oldest first. past_verified_event contains historical labels, gap_days contains elapsed days. Null means missing, never absence. Return only 1 or 0. Task definition is user supplied: Synthetic software check, not an ecological result\n",
+    "input_tokens": 1989,
+    "protocol": "Frozen zero-shot token01 score; pre-test Platt calibration",
+    "seconds": 47.61529433299984,
+    "seed": 42,
+    "seed_note": "Frozen deterministic inference, not multiple retrainings",
+    "pretraining_overlap": "Not independently excluded"
+  }
+]

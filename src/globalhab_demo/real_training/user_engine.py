@@ -75,7 +75,7 @@ def sts_arrays(X,features):
     skip=np.column_stack([transmitted,nutrient,transmitted*nutrient,col('season_sin')[:,-1],col('season_cos')[:,-1]])
     return local,up,gate,skip
 
-def run(content,selected,horizon=7,description='',epochs=20,future=False,notify=lambda s:None):
+def run(content,selected,horizon=7,description='',epochs=20,future=False,notify=lambda s:None,remote_config=None):
     if not description.strip() or len(description)>500:raise ValueError('请填写事件阈值、物种与value含义（1—500字）。')
     if not selected:raise ValueError('请选择模型')
     if horizon not in [7,14,30] or not 1<=epochs<=50:raise ValueError('不支持的时效或训练轮数')
@@ -86,6 +86,10 @@ def run(content,selected,horizon=7,description='',epochs=20,future=False,notify=
     if any(n.startswith('STS-') for n in names) and not m['science_eligible']:raise ValueError('STS模型需要'+','.join(SCIENCE_COLUMNS)+'及不晚于当前日期的upstream_available_at；当前数据不适用。')
     eval_ids=np.unique(np.concatenate([ids for k,ids in ix.items() if k!='train']))
     if any(n in FOUNDATIONS for n in names) and len(eval_ids)>2000:raise ValueError('基础模型评估超过2000条网页上限；不会缩小同一留出集，请定义较小研究任务。')
+    if REMOTE in names:
+        from .remote_qwen import ready
+        if not ready(remote_config):raise ValueError('远程大模型服务未配置')
+        if len(eval_ids)>300:raise ValueError('远程模型网页单次上限300次请求；请缩小任务范围，所有模型仍使用同一留出集。')
     t0=time.perf_counter();prep=Preprocessor().fit(ds.X[ix['train']]);X=prep.transform(ds.X);Z=tabular(X);y=ds.rows.y.to_numpy()
     m.update(selected=selected,executed=names,seeds=[17,42,73],foundation_seed=42,description=description,epochs=epochs,
        preprocessing_seconds=time.perf_counter()-t0,forecast_training='Frozen train-partition model; latest observed history, no future target label',
@@ -106,7 +110,11 @@ def run(content,selected,horizon=7,description='',epochs=20,future=False,notify=
             for seed in ([42] if n in FOUNDATIONS else [17,42,73]):
                 notify(n+' · '+str(seed));start=time.perf_counter();parameter=None
                 if n in FOUNDATIONS:
-                    p,meta=foundation_score(n,ds,eval_ids,horizon,description,notify);raw=np.full(len(y),np.nan);raw[eval_ids]=p;parameter=meta['parameters'];audits.append(meta)
+                    if n==REMOTE:
+                        from .remote_qwen import score
+                        p,meta=score(remote_config,ds,eval_ids,horizon,description,notify)
+                    else:p,meta=foundation_score(n,ds,eval_ids,horizon,description,notify)
+                    raw=np.full(len(y),np.nan);raw[eval_ids]=p;parameter=meta['parameters'];audits.append(meta)
                 elif n in FUSIONS:
                     a,b=FUSIONS[n];sa=42 if a in FOUNDATIONS else seed
                     pa=scores[(a,sa)];pb=scores[(b,seed)];v=ix['validation']

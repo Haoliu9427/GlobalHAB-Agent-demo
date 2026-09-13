@@ -366,3 +366,10 @@ THIRD_PARTY_DATA.md
 ## 完整自有数据工作台
 
 自有数据分析现支持35个模型/融合方案条目，历史验证与最新时点未来预测分开，可下载本次结果和指标解读。科学解释/生理过程等非分类模型在目录说明其原模块入口。数据条件、基础模型运行资源和本轮测试范围详见 OWN_OBSERVATIONS_GUIDE.md。
+
+
+## Qwen远程API入口
+新增无需本地torch的Qwen远程预测及独立结果解读。服务器配置见 `QWEN_ONLINE_SETUP.md`。未配置真实服务，本次仅通过模拟响应集成测试；不代表远程模型真实预测性能。原有实验不变。
+
+## 用户自填远程API
+在自有数据分析中选择自行填写，输入公网HTTPS API地址、模型ID和密钥；支持Chat Completions兼容大模型，不限Qwen。详见QWEN_ONLINE_SETUP.md。

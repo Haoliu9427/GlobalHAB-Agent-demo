@@ -1,0 +1,1 @@
+{"scope":"remote Chat Completions Qwen adapter, separate explanation UI", "live_api_tested":false, "tests":"9 adapter/integration tests; 3 regression tests; Streamlit unconfigured UI smoke", "original_outputs":"unchanged", "credentials_included":false}

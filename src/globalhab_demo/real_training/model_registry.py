@@ -1,6 +1,8 @@
 """Explicit executable model inventory. No silent substitution."""
 import importlib.util
+REMOTE='远程大模型 · API预测'
 FOUNDATIONS={
+ REMOTE:'server-configured',
  'Chronos-Bolt-tiny':'amazon/chronos-bolt-tiny',
  'Chronos-Bolt-small':'amazon/chronos-bolt-small',
  'Chronos-Bolt-base':'amazon/chronos-bolt-base',
@@ -35,8 +37,8 @@ def expand(selected):
 def missing(name):
     modules=[]
     for n in expand([name]):
-        if n in ['EcoTemporalNet','Lightweight TCN'] or n in FOUNDATIONS:modules+=['torch']
-        if n in FOUNDATIONS:modules+=['chronos' if n.startswith('Chronos') else 'transformers']
+        if n in ['EcoTemporalNet','Lightweight TCN'] or (n in FOUNDATIONS and n!=REMOTE):modules+=['torch']
+        if n in FOUNDATIONS and n!=REMOTE:modules+=['chronos' if n.startswith('Chronos') else 'transformers']
         if n=='XGBoost':modules+=['xgboost']
         if n=='LightGBM':modules+=['lightgbm']
     return sorted({m for m in modules if importlib.util.find_spec(m) is None})

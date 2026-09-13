@@ -11,7 +11,7 @@ fixture=runpy.run_path(str(ROOT/'tests/test_own_observations.py'))['fixture']
 def test_catalogue_covers_original():
     from globalhab_demo.broad_benchmark import benchmark_catalogue
     assert set(benchmark_catalogue()['模型'])<=set(MODELS)
-    assert len(FOUNDATIONS)==7
+    assert len(FOUNDATIONS)==8
 
 def test_all_classical_future_common_partition():
     df,f,text,m,b=run(fixture(),TABULAR+BASELINES,description='Synthetic software fixture only',future=True,epochs=1)

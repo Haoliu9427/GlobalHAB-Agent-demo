@@ -123,7 +123,10 @@ def render(root):
     region=st.selectbox('海域',['全部']+SEAS,key='mainland_sea')
     c=coverage if region=='全部' else coverage[coverage.sea==region]
     p=points if region=='全部' else points[points.sea==region]
-    cols=st.columns(3);cols[0].metric('检测记录',int(c.records.sum()));cols[1].metric('采样坐标',p.station.nunique());cols[2].metric('采样日期',p.date.nunique())
+    cols=st.columns(3);cols[0].metric('检测记录',int(c.records.sum()));cols[1].metric('采样坐标',p.station.nunique());cols[2].metric('独立采样日数',p.date.nunique())
+    dates=pd.to_datetime(p['date'],errors='coerce').dropna()
+    date_note=(f'当前海域实际采样日期范围：{dates.min().date()}—{dates.max().date()}；上方数值表示去重后的独立采样日数，并非日期编号。' if not dates.empty else '当前海域没有可用的采样日期。')
+    st.caption(date_note)
     st.caption('记录数包含物种、扩增靶区和样品类别，不是独立事件数。海域为保守研究分区，边界点单列。')
     from globalhab_demo.map_style import point_map,draw_map
     draw_map(point_map(p[['latitude','longitude']].drop_duplicates()))

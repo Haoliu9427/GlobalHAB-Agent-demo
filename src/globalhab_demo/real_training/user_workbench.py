@@ -6,11 +6,15 @@ from .user_engine import build,run
 
 def render():
     import streamlit as st
-    upload=st.file_uploader('现场观测CSV',type=['csv'],key='real_training_upload')
-    st.download_button('下载字段模板',data='station_id,date,available_at,latitude,longitude,observed_event,value,source,temperature,salinity,dissolved_oxygen\n',file_name='field_observations_template.csv')
-    task=st.radio('分析任务',['历史预测验证','历史验证 + 最新时点未来预测'],key='user_task')
-    horizon=st.selectbox('预测时效（天）',[7,14,30],key='user_horizon')
-    description=st.text_area('物种、事件阈值及value的含义/单位',max_chars=500,key='user_description')
+    st.markdown('<div class="form-section">数据与预测任务</div>',unsafe_allow_html=True)
+    data_col,task_col=st.columns([1.15,1],gap='large')
+    with data_col:
+        upload=st.file_uploader('现场观测CSV',type=['csv'],key='real_training_upload')
+        st.download_button('下载字段模板',data='station_id,date,available_at,latitude,longitude,observed_event,value,source,temperature,salinity,dissolved_oxygen\n',file_name='field_observations_template.csv')
+    with task_col:
+        task=st.radio('分析任务',['历史预测验证','历史验证 + 最新时点未来预测'],key='user_task',horizontal=True)
+        horizon=st.selectbox('预测时效（天）',[7,14,30],key='user_horizon')
+        description=st.text_area('物种、事件阈值及value的含义/单位',max_chars=500,key='user_description')
     st.caption('未知标签不作为阴性。未来预测以每站最新有标签观测为起点，并不自动等于今天；历史不足或无法留出时会说明原因。')
     data=upload.getvalue() if upload else None;m=None
     if data:
@@ -32,11 +36,14 @@ def render():
         st.session_state.pop('user_result',None)
         st.session_state.pop('qwen_explanation',None)
     with st.expander('远程大模型服务',expanded=True):
-        mode=st.radio('服务配置来源',['自行填写','使用服务器配置'],key='remote_mode')
+        mode=st.radio('服务配置来源',['自行填写','使用服务器配置'],key='remote_mode',horizontal=True)
         if mode=='自行填写':
             provider=st.selectbox('模型服务',['自定义兼容服务','DeepSeek','Qwen'],key='remote_provider',on_change=change_provider)
-            endpoint=st.text_input('API地址',placeholder='https://服务域名/compatible-mode/v1',key='user_api_url')
-            model_id=st.text_input('模型名称',placeholder='填写服务商提供的模型ID',key='user_api_model')
+            address_col,model_col=st.columns([1.25,1])
+            with address_col:
+                endpoint=st.text_input('API地址',placeholder='https://服务域名/compatible-mode/v1',key='user_api_url')
+            with model_col:
+                model_id=st.text_input('模型名称',placeholder='填写服务商提供的模型ID',key='user_api_model')
             key=st.text_input('API Key',type='password',key='user_api_key')
             st.button('清除本次密钥和结果',on_click=clear_key)
             if provider=='DeepSeek':
@@ -77,11 +84,12 @@ def render():
         st.write('本地基础模型为3种Chronos规格、3种Qwen规格和SmolLM2。首次运行需要下载权重；大规格需要更多内存。目录可选择不代表已在所有主机或数据集上验证。')
     # Only reset unavailable entries when the new data invalidate their prerequisites.
     if 'user_models' in st.session_state:st.session_state['user_models']=[n for n in st.session_state['user_models'] if n in allowed]
+    st.markdown('<div class="form-section">模型与运行</div>',unsafe_allow_html=True)
     selected=st.multiselect('选择本次运行模型（可多选）',allowed,default=[n for n in ['Logistic','HistGradientBoosting'] if n in allowed],key='user_models')
     epochs=st.slider('时序模型训练轮数上限',5,50,20,key='user_epochs')
     if selected:st.caption('实际运行（含融合组件与季节基线）：'+', '.join(expand(['Seasonal Climatology']+selected)))
     signature=hashlib.sha256((data or b'')+json.dumps([task,horizon,description,selected,epochs,remote.get('model'),remote.get('base_url'),hashlib.sha256(remote.get('api_key','').encode()).hexdigest(),mode],ensure_ascii=False).encode()).hexdigest()
-    if st.button('开始分析',key='user_run'):
+    if st.button('开始分析',key='user_run',type='primary'):
         st.session_state.pop('user_result',None)
         if not data or m is None:st.error('请上传满足数据检查条件的CSV。');return
         if any(REMOTE in expand([n]) for n in selected) and not consent:

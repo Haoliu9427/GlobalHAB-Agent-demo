@@ -195,6 +195,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+st.markdown("<style>" + (ROOT / "assets" / "interface.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
+
 
 @st.cache_data(show_spinner=False)
 def cached_exploration(
@@ -513,8 +515,10 @@ def real_qpcr_map(frame: pd.DataFrame) -> go.Figure:
     return fig
 
 
-#st.sidebar.caption("GlobalHAB-Agent · API工作台 2026.09.13")
-workspace_mode = st.sidebar.radio("工作区", ["研究与验证", "自有数据分析"], key="workspace_mode")
+#st.sidebar.caption("GlobalHAB-Agent · Ocean 2026.09.14")
+st.sidebar.markdown('<div class="ocean-brand">GlobalHAB-Agent</div>', unsafe_allow_html=True)
+with st.sidebar.container(key="workspace_nav"):
+    workspace_mode = st.radio("工作区", ["研究与验证", "自有数据分析"], key="workspace_mode")
 if workspace_mode == "自有数据分析":
     st.title("自有数据分析")
     st.caption("使用现场观测训练模型、比较预测结果，并下载本次分析。")
@@ -720,10 +724,11 @@ st.caption(
     "情景输入即时更新；合成探索设置需点击“应用设置并重新计算”。"
 )
 
-tab_alert, tab_real, tab_bio, tab_methods, tab_agent, tab_evidence, tab_training = st.tabs([
-    "风险研判", "真实事件回放", "生物响应沙盘",
-    "科学解释", "探索与验证", "数据来源与复核", "真实数据训练与验证",
-])
+with st.container(key="research_modules"):
+    tab_alert, tab_real, tab_bio, tab_methods, tab_agent, tab_evidence, tab_training = st.tabs([
+        "风险研判", "真实事件回放", "生物响应沙盘",
+        "科学解释", "探索与验证", "数据来源与复核", "真实数据训练与验证",
+    ])
 
 with tab_training:
     from globalhab_demo.real_training.ui import render as render_real_training

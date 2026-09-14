@@ -195,6 +195,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+from globalhab_demo.map_style import style_map, draw_map
+
 st.markdown("<style>" + (ROOT / "assets" / "interface.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
 
 
@@ -353,7 +355,7 @@ def global_case_map(frame: pd.DataFrame) -> go.Figure:
         legend={"orientation": "h", "y": 0.02, "x": .5, "xanchor": "center"},
         paper_bgcolor="white", font={"family": "Microsoft YaHei, Arial", "size": 12},
     )
-    return fig
+    return style_map(fig, global_view=True)
 
 
 def bloom_map(frame: pd.DataFrame) -> go.Figure:
@@ -375,7 +377,7 @@ def bloom_map(frame: pd.DataFrame) -> go.Figure:
                 [0.00, "#2b83ba"], [0.35, "#55b79a"], [0.55, "#f2cf5b"],
                 [0.75, "#f28e46"], [1.00, "#c9363e"],
             ],
-            "colorbar": {"title": "HAB风险", "thickness": 13, "len": .60},
+            "colorbar": {"title": "HAB风险", "thickness": 10, "len": .42, "orientation": "h", "x": .5, "xanchor": "center", "y": 1.03, "yanchor": "bottom"},
             "line": {"width": 1.1, "color": "white"},
             "opacity": .92,
         },
@@ -387,7 +389,7 @@ def bloom_map(frame: pd.DataFrame) -> go.Figure:
         ),
     ))
     fig.update_geos(
-        projection_type="natural earth",
+        projection_type="equirectangular", showframe=False, lonaxis_range=[-180, 180],
         showland=True, landcolor="#e9eeeb",
         showocean=True, oceancolor="#dff1f4",
         showcountries=True, countrycolor="#ffffff",
@@ -395,10 +397,10 @@ def bloom_map(frame: pd.DataFrame) -> go.Figure:
         lataxis_range=[-58, 78],
     )
     fig.update_layout(
-        height=510, margin={"l": 0, "r": 0, "t": 5, "b": 0},
+        height=440, margin={"l": 0, "r": 0, "t": 45, "b": 5},
         paper_bgcolor="white", font={"family": "Microsoft YaHei, Arial", "size": 12},
     )
-    return fig
+    return style_map(fig, global_view=True)
 
 
 def production_region_map(frame: pd.DataFrame, selected_region: str) -> go.Figure:
@@ -435,7 +437,7 @@ def production_region_map(frame: pd.DataFrame, selected_region: str) -> go.Figur
         legend={"orientation": "h", "y": 0.01, "x": .5, "xanchor": "center"},
         paper_bgcolor="white", font={"family": "Microsoft YaHei, Arial", "size": 12},
     )
-    return fig
+    return style_map(fig, global_view=True)
 
 
 def aquaculture_map(frame: pd.DataFrame) -> go.Figure:
@@ -448,16 +450,16 @@ def aquaculture_map(frame: pd.DataFrame) -> go.Figure:
             "养殖响应优先指数", "响应级别", "不确定性下限", "不确定性上限",
             "养殖暴露度", "脆弱性系数",
         ]],
-        mode="markers+text",
+        mode="markers",
         textposition="top center",
         marker={
-            "symbol": "diamond",
-            "size": 12 + colors * .24,
+            "symbol": "circle",
+            "size": 10 + colors * .18,
             "color": colors,
             "cmin": 0,
             "cmax": 100,
             "colorscale": [[0, "#3b82a0"], [.5, "#f4bf4f"], [1, "#b51f3d"]],
-            "colorbar": {"title": "响应优先", "thickness": 13, "len": .60},
+            "colorbar": {"title": "响应优先", "thickness": 10, "len": .42, "orientation": "h", "x": .5, "xanchor": "center", "y": 1.03, "yanchor": "bottom"},
             "line": {"width": 1.2, "color": "white"},
         },
         hovertemplate=(
@@ -467,7 +469,7 @@ def aquaculture_map(frame: pd.DataFrame) -> go.Figure:
         ),
     ))
     fig.update_geos(
-        projection_type="natural earth",
+        projection_type="equirectangular", showframe=False, lonaxis_range=[-180, 180],
         showland=True, landcolor="#ecefea",
         showocean=True, oceancolor="#e0f1f4",
         showcountries=True, countrycolor="#ffffff",
@@ -475,10 +477,10 @@ def aquaculture_map(frame: pd.DataFrame) -> go.Figure:
         lataxis_range=[-58, 78],
     )
     fig.update_layout(
-        height=470, margin={"l": 0, "r": 0, "t": 5, "b": 0},
+        height=440, margin={"l": 0, "r": 0, "t": 45, "b": 5},
         paper_bgcolor="white", font={"family": "Microsoft YaHei, Arial", "size": 12},
     )
-    return fig
+    return style_map(fig, global_view=True)
 
 
 def real_qpcr_map(frame: pd.DataFrame) -> go.Figure:
@@ -512,10 +514,10 @@ def real_qpcr_map(frame: pd.DataFrame) -> go.Figure:
         height=510, margin={"l": 0, "r": 0, "t": 5, "b": 0},
         paper_bgcolor="white", font={"family": "Microsoft YaHei, Arial", "size": 12},
     )
-    return fig
+    return style_map(fig, global_view=False)
 
 
-#st.sidebar.caption("GlobalHAB-Agent · Ocean 2026.09.14")
+#st.sidebar.caption("GlobalHAB-Agent · Ocean OSM 2026.09.14")
 st.sidebar.markdown('<div class="ocean-brand">GlobalHAB-Agent</div>', unsafe_allow_html=True)
 with st.sidebar.container(key="workspace_nav"):
     workspace_mode = st.radio("工作区", ["研究与验证", "自有数据分析"], key="workspace_mode")
@@ -740,42 +742,50 @@ with tab_alert:
     st.caption(
         "代表区域用于情景比较；输入为情景参数，不是实时观测。"
     )
-    control_col, map_col = st.columns([1.0, 2.25], gap="large")
+    with st.container(border=True,key="risk_parameters"):
+        st.markdown("#### 情景参数")
+        control_col = st.container()
     with control_col:
-        preset_name = st.selectbox("复合环境情景", list(SCENARIO_PRESETS), index=0)
-        preset = SCENARIO_PRESETS[preset_name]
-        issue_date = st.date_input("情景起报日期", value=pd.Timestamp.today().date())
-        horizon_days = st.radio(
-            "预警窗口", [7, 14, 30], index=1, horizontal=True,
-            format_func=lambda value: f"{value}天",
-        )
-        mhw = st.slider(
-            "海洋热浪强度（°C）", 0.0, 4.5, float(preset["mhw_intensity_c"]), .1,
-            key=f"mhw_{preset_name}",
-        )
-        nitrate = st.slider(
-            "硝酸盐 Nitrate（mmol m⁻³）", 0.0, 10.0, float(preset["nitrate_mmol_m3"]), .1,
-            key=f"nitrate_{preset_name}",
-        )
-        phosphate = st.slider(
-            "磷酸盐 Phosphate（mmol m⁻³）", 0.0, 1.5, float(preset["phosphate_mmol_m3"]), .05,
-            key=f"phosphate_{preset_name}",
-        )
-        silicate = st.slider(
-            "硅酸盐 Silicate（mmol m⁻³）", 0.0, 12.0, float(preset["silicate_mmol_m3"]), .1,
-            key=f"silicate_{preset_name}",
-        )
-        transport = st.slider(
-            "水团停留与汇聚背景", 0.0, 1.0, float(preset["transport_proxy"]), .05,
-            help="由微塑料浓度的有界变换构造，作为水团停留/汇聚代理，不表示实际流速或流向。",
-            key=f"transport_{preset_name}",
-        )
+        p1,p2,p3,p4=st.columns(4,gap="medium")
+        with p1:
+            preset_name = st.selectbox("复合环境情景", list(SCENARIO_PRESETS), index=0)
+            preset = SCENARIO_PRESETS[preset_name]
+            issue_date = st.date_input("情景起报日期", value=pd.Timestamp.today().date())
+            horizon_days = st.radio(
+                "预警窗口", [7, 14, 30], index=1, horizontal=True,
+                format_func=lambda value: f"{value}天",
+            )
+        with p2:
+            mhw = st.slider(
+                "海洋热浪强度（°C）", 0.0, 4.5, float(preset["mhw_intensity_c"]), .1,
+                key=f"mhw_{preset_name}",
+            )
+        with p3:
+            nitrate = st.slider(
+                "硝酸盐 Nitrate（mmol m⁻³）", 0.0, 10.0, float(preset["nitrate_mmol_m3"]), .1,
+                key=f"nitrate_{preset_name}",
+            )
+            phosphate = st.slider(
+                "磷酸盐 Phosphate（mmol m⁻³）", 0.0, 1.5, float(preset["phosphate_mmol_m3"]), .05,
+                key=f"phosphate_{preset_name}",
+            )
+        with p4:
+            silicate = st.slider(
+                "硅酸盐 Silicate（mmol m⁻³）", 0.0, 12.0, float(preset["silicate_mmol_m3"]), .1,
+                key=f"silicate_{preset_name}",
+            )
+            transport = st.slider(
+                "水团停留与汇聚背景", 0.0, 1.0, float(preset["transport_proxy"]), .05,
+                help="由微塑料浓度的有界变换构造，作为水团停留/汇聚代理，不表示实际流速或流向。",
+                key=f"transport_{preset_name}",
+            )
 
     scenario = project_synthetic_scenario(
         issue_date, horizon_days, mhw, nitrate, phosphate, silicate, transport
     )
     top = scenario.iloc[0]
-    with map_col:
+    with st.container(border=True,key="risk_map_card"):
+        st.markdown("#### 候选海区风险分布")
         st.markdown(
             '<div class="signal">当前情景最高候选区：'
             f'<b>{top["候选海区"]}</b> · {top["预计窗口"]} · '
@@ -785,32 +795,33 @@ with tab_alert:
         )
         st.plotly_chart(bloom_map(scenario), width="stretch", config={"displayModeBar": False})
 
-    st.markdown("### 海水养殖响应优先级")
-    st.markdown(
-        '<div class="formula">响应优先指数 = HAB危害 × 养殖暴露 × 对象脆弱性；'
-        '证据等级单独控制不确定性宽度，不用“低置信度”掩盖潜在高风险。</div>',
-        unsafe_allow_html=True,
-    )
-    a1, a2, a3, a4 = st.columns(4)
-    production = a1.selectbox("主要养殖对象", list(PRODUCTION_PROFILES))
-    mechanism = a2.selectbox(
-        "危害机制证据", list(MECHANISM_LABELS),
-        format_func=lambda key: MECHANISM_LABELS[key],
-    )
-    evidence_grade = a3.selectbox("现场证据等级", list(EVIDENCE_CONFIDENCE), index=2)
-    farm_exposure = a4.slider("养殖暴露情景", .25, 1.25, .85, .05)
-    aqua = project_aquaculture_risk(
-        scenario, production, mechanism, farm_exposure, evidence_grade
-    )
-    top_aqua = aqua.iloc[0]
-    st.markdown(
-        '<div class="signal">首要核查区：'
-        f'<b>{top_aqua["候选海区"]}</b> · {top_aqua["响应级别"]} · '
-        f'响应优先指数 <b>{top_aqua["养殖响应优先指数"]:.1f}/100</b> '
-        f'（不确定区间 {top_aqua["不确定性下限"]:.1f}–{top_aqua["不确定性上限"]:.1f}）。</div>',
-        unsafe_allow_html=True,
-    )
-    st.plotly_chart(aquaculture_map(aqua), width="stretch", config={"displayModeBar": False})
+    with st.container(border=True,key="aqua_map_card"):
+        st.markdown("### 海水养殖响应优先级")
+        st.markdown(
+            '<div class="formula">响应优先指数 = HAB危害 × 养殖暴露 × 对象脆弱性；'
+            '证据等级单独控制不确定性宽度，不用“低置信度”掩盖潜在高风险。</div>',
+            unsafe_allow_html=True,
+        )
+        a1, a2, a3, a4 = st.columns(4)
+        production = a1.selectbox("主要养殖对象", list(PRODUCTION_PROFILES))
+        mechanism = a2.selectbox(
+            "危害机制证据", list(MECHANISM_LABELS),
+            format_func=lambda key: MECHANISM_LABELS[key],
+        )
+        evidence_grade = a3.selectbox("现场证据等级", list(EVIDENCE_CONFIDENCE), index=2)
+        farm_exposure = a4.slider("养殖暴露情景", .25, 1.25, .85, .05)
+        aqua = project_aquaculture_risk(
+            scenario, production, mechanism, farm_exposure, evidence_grade
+        )
+        top_aqua = aqua.iloc[0]
+        st.markdown(
+            '<div class="signal">首要核查区：'
+            f'<b>{top_aqua["候选海区"]}</b> · {top_aqua["响应级别"]} · '
+            f'响应优先指数 <b>{top_aqua["养殖响应优先指数"]:.1f}/100</b> '
+            f'（不确定区间 {top_aqua["不确定性下限"]:.1f}–{top_aqua["不确定性上限"]:.1f}）。</div>',
+            unsafe_allow_html=True,
+        )
+        st.plotly_chart(aquaculture_map(aqua), width="stretch", config={"displayModeBar": False})
     st.dataframe(
         aqua[[
             "候选海区", "响应级别", "养殖响应优先指数", "不确定性下限",
@@ -836,7 +847,7 @@ with tab_real:
         unsafe_allow_html=True,
     )
     evidence_cases = global_evidence_frame()
-    st.plotly_chart(global_case_map(evidence_cases), width="stretch", config={"displayModeBar": False})
+    draw_map(global_case_map(evidence_cases))
     st.caption(
         "南澳大利亚和挪威数据随包提供；Florida/Gulf支持公开数据在线读取或CSV上传。"
     )
@@ -1413,7 +1424,7 @@ with tab_real:
                     )
                     map_fig.update_geos(lataxis_range=[23, 32], lonaxis_range=[-89, -78], showland=True, landcolor="#edf2f1")
                     map_fig.update_layout(height=430, margin={"l": 0, "r": 0, "t": 10, "b": 0})
-                    st.plotly_chart(map_fig, width="stretch", config={"displayModeBar": False})
+                    draw_map(style_map(map_fig))
                     st.caption("位置为最新观测点按局地表层流速作的一阶欧拉投影，仅用于形成下一批采样候选，不等同于业务粒子轨迹预报。")
                 fd1, fd2 = st.columns(2)
                 fd1.download_button(
@@ -1514,7 +1525,8 @@ with tab_real:
                                 size="sampling_priority", hover_data={"cell_count": ":.0f", "current_speed_ms": ":.3f"},
                             )
                             pf.update_layout(height=430, margin={"l": 0, "r": 0, "t": 10, "b": 0})
-                            st.plotly_chart(pf, width="stretch", config={"displayModeBar": False})
+                            pf.update_geos(fitbounds="locations")
+                            draw_map(style_map(pf))
                         st.success("前向验证完成。结果需结合毒素、生物观测和水团追踪资料解释。")
                     else:
                         st.warning("状态：DEFER。" + "；".join(field_result["quality"]["reasons"]))

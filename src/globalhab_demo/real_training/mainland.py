@@ -125,7 +125,8 @@ def render(root):
     p=points if region=='全部' else points[points.sea==region]
     cols=st.columns(3);cols[0].metric('检测记录',int(c.records.sum()));cols[1].metric('采样坐标',p.station.nunique());cols[2].metric('采样日期',p.date.nunique())
     st.caption('记录数包含物种、扩增靶区和样品类别，不是独立事件数。海域为保守研究分区，边界点单列。')
-    st.map(p[['latitude','longitude']].drop_duplicates())
+    from globalhab_demo.map_style import point_map,draw_map
+    draw_map(point_map(p[['latitude','longitude']].drop_duplicates()))
     st.dataframe(c,hide_index=True,use_container_width=True)
     st.write(f'跨年检验：以2019—2020年训练，2021年留出；统一{marker}检测方法，使用坐标、月份和物种预测分子检出。')
     s=metrics[metrics.sea==region]

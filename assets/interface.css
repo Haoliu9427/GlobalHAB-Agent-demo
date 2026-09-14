@@ -79,3 +79,24 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
 .st-key-research_modules button[role="tab"]:nth-child(5)::before{background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23286478%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%206%20L18%205%20L15%2018%20L5%206%20M5%206%20A2%202%200%201%200%205.1%206%20M18%205%20A2%202%200%201%200%2018.1%205%20M15%2018%20A2%202%200%201%200%2015.1%2018%22/%3E%3C/svg%3E");}
 .st-key-research_modules button[role="tab"]:nth-child(6)::before{background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23286478%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%204%20H20%20V20%20H4%20Z%20M8%208%20H16%20M8%2012%20H16%20M8%2016%20H13%22/%3E%3C/svg%3E");}
 .st-key-research_modules button[role="tab"]:nth-child(7)::before{background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23286478%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%203%20V20%20H22%20M8%2016%20V12%20M13%2016%20V8%20M18%2016%20V5%22/%3E%3C/svg%3E");}
+
+/* Native Streamlit containers surround actual inputs, not decorative HTML. */
+.st-key-obs_upload_card,.st-key-obs_task_card,.st-key-obs_service_card,.st-key-obs_models_card{
+ background:#fff;border:1px solid #d5e2e5!important;border-radius:16px!important;
+ padding:22px!important;box-shadow:0 5px 18px rgba(24,63,80,.045);margin-bottom:8px;
+}
+.st-key-obs_upload_card{border-top:4px solid #3b8091!important;min-height:360px;}
+.st-key-obs_task_card{border-top:4px solid #7794ad!important;min-height:360px;}
+.st-key-obs_service_card{border-top:4px solid #6b9c96!important;}
+.st-key-obs_models_card{border-top:4px solid #31566c!important;}
+.st-key-obs_upload_card h3,.st-key-obs_task_card h3,.st-key-obs_service_card h3,.st-key-obs_models_card h3{
+ font-size:1.1rem!important;letter-spacing:0;margin:0 0 8px;
+}
+.st-key-obs_upload_card [data-testid="stFileUploaderDropzone"]{min-height:140px;}
+.st-key-obs_service_card [data-testid="stCaptionContainer"]{font-size:.8rem;line-height:1.55;}
+@media(max-width:700px){.st-key-obs_upload_card,.st-key-obs_task_card,.st-key-obs_service_card,.st-key-obs_models_card{padding:16px!important;min-height:0;}}
+
+.st-key-risk_parameters,.st-key-risk_map_card,.st-key-aqua_map_card{background:#fff;border:1px solid #d5e2e5!important;border-radius:16px!important;padding:18px!important;margin:8px 0 18px;box-shadow:0 3px 14px #173f5208;}
+.st-key-risk_parameters{border-top:3px solid #6b9c96!important;}
+.st-key-risk_map_card,.st-key-aqua_map_card{border-top:3px solid #317d8a!important;}
+.st-key-risk_map_card .signal,.st-key-aqua_map_card .signal{font-size:.9rem;line-height:1.6;}

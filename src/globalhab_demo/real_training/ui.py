@@ -57,7 +57,8 @@ def render(root):
         st.write(f"目标阳性比例：{rows.y.mean():.2%}；{rows.site.nunique()}个分析单元。")
         if manifest['task'].startswith('china_hk'):
             st.caption('地理覆盖为香港水域；以下单点为区域示意，非采样点坐标。')
-        st.map(rows[['latitude','longitude']].dropna().drop_duplicates())
+        from globalhab_demo.map_style import point_map,draw_map
+        draw_map(point_map(rows[['latitude','longitude']].dropna().drop_duplicates()))
         st.caption('HABSOS的空间留出以0.1°网格为单位；邻近网格仍可能相关，不等同于跨海域外推验证。')
         with st.expander('完整任务定义与样本校验值'):st.json(manifest)
         if (folder/'input_availability.csv').exists():

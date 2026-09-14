@@ -910,7 +910,7 @@ with tab_real:
         real_aqua = sa_translation["priority"]
         kpi_grid([
             ("现场qPCR样本", f"{selected_card['observations']:,}", "窗口内真实采样记录"),
-            ("采样日期", f"{selected_card['sampling_dates']}", "非均匀现场采样"),
+            ("独立采样日数", f"{selected_card['sampling_dates']}", "非均匀现场采样"),
             ("监测地点", f"{selected_card['locations']}", "Gulf St Vincent沿岸"),
             ("K. cristata检出", f"{selected_card['k_cristata_detection_share']:.1%}", "样本检出比例"),
             ("最高观测丰度", f"{peak['cells_l']:.2e}", "cells L⁻¹"),
@@ -1024,7 +1024,7 @@ with tab_real:
         norway_aqua = norway_translation["priority"]
         kpi_grid([
             ("真实监测记录", f"{selected_card['observations']:,}", "藻细胞计数与环境条件"),
-            ("采样日期", f"{selected_card['sampling_dates']:,}", "2006–2019周尺度监测"),
+            ("独立采样日数", f"{selected_card['sampling_dates']:,}", "2006–2019周尺度监测"),
             ("沿岸区域", f"{selected_card['regions']}", "58–71°N监测网络"),
             ("研究定义事件", f"{selected_card['target_event_observations']}", ">200 cells L⁻¹记录"),
             ("D. acuta最高观测", f"{peak_d['cells_l']:,.0f}", "cells L⁻¹"),
@@ -1343,7 +1343,7 @@ with tab_real:
         if florida_result is not None and st.session_state.get("florida_sts_key") == florida_run_key:
             fq = florida_result["quality"]
             kpi_grid([
-                ("Karenia观测", f"{fq['observations']:,}", f"{fq['sampling_dates']}个采样日期"),
+                ("Karenia观测", f"{fq['observations']:,}", f"{fq['sampling_dates']}个独立采样日"),
                 ("空间位置", f"{fq['locations']:,}", "按经纬度去重"),
                 ("事件观测", f"{fq['events']:,}", f"阈值 {int(florida_threshold):,} cells L⁻¹"),
                 ("流场日期覆盖", f"{fq['current_date_overlap']:.1%}", "观测日存在流场的比例"),

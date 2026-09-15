@@ -15,6 +15,7 @@ sys.path.insert(0, str(SRC))
 REQUIRED_FILES = (
     "app.py",
     "PACKAGE_MANIFEST_SHA256.txt",
+    "LLM_INTERPRETATION_GUIDE.md",
     "run_demo.py",
     "requirements.txt",
     "src/globalhab_demo/__init__.py",
@@ -25,6 +26,7 @@ REQUIRED_FILES = (
     "src/globalhab_demo/broad_benchmark.py",
     "src/globalhab_demo/bayesian_design.py",
     "src/globalhab_demo/florida_sts.py",
+    "src/globalhab_demo/real_training/result_interpreter.py",
     "data/field_validation/field_observations_template.csv",
     "data/field_validation/field_currents_template.csv",
     "prompts/README.md",
@@ -49,6 +51,7 @@ REQUIRED_MODULES = (
     "globalhab_demo.broad_benchmark",
     "globalhab_demo.bayesian_design",
     "globalhab_demo.florida_sts",
+    "globalhab_demo.real_training.result_interpreter",
 )
 
 

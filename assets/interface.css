@@ -100,3 +100,12 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
 .st-key-risk_parameters{border-top:3px solid #6b9c96!important;}
 .st-key-risk_map_card,.st-key-aqua_map_card{border-top:3px solid #317d8a!important;}
 .st-key-risk_map_card .signal,.st-key-aqua_map_card .signal{font-size:.9rem;line-height:1.6;}
+
+/* Large-model result interpretation workspace. */
+.st-key-llm_source_card,.st-key-llm_mode_card,.st-key-llm_service_card{
+ background:#fff;border:1px solid #d5e2e5!important;border-radius:16px!important;
+ padding:22px!important;box-shadow:0 5px 18px rgba(24,63,80,.045);margin-bottom:10px;
+}
+.st-key-llm_source_card{border-top:4px solid #286b79!important;min-height:300px;}
+.st-key-llm_mode_card{border-top:4px solid #657f9b!important;min-height:300px;}
+.st-key-llm_service_card{border-top:4px solid #91b4ae!important;}

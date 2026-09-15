@@ -29,13 +29,13 @@ def validate_endpoint(url):
         raise ValueError('API域名无法解析，请检查地址。') from None
     return url.rstrip('/')
 
-def chat(c,messages):
+def chat(c,messages,max_tokens=800):
     if not ready(c):raise ValueError('模型服务未配置：请在服务器Secrets填写qwen配置。')
     endpoint=validate_endpoint(c['base_url'])
     try:
         response=requests.post(endpoint+'/chat/completions',
             headers={'Authorization':'Bearer '+c['api_key']},
-            json={'model':c['model'],'messages':messages,'temperature':0,'max_tokens':800},
+            json={'model':c['model'],'messages':messages,'temperature':0,'max_tokens':int(max_tokens)},
             timeout=(10,90),allow_redirects=False)
     except requests.RequestException:
         raise ValueError('模型请求超时或网络不可达，请检查服务配置。') from None

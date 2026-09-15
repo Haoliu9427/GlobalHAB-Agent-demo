@@ -18,6 +18,15 @@
 - Added data-quality checks, training-period lag selection, later-period forward evaluation and next-sampling projections.
 - Insufficient data return `DEFER`.
 
+
+## LLM result interpretation workspace
+
+- Added a third top-level workspace: `大模型结果解读`.
+- Reads registered project results, real-training results, mainland validation, the latest in-session user analysis, or uploaded result files.
+- Supports research, defense, paper-results and management-summary modes.
+- Uses the existing user/server Chat Completions compatible configuration; credentials remain session-only.
+- The LLM receives a bounded result summary only after explicit consent and cannot modify upstream metrics or predictions.
+
 ## Reproduction
 
 ```bash

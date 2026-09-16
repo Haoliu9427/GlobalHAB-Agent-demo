@@ -422,9 +422,22 @@ def render(root: Path) -> None:
             "上传结果文件": "用户结果文件",
         }
         scope = scope_labels.get(source, "结构化结果")
-        st.caption(f"{scope} · {len(summary):,}字符" if summary else f"{scope} · 等待结果")
-        preview = summary[:700].strip() if summary else "当前来源尚未生成可用摘要。"
-        st.text_area("摘要预览", value=preview, height=90, disabled=True, label_visibility="collapsed")
+        meta_a, meta_b = st.columns(2, gap="small")
+        with meta_a:
+            st.caption("证据范围")
+            st.markdown(f"**{scope}**")
+        with meta_b:
+            st.caption("摘要规模")
+            st.markdown(f"**{len(summary):,} 字符**" if summary else "**等待结果**")
+        st.caption("摘要预览（只读）")
+        preview = summary[:1800].strip() if summary else "当前来源尚未生成可用摘要。"
+        st.text_area("摘要预览", value=preview, height=245, disabled=True, label_visibility="collapsed")
+        with st.expander("查看完整结果摘要", expanded=False):
+            if summary:
+                st.text(summary[:50000])
+                st.caption(f"摘要字符数：{len(summary):,}。大模型最多接收前45,000字符。")
+            else:
+                st.info("请选择可用结果，或上传一个结果文件。")
         action_a, action_b = st.columns(2, gap="small")
         with action_a:
             if summary:
@@ -475,13 +488,6 @@ def render(root: Path) -> None:
         )
         st.caption("输出：核心结论 · 证据边界 · 下一步建议。")
         st.markdown(f'<div class="compact-card-footer">当前：{mode} · {output_length} · 重点{len(focus_items)}项。</div>', unsafe_allow_html=True)
-
-    with st.expander("查看完整结果摘要", expanded=False):
-        if summary:
-            st.text(summary[:50000])
-            st.caption(f"摘要字符数：{len(summary):,}。大模型最多接收前45,000字符。")
-        else:
-            st.info("请选择可用结果，或上传一个结果文件。")
 
     def clear_credentials() -> None:
         for key in ["llm_api_key", "llm_api_model", "llm_api_url"]:

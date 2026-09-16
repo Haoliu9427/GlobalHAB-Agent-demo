@@ -470,3 +470,6 @@ The Own Data observation/task pair and the LLM source/mode pair now use a strict
 
 ### Remote model connection status UI
 The own-data workspace now renders model-list/test-connection feedback as a compact full-width status strip below the action buttons. This prevents success/error messages from being squeezed into a narrow button column and keeps the paired “远程大模型服务 / 模型与运行” cards aligned.
+
+### 界面修复
+- 远程服务连接按钮状态与服务商默认模型同步；成对卡片继续等宽等高，“开始分析”固定在运行卡片底部；结果解读左卡使用更大的只读摘要预览和卡内完整摘要折叠区，减少无效底部留白。

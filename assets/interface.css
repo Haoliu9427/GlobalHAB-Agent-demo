@@ -581,3 +581,67 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
 .remote-status-strip.info{background:#eef5f8;color:#35677a;border-color:#dbe9ef;}
 .remote-status-strip.error{background:#fff1f0;color:#a6443e;border-color:#f4d7d4;}
 .remote-status-strip.muted{background:#f5f7f7;color:#6f8288;border-color:#e5ebeb;}
+
+
+/* 2026-09-16 late UI fix: remote-service pair and LLM source balance. */
+@media(min-width:901px){
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_service_card){
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    gap:1.5rem!important;
+    align-items:stretch!important;
+  }
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_service_card) > [data-testid="stColumn"]{
+    width:auto!important;
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-self:stretch!important;
+  }
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_service_card) > [data-testid="stColumn"] > div{
+    display:flex!important;
+    flex-direction:column!important;
+    flex:1 1 auto!important;
+    height:100%!important;
+  }
+  .st-key-obs_service_card,.st-key-obs_models_card{
+    height:100%!important;
+    min-height:0!important;
+    flex:1 1 auto!important;
+  }
+  .st-key-obs_service_card > [data-testid="stVerticalBlockBorderWrapper"],
+  .st-key-obs_models_card > [data-testid="stVerticalBlockBorderWrapper"]{
+    height:100%!important;
+    min-height:100%!important;
+  }
+  .st-key-obs_service_card [data-testid="stVerticalBlock"],
+  .st-key-obs_models_card [data-testid="stVerticalBlock"]{
+    min-height:100%!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  .st-key-obs_models_card [data-testid="stElementContainer"]:has(.card-flex-spacer){
+    margin-top:auto!important;
+  }
+  .card-flex-spacer{height:1px;min-height:1px;}
+
+  /* LLM pair: keep strict equal geometry while using the left card's preview area
+     for useful content instead of a blank lower half. */
+  [data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card){
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    gap:1.5rem!important;
+    align-items:stretch!important;
+  }
+  [data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card) > [data-testid="stColumn"]{
+    width:auto!important;
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-self:stretch!important;
+  }
+  .st-key-llm_source_card,.st-key-llm_mode_card{height:100%!important;min-height:0!important;}
+}
+@media(min-width:901px){
+  .st-key-obs_models_card .st-key-user_run{margin-top:auto!important;}
+}

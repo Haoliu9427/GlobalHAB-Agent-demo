@@ -60,14 +60,29 @@ def render():
         mode=st.radio('服务配置来源',['自行填写','使用服务器配置'],key='remote_mode',horizontal=True)
         if mode=='自行填写':
             provider=st.selectbox('模型服务',['自定义兼容服务','DeepSeek','Qwen'],key='remote_provider',on_change=change_provider)
+            presets={
+                'DeepSeek':{'base_url':'https://api.deepseek.com','model':'deepseek-flash'},
+                'Qwen':{'base_url':'https://dashscope.aliyuncs.com/compatible-mode/v1','model':'qwen-plus'},
+            }
+            preset=presets.get(provider,{'base_url':'','model':''})
+            # Apply provider defaults to Streamlit state before the widgets are created.
+            # This prevents a visible browser-restored value from diverging from the
+            # backend value used by ready(), which previously left “测试连接” disabled.
+            if preset['base_url'] and not str(st.session_state.get('user_api_url','')).strip():
+                st.session_state['user_api_url']=preset['base_url']
+            if preset['model'] and not str(st.session_state.get('user_api_model','')).strip():
+                st.session_state['user_api_model']=preset['model']
             endpoint_col, model_col = st.columns([1.25, 1], gap='small')
             with endpoint_col:
                 endpoint=st.text_input('API地址',placeholder='https://服务域名/compatible-mode/v1',key='user_api_url')
             with model_col:
                 model_id=st.text_input('模型名称',placeholder='填写服务商提供的模型ID',key='user_api_model')
             key=st.text_input('API Key',type='password',key='user_api_key')
-            remote={'base_url':endpoint.strip().rstrip('/'),'model':model_id.strip(),'api_key':key.strip()}
+            effective_url=(endpoint.strip() or preset['base_url']).rstrip('/')
+            effective_model=model_id.strip() or preset['model']
+            remote={'base_url':effective_url,'model':effective_model,'api_key':key.strip()}
         else:
+            provider='服务器配置'
             remote=settings()
         # Keep all action feedback outside the three narrow button columns.
         # This avoids Streamlit alerts being squeezed into a tall, thin block.
@@ -153,6 +168,9 @@ def render():
         epochs=st.slider('时序模型训练轮数上限',5,50,20,key='user_epochs')
         if selected:st.caption('实际运行（含融合组件与季节基线）：'+', '.join(expand(['Seasonal Climatology']+selected)))
         st.caption(f'验证：时间留出 · {len(selected)}个选择模型 + 季节基线 · {horizon}天 · 上限{epochs}轮。')
+        # Push the final run controls to the bottom of the matched card so the pair
+        # stays visually aligned without leaving the primary action floating mid-card.
+        st.markdown('<div class="card-flex-spacer"></div>', unsafe_allow_html=True)
         st.markdown('<div class="compact-card-footer">运行后保存指标、验证样本、预测结果与数据质量记录。</div>', unsafe_allow_html=True)
         signature=hashlib.sha256((data or b'')+json.dumps([task,horizon,description,selected,epochs,remote.get('model'),remote.get('base_url'),hashlib.sha256(remote.get('api_key','').encode()).hexdigest(),mode],ensure_ascii=False).encode()).hexdigest()
         if st.button('开始分析',key='user_run',type='primary',use_container_width=True):

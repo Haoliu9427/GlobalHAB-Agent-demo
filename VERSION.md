@@ -178,3 +178,5 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - Moved remote-service action feedback out of the three narrow action-button columns.
 - Replaced squeezed Streamlit success/error alerts with a full-width compact horizontal status strip below the action row.
 - Removed duplicate large connection-status messaging while preserving equal-width/equal-height paired card geometry.
+
+- UI修复：自有数据分析的远程服务默认模型可直接测试连接；“模型与运行”主按钮固定在卡片底部；大模型解读左卡重排摘要区域以减少底部空白，同时保持成对卡片严格等宽等高。

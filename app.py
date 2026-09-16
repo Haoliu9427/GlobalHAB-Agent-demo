@@ -64,7 +64,10 @@ from globalhab_demo.real_benchmark import (  # noqa: E402
     run_forward_monitoring_benchmark,
 )
 from globalhab_demo.case_manager import (  # noqa: E402
-    create_case_from_research, evidence_rows, export_case_json, get_case, list_cases,
+    CASE_STATUS_LABELS, archive_case, bulk_create_cases, cancel_case, case_status_code,
+    case_status_counts, case_training_usage, create_case_from_research, delete_case,
+    evidence_rows, export_case_json, get_case, list_cases, mark_case_in_progress,
+    queue_cases, restore_case,
 )
 _scenario_module = importlib.import_module("globalhab_demo.scenario")
 if len(getattr(_scenario_module, "DEMO_ZONES", ())) < 12:
@@ -540,14 +543,37 @@ with st.sidebar.container(key="workspace_nav"):
 case_list = list_cases(ROOT)
 active_case_id = st.session_state.get("active_case_id")
 if case_list:
-    case_ids = [str(c.get("case_id")) for c in case_list]
-    if active_case_id not in case_ids:
-        active_case_id = case_ids[0]
-        st.session_state["active_case_id"] = active_case_id
-    with st.sidebar.expander("当前Case / 证据链", expanded=bool(active_case_id)):
+    counts = case_status_counts(ROOT)
+    with st.sidebar.expander("Case / 现场任务", expanded=bool(active_case_id)):
+        st.caption(
+            f"待复核 {counts.get('pending_review',0)} · 处理中 {counts.get('in_progress',0)} · "
+            f"视觉DEFER {counts.get('visual_defer',0)} · 已确认 {counts.get('confirmed',0)}"
+        )
+        case_view = st.radio(
+            "显示", ["待处理", "全部", "已取消/归档"], horizontal=True, key="case_sidebar_view",
+            label_visibility="collapsed",
+        )
+        if case_view == "待处理":
+            visible_cases = [c for c in case_list if case_status_code(c) in {"pending_review", "in_progress", "visual_screened", "visual_defer", "lab_pending"}]
+        elif case_view == "已取消/归档":
+            visible_cases = [c for c in case_list if case_status_code(c) in {"cancelled", "archived"}]
+        else:
+            visible_cases = list(case_list)
+        if not visible_cases:
+            st.caption("当前筛选下没有Case。")
+            visible_cases = list(case_list)
+        case_ids = [str(c.get("case_id")) for c in visible_cases]
+        if active_case_id not in case_ids:
+            active_case_id = case_ids[0]
+            st.session_state["active_case_id"] = active_case_id
+        if st.session_state.get("case_sidebar_select") not in case_ids:
+            st.session_state["case_sidebar_select"] = active_case_id
         selected_case = st.selectbox(
             "Case", case_ids, index=case_ids.index(active_case_id), key="case_sidebar_select",
-            format_func=lambda cid: next((f"{cid} · {c.get('status','')}" for c in case_list if str(c.get('case_id')) == cid), cid),
+            format_func=lambda cid: next((
+                f"{cid} · {c.get('status','')} · {(c.get('research') or {}).get('candidate_region','NA')}"
+                for c in visible_cases if str(c.get('case_id')) == cid
+            ), cid),
         )
         if selected_case != st.session_state.get("active_case_id"):
             st.session_state["active_case_id"] = selected_case
@@ -555,8 +581,58 @@ if case_list:
         current_case_sidebar = get_case(active_case_id, ROOT)
         if current_case_sidebar:
             r = current_case_sidebar.get("research") or {}
+            status_code = case_status_code(current_case_sidebar)
             st.caption(f"{r.get('candidate_region','NA')} · {r.get('route','NA')} × {r.get('lag_days','NA')}d")
             st.caption(f"状态：{current_case_sidebar.get('status','NA')} · 证据 {len(current_case_sidebar.get('evidence') or [])} 条")
+            if status_code in {"cancelled", "archived"}:
+                if st.button("恢复该Case", use_container_width=True, key=f"case_restore_{active_case_id}"):
+                    restore_case(active_case_id, ROOT)
+                    st.rerun()
+            else:
+                if st.button("开始 / 继续现场复核", type="primary", use_container_width=True, key=f"case_start_{active_case_id}"):
+                    mark_case_in_progress(active_case_id, ROOT)
+                    st.session_state["_workspace_jump"] = "现场影像甄别"
+                    st.rerun()
+                a1, a2 = st.columns(2)
+                if a1.button("取消复核", use_container_width=True, key=f"case_cancel_{active_case_id}"):
+                    cancel_case(active_case_id, root=ROOT)
+                    st.rerun()
+                if a2.button("归档", use_container_width=True, key=f"case_archive_{active_case_id}"):
+                    archive_case(active_case_id, root=ROOT)
+                    st.rerun()
+            with st.expander("更多操作", expanded=False):
+                usage = case_training_usage(active_case_id, ROOT)
+                st.caption(
+                    f"关联影像 {usage.get('library_samples',0)} 张 · 未来训练样本 {usage.get('future_training_samples',0)} 张 · "
+                    f"历史模型引用 {len(usage.get('trained_model_versions') or [])} 个"
+                )
+                if usage.get("trained_model_versions"):
+                    st.warning("该Case已有样本进入历史模型训练快照。删除Case不会改写已训练模型；历史模型仍保留原训练记录。")
+                remove_future = st.checkbox(
+                    "删除Case时同时从未来训练集中移除关联样本",
+                    value=True,
+                    key=f"case_delete_training_{active_case_id}",
+                )
+                delete_samples = st.checkbox(
+                    "同时删除影像库中的关联记录与原始照片",
+                    value=False,
+                    key=f"case_delete_samples_{active_case_id}",
+                    help="若历史模型训练快照已引用这些样本，删除原图不会改写历史模型，但会降低该历史训练的后续可复现性。",
+                )
+                if delete_samples and usage.get("trained_model_versions"):
+                    st.warning("该Case已被历史模型训练引用。删除原始照片后，已训练模型仍保留，但历史训练数据将不再完整可复现。")
+                confirm_text = st.text_input(
+                    "永久删除确认", placeholder="输入 DELETE", key=f"case_delete_confirm_{active_case_id}"
+                )
+                if st.button("永久删除Case", use_container_width=True, key=f"case_delete_{active_case_id}", disabled=confirm_text.strip() != "DELETE"):
+                    delete_case(
+                        active_case_id, ROOT,
+                        remove_from_future_training=remove_future,
+                        delete_library_samples=delete_samples,
+                    )
+                    st.session_state.pop("active_case_id", None)
+                    st.session_state.pop("case_sidebar_select", None)
+                    st.rerun()
 else:
     active_case_id = None
 if workspace_mode == "自有数据分析":
@@ -841,43 +917,110 @@ with tab_alert:
     top = scenario.iloc[0]
 
     with st.container(border=True, key="field_task_from_research"):
-        st.markdown("#### 从风险候选生成现场复核任务")
+        st.markdown("#### 现场复核任务")
         kpi_grid([
-            ("候选海区", html.escape(str(top["候选海区"])), "当前情景排序最高的现场复核候选"),
-            ("风险指数", f"{float(top['综合风险指数']):.1f}/100", "当前情景相对风险，不是业务预报概率"),
+            ("最高候选海区", html.escape(str(top["候选海区"])), "当前情景排序最高的现场复核候选"),
+            ("最高风险指数", f"{float(top['综合风险指数']):.1f}/100", "当前情景相对风险，不是业务预报概率"),
             ("Route / Lag", f"{html.escape(str(best.get('route','NA')))} / {int(best.get('lag_days',0))}d", "当前Agent识别的方向与响应时滞"),
             ("Top20%事件覆盖", f"{float(best.get('recall_at_top20',0)):.1%}", "固定监测容量下的事件覆盖"),
         ])
-        st.caption("把当前研究结果转成同一个Case中的现场任务；后续影像、实验室确认、视觉训练和大模型解释都会回写到这条证据链。")
-        if st.button("生成现场复核任务并前往影像甄别", type="primary", use_container_width=True, key="create_field_case"):
-            research_payload = {
-                "source": "风险研判·合成情景与当前Agent候选",
-                "candidate_region": str(top["候选海区"]),
-                "issue_date": str(issue_date),
-                "forecast_window": str(top.get("预计窗口", f"{horizon_days}天")),
-                "horizon_days": int(horizon_days),
-                "risk_score": float(top["综合风险指数"]),
-                "route": str(best.get("route", "NA")),
-                "lag_days": int(best.get("lag_days", 0)),
-                "model": str(best.get("model", "NA")),
-                "top_k_capacity": 0.20,
-                "event_coverage": float(best.get("recall_at_top20", 0)),
-                "average_precision": float(best.get("pr_auc", 0)),
-                "brier_skill": float(best.get("brier_skill", 0)),
-                "ece": float(best.get("ece", 0)),
-                "scenario": {
-                    "mhw_intensity_c": float(mhw), "nitrate_mmol_m3": float(nitrate),
-                    "phosphate_mmol_m3": float(phosphate), "silicate_mmol_m3": float(silicate),
-                    "transport_proxy": float(transport),
-                },
-                "boundary": "情景风险与Agent候选用于安排现场复核，不是实时业务预报或真实HAB确认。",
-            }
-            new_case = create_case_from_research(research_payload, ROOT)
-            st.session_state["active_case_id"] = new_case["case_id"]
-            st.session_state["case_sidebar_select"] = new_case["case_id"]
-            st.session_state["vision_location"] = str(top["候选海区"])
-            st.session_state["_workspace_jump"] = "现场影像甄别"
-            st.rerun()
+        counts_now = case_status_counts(ROOT)
+        st.caption(
+            "把风险候选转成独立Case现场任务。可以一次选择多个候选；每个Case分别保存自己的影像、现场元数据、实验室证据和模型解释。"
+        )
+        st.caption(
+            f"当前任务队列：待复核 {counts_now.get('pending_review',0)} · 处理中 {counts_now.get('in_progress',0)} · "
+            f"视觉DEFER {counts_now.get('visual_defer',0)} · 已确认 {counts_now.get('confirmed',0)}。"
+        )
+
+        review_candidates = scenario.head(10)[[
+            "候选海区", "综合风险指数", "风险等级", "预计窗口", "latitude", "longitude"
+        ]].copy()
+        review_candidates.insert(0, "选择", False)
+        if len(review_candidates):
+            review_candidates.loc[review_candidates.index[0], "选择"] = True
+        edited_candidates = st.data_editor(
+            review_candidates,
+            key="risk_case_batch_editor",
+            hide_index=True,
+            use_container_width=True,
+            disabled=["候选海区", "综合风险指数", "风险等级", "预计窗口", "latitude", "longitude"],
+            column_config={
+                "选择": st.column_config.CheckboxColumn("选择", help="勾选需要生成现场复核任务的候选海区"),
+                "综合风险指数": st.column_config.NumberColumn("风险指数", format="%.1f"),
+                "latitude": st.column_config.NumberColumn("纬度", format="%.2f"),
+                "longitude": st.column_config.NumberColumn("经度", format="%.2f"),
+            },
+        )
+        selected_rows = edited_candidates[edited_candidates["选择"] == True] if "选择" in edited_candidates.columns else edited_candidates.iloc[0:0]
+        st.caption(f"已选择 {len(selected_rows)} 个候选。默认只选最高候选，可继续勾选多个海区批量创建任务。")
+
+        if st.button(
+            "批量生成现场复核任务并前往任务队列",
+            type="primary", use_container_width=True, key="create_field_cases_batch",
+            disabled=len(selected_rows) == 0,
+        ):
+            payloads = []
+            for rank, (_, row) in enumerate(selected_rows.iterrows(), start=1):
+                payloads.append({
+                    "source": "风险研判·合成情景与当前Agent候选",
+                    "candidate_region": str(row["候选海区"]),
+                    "candidate_rank": int(rank),
+                    "latitude": float(row["latitude"]),
+                    "longitude": float(row["longitude"]),
+                    "issue_date": str(issue_date),
+                    "forecast_window": str(row.get("预计窗口", f"{horizon_days}天")),
+                    "horizon_days": int(horizon_days),
+                    "risk_score": float(row["综合风险指数"]),
+                    "risk_level": str(row.get("风险等级", "NA")),
+                    "route": str(best.get("route", "NA")),
+                    "lag_days": int(best.get("lag_days", 0)),
+                    "model": str(best.get("model", "NA")),
+                    "top_k_capacity": 0.20,
+                    "event_coverage": float(best.get("recall_at_top20", 0)),
+                    "average_precision": float(best.get("pr_auc", 0)),
+                    "brier_skill": float(best.get("brier_skill", 0)),
+                    "ece": float(best.get("ece", 0)),
+                    "scenario": {
+                        "mhw_intensity_c": float(mhw), "nitrate_mmol_m3": float(nitrate),
+                        "phosphate_mmol_m3": float(phosphate), "silicate_mmol_m3": float(silicate),
+                        "transport_proxy": float(transport),
+                    },
+                    "boundary": "情景风险与Agent候选用于安排现场复核，不是实时业务预报或真实HAB确认。",
+                })
+            created_cases, skipped_cases = bulk_create_cases(payloads, ROOT, deduplicate=True)
+            target_case = created_cases[0] if created_cases else (skipped_cases[0] if skipped_cases else None)
+            if target_case:
+                st.session_state["active_case_id"] = target_case["case_id"]
+                st.session_state["case_sidebar_select"] = target_case["case_id"]
+                mark_case_in_progress(target_case["case_id"], ROOT)
+                st.session_state["vision_location"] = str((target_case.get("research") or {}).get("candidate_region", ""))
+                st.session_state["_workspace_jump"] = "现场影像甄别"
+                if skipped_cases:
+                    st.session_state["_case_batch_notice"] = f"新建 {len(created_cases)} 个；另有 {len(skipped_cases)} 个相同候选任务已存在，未重复创建。"
+                else:
+                    st.session_state["_case_batch_notice"] = f"已新建 {len(created_cases)} 个现场复核任务。"
+                st.rerun()
+
+        current_tasks = [c for c in list_cases(ROOT) if case_status_code(c) not in {"archived"}]
+        with st.expander("查看现场复核任务", expanded=False):
+            if current_tasks:
+                task_rows = []
+                for c in current_tasks[:30]:
+                    r = c.get("research") or {}
+                    task_rows.append({
+                        "Case": c.get("case_id"),
+                        "候选海区": r.get("candidate_region", "NA"),
+                        "风险指数": r.get("risk_score", "NA"),
+                        "Route/Lag": f"{r.get('route','NA')} × {r.get('lag_days','NA')}d",
+                        "状态": c.get("status", "NA"),
+                        "视觉": (c.get("visual") or {}).get("screening_priority", "—"),
+                        "实验室/专业证据": len(c.get("lab_evidence") or []),
+                    })
+                st.dataframe(task_rows, hide_index=True, use_container_width=True)
+                st.caption("取消、归档、恢复和永久删除可在左侧“Case / 现场任务”中完成。")
+            else:
+                st.caption("当前还没有现场复核任务。")
     with st.container(border=True,key="risk_map_card"):
         st.markdown("#### 候选海区风险分布")
         st.markdown(

@@ -94,3 +94,51 @@ PYTHONPATH=src python scripts/check_case_loop.py
 python scripts/verify_release.py
 python scripts/verify_package.py
 ```
+
+## 8. 多Case任务队列与生命周期
+
+### 8.1 批量生成任务
+
+“研究与验证 → 风险研判”中的候选表支持多选。勾选多个候选后，系统为每个海区分别建立独立Case，并对同一研究情景、同一海区、同一Route/Lag的重复任务进行去重。批量创建不是“一张照片验证多个海区”；每个Case拥有独立的现场与实验室证据。
+
+### 8.2 状态机
+
+Case内部保存`status_code`和中文`status`，主要状态为：
+
+```text
+pending_review  待现场复核
+      ↓
+in_progress     现场复核中
+      ↓
+visual_screened 已完成视觉筛查
+      ├─ visual_defer 视觉DEFER，可复拍/补证据
+      └─ confirmed    已有专业/实验室确认
+
+旁路：cancelled 已取消复核；archived 已归档
+```
+
+取消或归档不会删除Case证据。恢复时，系统会根据Case是否已有视觉或实验室证据恢复到相应阶段。
+
+### 8.3 现场任务队列
+
+“现场影像甄别”显示待处理Case列表。完成当前照片筛查后可：
+
+- `登记到当前研究Case`：只保存当前视觉证据；
+- `登记并处理下一个`：保存当前证据后自动切换到下一个待复核Case；
+- `切换到下一个待复核任务`：不提交当前页面结果，直接切换任务。
+
+### 8.4 删除、训练数据和可追溯性
+
+左侧“Case / 现场任务 → 更多操作”提供永久删除，但需要输入`DELETE`确认。删除前系统会统计：
+
+- 该Case关联的影像库样本数；
+- 仍被标记为“进入未来训练”的样本数；
+- 是否已经出现在历史用户模型的训练快照中。
+
+用户可在删除Case时同步将关联样本从**未来训练集**移除。已经训练并注册的历史模型及其快照不会被静默修改，因此仍保持可审计性。
+
+## 9. 队列相关复现检查
+
+```bash
+PYTHONPATH=src pytest -q tests/test_case_queue.py tests/test_case_manager.py tests/test_case_ui_regression.py
+```

@@ -37,3 +37,14 @@ def test_workspace_hero_copy_regression():
     assert "OWN DATA WORKBENCH" in app
     assert "<h1>自有数据分析</h1>" in app
     assert "让大模型解释已经计算完成的科学结果，而不是替代模型计算" not in llm
+
+
+def test_batch_review_and_case_lifecycle_ui_present():
+    app = APP.read_text(encoding="utf-8")
+    field = FIELD.read_text(encoding="utf-8")
+    assert "批量生成现场复核任务并前往任务队列" in app
+    assert "Case / 现场任务" in app
+    assert "永久删除Case" in app
+    assert "取消复核" in app and "归档" in app
+    assert "登记并处理下一个" in field
+    assert "待复核任务队列" in field

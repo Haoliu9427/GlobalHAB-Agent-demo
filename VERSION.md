@@ -93,3 +93,11 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - 大模型结果解读Hero移除“让大模型解释已经计算完成的科学结果，而不是替代模型计算”一句，保留更简洁的工作区能力说明。
 - 自有数据分析新增与其他一级工作区一致的深海蓝Hero宣传卡，统一导航后的视觉入口。
 - 新增 `tests/test_case_ui_regression.py`，防止证据链函数重名覆盖、Case卡片样式和工作区Hero文案回归。
+
+## 2026-09-16 Case task queue and batch-review update
+- Upgraded the Case ledger to schema `1.1` with explicit lifecycle states: pending review, in progress, visual screened, visual DEFER, lab pending, confirmed, cancelled and archived.
+- Added batch Case creation from the risk-candidate table, with duplicate protection for identical research candidates.
+- Added a sidebar Case/task manager with queue counts, start/continue, cancel, archive, restore and guarded permanent deletion.
+- Added audit checks before permanent deletion; linked visual samples can be removed from future training while prior trained model snapshots remain immutable.
+- Added a field-vision task queue and `登记并处理下一个` workflow for sequential review of multiple Cases.
+- Added risk-page task overview and dedicated regression tests for queue transitions, batch creation, deletion safeguards and UI controls.

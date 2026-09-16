@@ -18,7 +18,20 @@ import os
 import tempfile
 
 
-CASE_SCHEMA_VERSION = "1.0"
+CASE_SCHEMA_VERSION = "1.1"
+
+CASE_STATUS_LABELS = {
+    "pending_review": "待现场复核",
+    "in_progress": "现场复核中",
+    "visual_screened": "已完成视觉筛查",
+    "visual_defer": "视觉DEFER",
+    "lab_pending": "待实验室确认",
+    "confirmed": "已有专业/实验室确认",
+    "cancelled": "已取消复核",
+    "archived": "已归档",
+}
+QUEUE_STATUS_CODES = {"pending_review", "in_progress", "visual_screened", "visual_defer", "lab_pending"}
+
 LAB_METHODS = ["专业人员确认", "显微镜确认", "qPCR确认", "毒素检测确认"]
 VISUAL_LABELS = ["正常/未见明显异常", "绿色水体异常", "红棕色水体异常", "高浑浊/泥沙样", "表层浮沫/漂浮物样", "不确定"]
 
@@ -110,6 +123,332 @@ def get_case(case_id: str | None, root: Any | None = None) -> dict[str, Any] | N
     return None
 
 
+
+
+def case_status_code(case: dict[str, Any] | None) -> str:
+    """Return normalized status code while remaining compatible with older ledgers."""
+    if not case:
+        return "pending_review"
+    code = str(case.get("status_code") or "").strip()
+    if code in CASE_STATUS_LABELS:
+        return code
+    label = str(case.get("status") or "")
+    reverse = {v: k for k, v in CASE_STATUS_LABELS.items()}
+    if label in reverse:
+        return reverse[label]
+    if "取消" in label:
+        return "cancelled"
+    if "归档" in label:
+        return "archived"
+    if "实验室" in label or "专业" in label:
+        return "confirmed"
+    if "视觉" in label and "DEFER" in label.upper():
+        return "visual_defer"
+    if "视觉" in label:
+        return "visual_screened"
+    if "进行" in label or "处理中" in label:
+        return "in_progress"
+    return "pending_review"
+
+
+def _apply_status(case: dict[str, Any], status_code: str, reason: str | None = None) -> dict[str, Any]:
+    if status_code not in CASE_STATUS_LABELS:
+        raise ValueError(f"不支持的Case状态：{status_code}")
+    now = _now()
+    previous = case_status_code(case)
+    case["status_code"] = status_code
+    case["status"] = CASE_STATUS_LABELS[status_code]
+    if reason:
+        case["status_reason"] = reason.strip()
+    case.setdefault("status_history", []).append({
+        "from": previous,
+        "to": status_code,
+        "label": CASE_STATUS_LABELS[status_code],
+        "reason": (reason or "").strip(),
+        "at": now,
+    })
+    if isinstance(case.get("field_task"), dict):
+        task_map = {
+            "pending_review": "待拍照/现场补证据",
+            "in_progress": "现场复核中",
+            "visual_screened": "已完成视觉筛查，可继续实验室/专业确认",
+            "visual_defer": "视觉结果DEFER，建议复拍或补充人工/实验室证据",
+            "lab_pending": "等待实验室/专业确认",
+            "confirmed": "已补充专业/实验室证据",
+            "cancelled": "已取消现场复核",
+            "archived": "已归档",
+        }
+        case["field_task"]["status"] = task_map.get(status_code, CASE_STATUS_LABELS[status_code])
+    return case
+
+
+def case_status_counts(root: Any | None = None) -> dict[str, int]:
+    counts = {code: 0 for code in CASE_STATUS_LABELS}
+    for case in list_cases(root):
+        counts[case_status_code(case)] = counts.get(case_status_code(case), 0) + 1
+    return counts
+
+
+def queue_cases(root: Any | None = None, include_defer: bool = True) -> list[dict[str, Any]]:
+    allowed = set(QUEUE_STATUS_CODES)
+    if not include_defer:
+        allowed.discard("visual_defer")
+    return [c for c in list_cases(root) if case_status_code(c) in allowed]
+
+
+def set_case_status(case_id: str, status_code: str, reason: str | None = None, root: Any | None = None) -> dict[str, Any]:
+    return _update_case(case_id, lambda c: _apply_status(c, status_code, reason), root)
+
+
+def mark_case_in_progress(case_id: str, root: Any | None = None) -> dict[str, Any]:
+    return set_case_status(case_id, "in_progress", "开始/继续现场复核", root)
+
+
+def cancel_case(case_id: str, reason: str | None = None, root: Any | None = None) -> dict[str, Any]:
+    return set_case_status(case_id, "cancelled", reason or "用户取消本次现场复核", root)
+
+
+def archive_case(case_id: str, reason: str | None = None, root: Any | None = None) -> dict[str, Any]:
+    return set_case_status(case_id, "archived", reason or "用户归档", root)
+
+
+def restore_case(case_id: str, root: Any | None = None) -> dict[str, Any]:
+    case = get_case(case_id, root)
+    if not case:
+        raise ValueError(f"未找到Case：{case_id}")
+    if case.get("lab_evidence"):
+        target = "confirmed"
+    elif case.get("visual"):
+        target = "visual_screened"
+    else:
+        target = "pending_review"
+    return set_case_status(case_id, target, "从取消/归档状态恢复", root)
+
+
+def next_review_case(current_case_id: str | None = None, root: Any | None = None) -> dict[str, Any] | None:
+    queue = queue_cases(root)
+    if not queue:
+        return None
+    # Prefer pending tasks, then DEFER/lab-pending, and avoid returning the current case when possible.
+    priority = {"pending_review": 0, "in_progress": 1, "visual_defer": 2, "visual_screened": 3, "lab_pending": 4}
+    queue = sorted(queue, key=lambda c: (priority.get(case_status_code(c), 99), str(c.get("created_at", ""))))
+    for case in queue:
+        if str(case.get("case_id")) != str(current_case_id):
+            return case
+    return None
+
+
+def _research_fingerprint(research: dict[str, Any]) -> str:
+    keep = {
+        "source": research.get("source"),
+        "candidate_region": research.get("candidate_region") or research.get("region"),
+        "issue_date": research.get("issue_date"),
+        "forecast_window": research.get("forecast_window"),
+        "horizon_days": research.get("horizon_days"),
+        "route": research.get("route"),
+        "lag_days": research.get("lag_days"),
+        "scenario": research.get("scenario"),
+    }
+    return hashlib.sha256(json.dumps(_jsonable(keep), ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+def bulk_create_cases(
+    research_items: list[dict[str, Any]],
+    root: Any | None = None,
+    deduplicate: bool = True,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Create several review tasks in one atomic ledger write. Returns (created, skipped)."""
+    ledger = load_ledger(root)
+    existing = {}
+    for case in ledger.get("cases", []):
+        fp = case.get("research_fingerprint") or _research_fingerprint(case.get("research") or {})
+        if case_status_code(case) not in {"cancelled", "archived"}:
+            existing[fp] = case
+    created: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    for research in research_items:
+        fp = _research_fingerprint(research)
+        if deduplicate and fp in existing:
+            skipped.append(existing[fp])
+            continue
+        now = _now()
+        case_id = _new_case_id(research)
+        region = research.get("candidate_region") or research.get("region") or "待定海域"
+        window = research.get("forecast_window") or research.get("horizon_days") or ""
+        case = {
+            "schema_version": CASE_SCHEMA_VERSION,
+            "case_id": case_id,
+            "title": f"{region}现场复核任务",
+            "status_code": "pending_review",
+            "status": CASE_STATUS_LABELS["pending_review"],
+            "status_history": [{"from": None, "to": "pending_review", "label": CASE_STATUS_LABELS["pending_review"], "reason": "由风险候选批量生成", "at": now}],
+            "research_fingerprint": fp,
+            "created_at": now,
+            "updated_at": now,
+            "research": _jsonable(research),
+            "field_task": {
+                "status": "待拍照/现场补证据",
+                "target_region": region,
+                "forecast_window": window,
+                "requested_evidence": ["海面/水色照片", "拍摄时间与位置", "水色/异味/泡沫", "可选DO/Chl-a/温盐"],
+                "instructions": "优先在当前候选区拍摄海面，避开强逆光；视觉异常只作为现场证据层，必要时继续显微镜/qPCR/毒素复核。",
+            },
+            "visual": None,
+            "field_metadata": {},
+            "lab_evidence": [],
+            "evidence": [],
+            "llm_notes": [],
+        }
+        case["evidence"].append({
+            "evidence_id": f"EV-{hashlib.sha256((case_id+'research').encode()).hexdigest()[:10]}",
+            "type": "research_candidate",
+            "grade": "C·模型风险候选",
+            "source": "研究与验证",
+            "created_at": now,
+            "summary": {
+                "candidate_region": research.get("candidate_region"),
+                "risk_score": research.get("risk_score"),
+                "route": research.get("route"),
+                "lag_days": research.get("lag_days"),
+                "top_k_capacity": research.get("top_k_capacity"),
+                "event_coverage": research.get("event_coverage"),
+            },
+            "boundary": "研究候选用于安排现场复核，不等同于真实HAB确认。",
+        })
+        ledger.setdefault("cases", []).append(case)
+        existing[fp] = case
+        created.append(case)
+    if created:
+        save_ledger(ledger, root)
+    return created, skipped
+
+
+def case_training_usage(case_id: str, root: Any | None = None) -> dict[str, Any]:
+    """Audit whether a Case has images in the visual library or prior model snapshots."""
+    import csv
+    r = _root(root)
+    records_path = r / "data" / "field_visual" / "user_library" / "records.csv"
+    sample_ids: list[str] = []
+    future_training = 0
+    if records_path.exists():
+        try:
+            with records_path.open("r", encoding="utf-8-sig", newline="") as f:
+                for row in csv.DictReader(f):
+                    if str(row.get("case_id") or "") == str(case_id):
+                        sample_ids.append(str(row.get("sample_id") or ""))
+                        if str(row.get("include_in_training") or "").strip().lower() in {"1", "true", "yes", "y"}:
+                            future_training += 1
+        except Exception:
+            pass
+    model_refs: list[str] = []
+    model_root = r / "vision_models" / "user_models"
+    if model_root.exists():
+        for manifest in model_root.glob("*/training_manifest_snapshot.csv"):
+            try:
+                text = manifest.read_text(encoding="utf-8-sig", errors="ignore")
+                if str(case_id) in text:
+                    model_refs.append(manifest.parent.name)
+            except Exception:
+                continue
+    return {
+        "library_samples": len([x for x in sample_ids if x]),
+        "future_training_samples": future_training,
+        "trained_model_versions": model_refs,
+    }
+
+
+def remove_case_from_future_training(case_id: str, root: Any | None = None) -> int:
+    import csv
+    r = _root(root)
+    path = r / "data" / "field_visual" / "user_library" / "records.csv"
+    if not path.exists():
+        return 0
+    with path.open("r", encoding="utf-8-sig", newline="") as f:
+        rows = list(csv.DictReader(f))
+        fieldnames = list(rows[0].keys()) if rows else []
+    changed = 0
+    for row in rows:
+        if str(row.get("case_id") or "") == str(case_id) and str(row.get("include_in_training") or "").strip().lower() in {"1", "true", "yes", "y"}:
+            row["include_in_training"] = "False"
+            changed += 1
+    if changed and fieldnames:
+        fd, tmp = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(rows)
+            os.replace(tmp, path)
+        finally:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+    return changed
+
+
+def delete_case_library_samples(case_id: str, root: Any | None = None) -> int:
+    """Delete visual-library rows and image files linked only to this Case.
+
+    Historical model weights are intentionally left untouched. Use with care when
+    a model snapshot already references these samples because deleting the source
+    rows/files reduces future reproducibility of that historical training run.
+    """
+    import csv
+    r = _root(root)
+    path = r / "data" / "field_visual" / "user_library" / "records.csv"
+    if not path.exists():
+        return 0
+    with path.open("r", encoding="utf-8-sig", newline="") as f:
+        rows = list(csv.DictReader(f))
+        fieldnames = list(rows[0].keys()) if rows else []
+    removed = [row for row in rows if str(row.get("case_id") or "") == str(case_id)]
+    remaining = [row for row in rows if str(row.get("case_id") or "") != str(case_id)]
+    if removed and fieldnames:
+        fd, tmp = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(remaining)
+            os.replace(tmp, path)
+        finally:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+    remaining_paths = {str(row.get("image_relpath") or "") for row in remaining}
+    for row in removed:
+        rel = str(row.get("image_relpath") or "").strip()
+        if not rel or rel in remaining_paths:
+            continue
+        candidate = (r / rel).resolve()
+        try:
+            candidate.relative_to(r.resolve())
+            if candidate.is_file():
+                candidate.unlink()
+        except Exception:
+            continue
+    return len(removed)
+
+
+def delete_case(
+    case_id: str,
+    root: Any | None = None,
+    remove_from_future_training: bool = False,
+    delete_library_samples: bool = False,
+) -> dict[str, Any]:
+    usage = case_training_usage(case_id, root)
+    if remove_from_future_training and not delete_library_samples:
+        usage["removed_from_future_training"] = remove_case_from_future_training(case_id, root)
+    if delete_library_samples:
+        usage["deleted_library_samples"] = delete_case_library_samples(case_id, root)
+    ledger = load_ledger(root)
+    before = len(ledger.get("cases", []))
+    ledger["cases"] = [c for c in ledger.get("cases", []) if str(c.get("case_id")) != str(case_id)]
+    if len(ledger["cases"]) == before:
+        raise ValueError(f"未找到Case：{case_id}")
+    save_ledger(ledger, root)
+    usage["deleted_case_id"] = case_id
+    return usage
+
+
 def _new_case_id(research: dict[str, Any]) -> str:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     basis = json.dumps(_jsonable(research), ensure_ascii=False, sort_keys=True) + _now()
@@ -130,7 +469,10 @@ def create_case_from_research(
         "schema_version": CASE_SCHEMA_VERSION,
         "case_id": case_id,
         "title": title or f"{region}现场复核任务",
-        "status": "待现场复核",
+        "status_code": "pending_review",
+        "status": CASE_STATUS_LABELS["pending_review"],
+        "status_history": [{"from": None, "to": "pending_review", "label": CASE_STATUS_LABELS["pending_review"], "reason": "由风险候选生成", "at": now}],
+        "research_fingerprint": _research_fingerprint(research),
         "created_at": now,
         "updated_at": now,
         "research": _jsonable(research),
@@ -201,8 +543,8 @@ def register_visual_evidence(
     def updater(case: dict[str, Any]) -> dict[str, Any]:
         case["visual"] = visual
         case["field_metadata"] = metadata
-        case["field_task"]["status"] = "已完成视觉筛查，待确认/补实验室证据"
-        case["status"] = "已有现场视觉证据"
+        is_defer = str(result.get("screening_priority") or "").upper().startswith("DEFER")
+        _apply_status(case, "visual_defer" if is_defer else "visual_screened", "完成现场视觉筛查")
         evidence = case.setdefault("evidence", [])
         sig = json.dumps(visual, ensure_ascii=False, sort_keys=True)
         ev_id = "EV-" + hashlib.sha256((case_id + sig).encode("utf-8")).hexdigest()[:10]
@@ -246,8 +588,7 @@ def register_lab_evidence(
 
     def updater(case: dict[str, Any]) -> dict[str, Any]:
         case.setdefault("lab_evidence", []).append(item)
-        case["status"] = "已有专业/实验室确认"
-        case["field_task"]["status"] = "已补充专业/实验室证据"
+        _apply_status(case, "confirmed", f"登记{method}")
         grade = "A·实验室/专业确认"
         case.setdefault("evidence", []).append({
             "evidence_id": "EV-" + hashlib.sha256((case_id + json.dumps(item, ensure_ascii=False, sort_keys=True)).encode("utf-8")).hexdigest()[:10],

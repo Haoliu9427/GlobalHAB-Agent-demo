@@ -23,3 +23,7 @@
 ## Persistent field-photo learning data
 
 The continuous-learning visual workspace writes user assets under `data/field_visual/user_library/` and model versions under `vision_models/user_models/`. On hosting products whose local filesystem is ephemeral, users should export the visual-library ZIP and model-version ZIP after a session and re-import them when needed. For a durable production deployment, mount these directories on persistent storage rather than relying on the application container filesystem.
+
+## Case任务队列持久化
+
+批量现场复核任务保存在 `data/cases/cases.json`。若部署平台使用临时文件系统，应用重启后本地Case状态、用户影像库和用户模型版本可能丢失；正式持续运行时建议挂载持久卷或将这些目录映射到持久化存储。取消和归档不会删除证据，永久删除需要用户确认。

@@ -51,6 +51,7 @@ REQUIRED_FILES = (
     "scripts/check_adaptive_visual.py",
     "scripts/check_visual_learning.py",
     "scripts/check_case_loop.py",
+    "scripts/check_case_queue.py",
     "scripts/train_visual_heads.py",
     "scripts/fetch_public_visual_data.py",
     "scripts/build_public_visual_adapter.py",

@@ -454,13 +454,43 @@ def _render_screening_tab(root: Any = None) -> None:
     from globalhab_demo.adaptive_visual import compact_status_rows
 
     root_path = Path(root) if root is not None else Path(__file__).resolve().parents[2]
-    from globalhab_demo.case_manager import get_case, register_visual_evidence, register_lab_evidence, LAB_METHODS
+    from globalhab_demo.case_manager import (
+        LAB_METHODS, get_case, mark_case_in_progress, next_review_case, queue_cases,
+        register_lab_evidence, register_visual_evidence, case_status_code,
+    )
 
     active_case_id = st.session_state.get("active_case_id")
     active_case = get_case(active_case_id, root_path) if active_case_id else None
 
+    batch_notice = st.session_state.pop("_case_batch_notice", None)
+    if batch_notice:
+        st.success(batch_notice)
+
     st.markdown("### 现场影像甄别")
     st.caption("拍照 → 自适应路由 → 视觉筛查 → 不确定性门控 / DEFER → 现场复核。")
+    task_queue = queue_cases(root_path)
+    if task_queue:
+        with st.expander(f"待复核任务队列 · {len(task_queue)} 个", expanded=False):
+            queue_rows = []
+            for case in task_queue[:20]:
+                research = case.get("research") or {}
+                queue_rows.append({
+                    "当前": "●" if str(case.get("case_id")) == str(active_case_id) else "",
+                    "Case": case.get("case_id"),
+                    "海区": research.get("candidate_region", "NA"),
+                    "风险": research.get("risk_score", "NA"),
+                    "Route/Lag": f"{research.get('route','NA')} × {research.get('lag_days','NA')}d",
+                    "状态": case.get("status", "NA"),
+                })
+            st.dataframe(queue_rows, hide_index=True, use_container_width=True)
+            nxt = next_review_case(active_case_id, root_path)
+            if nxt and st.button("切换到下一个待复核任务", use_container_width=True, key="vision_next_queue_case"):
+                mark_case_in_progress(str(nxt.get("case_id")), root_path)
+                st.session_state["active_case_id"] = str(nxt.get("case_id"))
+                st.session_state["case_sidebar_select"] = str(nxt.get("case_id"))
+                st.session_state.pop("field_visual_result", None)
+                st.session_state.pop("field_visual_image_bytes", None)
+                st.rerun()
     if active_case:
         research = active_case.get("research") or {}
         with st.container(border=True, key="vision_case_context"):
@@ -638,24 +668,44 @@ def _render_screening_tab(root: Any = None) -> None:
         with st.container(border=True, key="vision_case_actions"):
             st.markdown("#### 登记现场视觉证据")
             st.caption("视觉筛查登记为B级现场证据，不会把研究候选自动改成真实HAB事件。照片可同时保存到“我的影像数据”，但默认不进入监督训练。")
+            def _register_current_visual() -> None:
+                metadata = result.get("field_metadata") or {}
+                raw_now = st.session_state.get("field_visual_image_bytes")
+                sample_id = None
+                if raw_now:
+                    from globalhab_demo.visual_learning import save_image_sample
+                    sample_id, _ = save_image_sample(
+                        raw_now, st.session_state.get("field_visual_image_name"), metadata,
+                        label="不确定", evidence_level="仅肉眼判断", include_in_training=False,
+                        root=root_path, screening_result=result, source="Case现场视觉筛查",
+                    )
+                register_visual_evidence(active_case_id, result, metadata, sample_id=sample_id, root=root_path)
+
             ca1, ca2 = st.columns(2)
             if ca1.button("登记到当前研究Case", type="primary", use_container_width=True, key="vision_register_case"):
                 try:
-                    metadata = result.get("field_metadata") or {}
-                    raw_now = st.session_state.get("field_visual_image_bytes")
-                    sample_id = None
-                    if raw_now:
-                        from globalhab_demo.visual_learning import save_image_sample
-                        sample_id, _ = save_image_sample(
-                            raw_now, st.session_state.get("field_visual_image_name"), metadata,
-                            label="不确定", evidence_level="仅肉眼判断", include_in_training=False,
-                            root=root_path, screening_result=result, source="Case现场视觉筛查",
-                        )
-                    register_visual_evidence(active_case_id, result, metadata, sample_id=sample_id, root=root_path)
+                    _register_current_visual()
                     st.success("现场视觉证据已登记到当前Case；照片已保存到影像库但不会自动进入训练集。")
                 except Exception as exc:
                     st.error(str(exc))
-            if ca2.button("返回研究与验证查看证据链", use_container_width=True, key="vision_back_research"):
+            if ca2.button("登记并处理下一个", use_container_width=True, key="vision_register_next_case"):
+                try:
+                    _register_current_visual()
+                    nxt = next_review_case(active_case_id, root_path)
+                    if nxt:
+                        next_id = str(nxt.get("case_id"))
+                        mark_case_in_progress(next_id, root_path)
+                        st.session_state["active_case_id"] = next_id
+                        st.session_state["case_sidebar_select"] = next_id
+                        st.session_state.pop("field_visual_result", None)
+                        st.session_state.pop("field_visual_image_bytes", None)
+                        st.session_state["_case_batch_notice"] = "当前Case已保存，已切换到下一个待复核任务。"
+                        st.rerun()
+                    else:
+                        st.success("当前Case已保存；任务队列中没有其他待复核Case。")
+                except Exception as exc:
+                    st.error(str(exc))
+            if st.button("返回研究与验证查看证据链", use_container_width=True, key="vision_back_research"):
                 st.session_state["_workspace_jump"] = "研究与验证"
                 st.rerun()
 

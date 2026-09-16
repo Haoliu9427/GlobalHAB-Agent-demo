@@ -230,3 +230,7 @@ The field visual workspace now has three subpages: **screen**, **my visual data*
 ## Case-driven evidence loop
 
 A shared Case now links research risk candidates (Risk / Route / Lag / Top-k), field visual screening, field metadata, professional/laboratory confirmation, continuous visual learning, and bounded LLM interpretation. Evidence is append-only: visual screening does not relabel the upstream research result, and LLM notes cannot modify metrics, probabilities, model weights, or confirmation status. Confirmed images can retain `case_id` provenance in the visual training library and model-version manifests.
+
+## Batch Case review queue
+
+The risk workspace can now select multiple candidate regions and create independent field-review Cases in one action. Cases use an explicit lifecycle (`pending_review`, `in_progress`, `visual_screened`, `visual_defer`, `confirmed`, plus `cancelled` and `archived`). The sidebar provides start/continue, cancel, archive, restore and guarded permanent deletion. The field-vision workspace can save the current evidence and advance directly to the next pending Case. Permanent deletion never rewrites previously trained model weights; linked samples can optionally be excluded from future training or removed from the local image library with an explicit warning.

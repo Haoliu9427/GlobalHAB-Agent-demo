@@ -431,7 +431,7 @@ def render(root: Path) -> None:
             st.markdown(f"**{len(summary):,} 字符**" if summary else "**等待结果**")
         st.caption("摘要预览（只读）")
         preview = summary[:1800].strip() if summary else "当前来源尚未生成可用摘要。"
-        st.text_area("摘要预览", value=preview, height=245, disabled=True, label_visibility="collapsed")
+        st.text_area("摘要预览", value=preview, height=340, disabled=True, label_visibility="collapsed")
         with st.expander("查看完整结果摘要", expanded=False):
             if summary:
                 st.text(summary[:50000])
@@ -453,6 +453,7 @@ def render(root: Path) -> None:
                 st.button("下载摘要", disabled=True, use_container_width=True, key="llm_summary_download_disabled")
         with action_b:
             st.button("原始文件默认不发送", disabled=True, use_container_width=True, key="llm_source_privacy_status")
+        st.markdown('<div class="llm-source-flex-gap"></div>', unsafe_allow_html=True)
         st.markdown('<div class="compact-card-footer">远程发送前仍需明确授权；摘要上限45,000字符。</div>', unsafe_allow_html=True)
 
     with mode_col, st.container(border=False, key="llm_mode_card"):

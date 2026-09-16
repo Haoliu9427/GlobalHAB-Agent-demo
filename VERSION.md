@@ -180,3 +180,5 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - Removed duplicate large connection-status messaging while preserving equal-width/equal-height paired card geometry.
 
 - UI修复：自有数据分析的远程服务默认模型可直接测试连接；“模型与运行”主按钮固定在卡片底部；大模型解读左卡重排摘要区域以减少底部空白，同时保持成对卡片严格等宽等高。
+
+- 2026-09-16：修复自有数据分析远程模型“测试连接”误禁用；远程服务/模型运行卡改为严格等高外层卡片，开始分析固定在右卡底部；大模型解读左卡扩大摘要预览并把留白分配到内容区块之间。

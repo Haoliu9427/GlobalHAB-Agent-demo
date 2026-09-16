@@ -55,7 +55,7 @@ def render():
         st.session_state.pop('qwen_explanation',None)
         st.session_state.pop('remote_action_notice',None)
     service_col,models_col=st.columns([1,1],gap='large')
-    with service_col, st.container(border=True,key='obs_service_card'):
+    with service_col, st.container(border=False,key='obs_service_card'):
         st.markdown('### 远程大模型服务')
         mode=st.radio('服务配置来源',['自行填写','使用服务器配置'],key='remote_mode',horizontal=True)
         if mode=='自行填写':
@@ -84,6 +84,18 @@ def render():
         else:
             provider='服务器配置'
             remote=settings()
+
+        # Resolve the effective model independently of the browser widget state.
+        # Streamlit can visually restore a text_input value while the backend state is
+        # briefly empty on rerun; use provider defaults / discovered models as a safe
+        # fallback so a valid DeepSeek/Qwen setup never leaves "测试连接" disabled.
+        if not str(remote.get('model','')).strip():
+            discovered=[str(x).strip() for x in (st.session_state.get('remote_model_list') or []) if str(x).strip()]
+            fallback_model=(discovered[0] if discovered else '')
+            if not fallback_model and mode=='自行填写':
+                fallback_model=presets.get(provider,{}).get('model','')
+            remote={**remote,'model':fallback_model}
+
         # Keep all action feedback outside the three narrow button columns.
         # This avoids Streamlit alerts being squeezed into a tall, thin block.
         remote_sig=hashlib.sha256(json.dumps({
@@ -109,13 +121,23 @@ def render():
                         'signature':remote_sig,'kind':'error','text':'读取模型失败 · '+str(exc)
                     }
         with action_c:
-            if st.button('测试连接',disabled=not ready(remote),use_container_width=True):
+            can_test=bool(remote.get('base_url') and remote.get('api_key'))
+            if st.button('测试连接',disabled=not can_test,use_container_width=True):
                 try:
-                    chat(remote,[{'role':'user','content':'Reply OK.'}])
+                    test_remote=dict(remote)
+                    if not str(test_remote.get('model','')).strip():
+                        discovered=[str(x).strip() for x in (st.session_state.get('remote_model_list') or []) if str(x).strip()]
+                        if discovered:
+                            test_remote['model']=discovered[0]
+                        elif mode=='自行填写':
+                            test_remote['model']=presets.get(provider,{}).get('model','')
+                    if not str(test_remote.get('model','')).strip():
+                        raise ValueError('请先填写模型名称，或点击“读取模型”后选择可用模型。')
+                    chat(test_remote,[{'role':'user','content':'Reply OK.'}])
                     provider_label=(provider if mode=='自行填写' else '服务器配置')
                     st.session_state['remote_action_notice']={
                         'signature':remote_sig,'kind':'success',
-                        'text':'连接成功 · '+provider_label+' · '+str(remote.get('model',''))
+                        'text':'连接成功 · '+provider_label+' · '+str(test_remote.get('model',''))
                     }
                 except ValueError as exc:
                     st.session_state['remote_action_notice']={
@@ -144,7 +166,7 @@ def render():
                 st.caption('DeepSeek使用官方API基础地址；模型ID请以账户当前可用列表为准。')
             st.caption('凭证仅供当前会话使用，不保存到工程、结果包或服务器配置。API地址填写兼容接口基础地址，不含/chat/completions。')
             st.caption('调用可能产生API费用；请仅发送你有权使用的数据。')
-    with models_col, st.container(border=True,key='obs_models_card'):
+    with models_col, st.container(border=False,key='obs_models_card'):
         st.markdown('### 模型与运行')
         records=[];allowed=[]
         for n in MODELS:
@@ -168,22 +190,21 @@ def render():
         epochs=st.slider('时序模型训练轮数上限',5,50,20,key='user_epochs')
         if selected:st.caption('实际运行（含融合组件与季节基线）：'+', '.join(expand(['Seasonal Climatology']+selected)))
         st.caption(f'验证：时间留出 · {len(selected)}个选择模型 + 季节基线 · {horizon}天 · 上限{epochs}轮。')
-        # Push the final run controls to the bottom of the matched card so the pair
-        # stays visually aligned without leaving the primary action floating mid-card.
-        st.markdown('<div class="card-flex-spacer"></div>', unsafe_allow_html=True)
-        st.markdown('<div class="compact-card-footer">运行后保存指标、验证样本、预测结果与数据质量记录。</div>', unsafe_allow_html=True)
+        # Keep the primary action anchored to the bottom of the matched card.
         signature=hashlib.sha256((data or b'')+json.dumps([task,horizon,description,selected,epochs,remote.get('model'),remote.get('base_url'),hashlib.sha256(remote.get('api_key','').encode()).hexdigest(),mode],ensure_ascii=False).encode()).hexdigest()
-        if st.button('开始分析',key='user_run',type='primary',use_container_width=True):
-            st.session_state.pop('user_result',None)
-            if not data or m is None:st.error('请上传满足数据检查条件的CSV。');return
-            if any(REMOTE in expand([n]) for n in selected) and not consent:
-                st.error('请先勾选远程数据发送授权。');return
-            progress=st.empty()
-            try:
-                with st.spinner('正在计算本次数据的结果…'):
-                    result=run(data,selected,horizon,description,epochs,task!='历史预测验证',progress.write,remote_config=remote)
-                st.session_state['user_result']=(signature,result);progress.success('本次分析完成')
-            except Exception as exc:progress.error('本次分析未完成：'+str(exc));return
+        with st.container(border=False,key='user_run_zone'):
+            st.markdown('<div class="compact-card-footer">运行后保存指标、验证样本、预测结果与数据质量记录。</div>', unsafe_allow_html=True)
+            if st.button('开始分析',key='user_run',type='primary',use_container_width=True):
+                st.session_state.pop('user_result',None)
+                if not data or m is None:st.error('请上传满足数据检查条件的CSV。');return
+                if any(REMOTE in expand([n]) for n in selected) and not consent:
+                    st.error('请先勾选远程数据发送授权。');return
+                progress=st.empty()
+                try:
+                    with st.spinner('正在计算本次数据的结果…'):
+                        result=run(data,selected,horizon,description,epochs,task!='历史预测验证',progress.write,remote_config=remote)
+                    st.session_state['user_result']=(signature,result);progress.success('本次分析完成')
+                except Exception as exc:progress.error('本次分析未完成：'+str(exc));return
     saved=st.session_state.get('user_result')
     if saved and saved[0]==signature:
         table,forecast,explanation,manifest,archive=saved[1]

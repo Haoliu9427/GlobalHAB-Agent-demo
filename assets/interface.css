@@ -645,3 +645,108 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
 @media(min-width:901px){
   .st-key-obs_models_card .st-key-user_run{margin-top:auto!important;}
 }
+
+/* 2026-09-16 final equal-card geometry and action placement fix.
+   Render the service/model pair as the same outer-column cards used elsewhere;
+   this avoids nested Streamlit border wrappers producing different visible heights. */
+[data-testid="stColumn"]:has(.st-key-obs_service_card),
+[data-testid="stColumn"]:has(.st-key-obs_models_card){
+  background:#fff!important;
+  border:1px solid #d5e2e5!important;
+  border-radius:16px!important;
+  padding:22px!important;
+  box-shadow:0 5px 18px rgba(24,63,80,.045)!important;
+  box-sizing:border-box!important;
+  min-width:0!important;
+}
+[data-testid="stColumn"]:has(.st-key-obs_service_card){border-top:4px solid #91b4ae!important;}
+[data-testid="stColumn"]:has(.st-key-obs_models_card){border-top:4px solid #173f52!important;}
+.st-key-obs_service_card,.st-key-obs_models_card{
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  padding:0!important;
+  margin:0!important;
+  box-shadow:none!important;
+  height:100%!important;
+  min-height:0!important;
+  flex:1 1 auto!important;
+}
+.st-key-obs_service_card > [data-testid="stVerticalBlockBorderWrapper"],
+.st-key-obs_models_card > [data-testid="stVerticalBlockBorderWrapper"]{
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  height:100%!important;
+  min-height:100%!important;
+}
+@media(min-width:901px){
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_service_card){
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    gap:1.5rem!important;
+    align-items:stretch!important;
+  }
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_service_card) > [data-testid="stColumn"]{
+    width:auto!important;
+    flex:none!important;
+    align-self:stretch!important;
+    display:flex!important;
+    flex-direction:column!important;
+    height:100%!important;
+  }
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_service_card) > [data-testid="stColumn"] > div{
+    width:100%!important;
+    height:100%!important;
+    flex:1 1 auto!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  .st-key-obs_service_card [data-testid="stVerticalBlock"],
+  .st-key-obs_models_card [data-testid="stVerticalBlock"]{
+    min-height:100%!important;
+    height:100%!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  .st-key-obs_models_card .st-key-user_run_zone{
+    margin-top:auto!important;
+    padding-top:1.35rem!important;
+  }
+  .st-key-obs_models_card .st-key-user_run_zone [data-testid="stVerticalBlock"]{
+    min-height:0!important;
+    height:auto!important;
+  }
+}
+
+/* LLM source card: consume the spare height with the useful summary preview and
+   place the final policy line at the card bottom. Empty space therefore lives
+   between content groups rather than below the last visible element. */
+@media(min-width:901px){
+  [data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card) > [data-testid="stColumn"] > div{
+    height:100%!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  .st-key-llm_source_card{
+    height:100%!important;
+    flex:1 1 auto!important;
+  }
+  .st-key-llm_source_card > [data-testid="stVerticalBlockBorderWrapper"]{
+    height:100%!important;
+    min-height:100%!important;
+  }
+  .st-key-llm_source_card [data-testid="stVerticalBlock"]{
+    height:100%!important;
+    min-height:100%!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  .st-key-llm_source_card [data-testid="stElementContainer"]:has(.llm-source-flex-gap){
+    flex:1 1 auto!important;
+    min-height:1.5rem!important;
+  }
+  .st-key-llm_source_card .compact-card-footer{
+    margin-top:0!important;
+  }
+}

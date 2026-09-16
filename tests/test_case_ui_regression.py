@@ -181,14 +181,16 @@ def test_remote_service_defaults_and_bottom_run_alignment_regression():
     css = (ROOT / "assets" / "interface.css").read_text(encoding="utf-8")
     assert "'DeepSeek':{'base_url':'https://api.deepseek.com','model':'deepseek-flash'}" in workbench
     assert "st.session_state['user_api_model']=preset['model']" in workbench
-    assert "card-flex-spacer" in workbench
+    assert "user_run_zone" in workbench
+    assert "can_test=bool(remote.get('base_url') and remote.get('api_key'))" in workbench
     assert ':has(.st-key-obs_service_card)' in css
-    assert '.st-key-obs_models_card [data-testid="stElementContainer"]:has(.card-flex-spacer)' in css
+    assert '.st-key-obs_models_card .st-key-user_run_zone' in css
 
 
 def test_llm_source_card_uses_space_for_summary_preview_regression():
     llm = LLM.read_text(encoding="utf-8")
-    assert 'height=245' in llm
+    assert 'height=340' in llm
     assert '查看完整结果摘要' in llm
     assert '摘要预览（只读）' in llm
     assert 'preview = summary[:1800]' in llm
+    assert 'llm-source-flex-gap' in llm

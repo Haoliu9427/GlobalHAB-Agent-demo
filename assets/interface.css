@@ -1078,3 +1078,12 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
     gap:.55rem!important;
   }
 }
+
+/* 2026-09-17 final action-button placement to match the approved reference layout.
+   Keep the helper text in place; add only a little breathing room before the
+   primary action so the button sits slightly lower inside the equal-height card. */
+@media(min-width:901px){
+  .st-key-obs_models_card .st-key-user_run{
+    margin-top:1.65rem!important;
+  }
+}

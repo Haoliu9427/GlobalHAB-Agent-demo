@@ -500,3 +500,6 @@ The own-data workspace now renders model-list/test-connection feedback as a comp
 
 ### 2026-09-17 UI refinement
 The own-data remote-service/model pair now uses content-driven equal-height grid cards without fixed minimum height or large blank spacer blocks.
+
+### 2026-09-17 最终按钮位置微调
+“模型与运行”卡片保持现有等宽等高结构与灰色运行记录说明位置，仅将“开始分析”主按钮轻微下移，匹配最终确认的参考版式。

@@ -192,3 +192,5 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - 2026-09-17：远程服务卡片三层空间分配优化，在保持左右卡片等宽等高的前提下，将剩余空间分散到“配置—状态—授权”层之间，移除中部单块大面积留白。
 
 - 2026-09-17: removed fixed-height/elastic-spacer blank blocks from own-data remote-service/model cards while retaining strict equal-width/equal-height grid alignment.
+
+- 2026-09-17：按最终参考版式微调“模型与运行”卡片；保持灰色运行记录说明位置不变，仅增加说明与“开始分析”按钮之间的间距，使主按钮略向下并继续保持左右卡片等宽等高。

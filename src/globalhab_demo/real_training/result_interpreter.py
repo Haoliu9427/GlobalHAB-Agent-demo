@@ -301,8 +301,7 @@ def render(root: Path) -> None:
         <div class="hero">
           <div class="eyebrow" style="color:#b5d9dc">LLM RESULT INTERPRETATION</div>
           <h1>大模型结果解读</h1>
-          <p class="tagline">让大模型解释已经计算完成的科学结果，而不是替代模型计算</p>
-          <p class="value">可读取项目固定证据、真实训练、中国近海、自有数据结果或用户上传的结果文件；大模型只接收本页生成的结果摘要，不会修改上游指标。</p>
+          <p class="value">可读取项目固定证据、真实训练、中国近海、自有数据、现场影像与完整Case，生成科研、答辩或管理场景的结构化解释。</p>
         </div>
         """,
         unsafe_allow_html=True,

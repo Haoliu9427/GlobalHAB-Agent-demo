@@ -18,6 +18,7 @@ from dataclasses import asdict, dataclass
 from datetime import date, time
 from io import BytesIO
 import json
+import html
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -433,6 +434,20 @@ def _parse_optional_float(text: str, label: str) -> float | None:
         raise ValueError(f"{label}需要填写数字或留空。") from exc
 
 
+def _render_context_kpis(items: list[tuple[str, str, str]]) -> None:
+    """Render project-consistent four-card context summary without metric truncation."""
+    import streamlit as st
+    cards = "".join(
+        '<div class="kpi">'
+        f'<div class="kpi-label">{html.escape(str(label))}</div>'
+        f'<div class="kpi-value">{html.escape(str(value))}</div>'
+        f'<div class="kpi-note">{html.escape(str(note))}</div>'
+        '</div>'
+        for label, value, note in items
+    )
+    st.markdown(f'<div class="kpi-grid kpi-4">{cards}</div>', unsafe_allow_html=True)
+
+
 def _render_screening_tab(root: Any = None) -> None:
     """Render the screening subpage with adaptive routing when assets exist."""
     import streamlit as st
@@ -449,13 +464,14 @@ def _render_screening_tab(root: Any = None) -> None:
     if active_case:
         research = active_case.get("research") or {}
         with st.container(border=True, key="vision_case_context"):
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("当前Case", str(active_case.get("case_id")))
-            c2.metric("研究候选区", str(research.get("candidate_region", "NA")))
-            c3.metric("Route / Lag", f"{research.get('route','NA')} / {research.get('lag_days','NA')}d")
             risk = research.get("risk_score")
-            c4.metric("研究风险指数", f"{float(risk):.1f}/100" if isinstance(risk, (int,float)) else str(risk or "NA"))
-            st.caption("已读取研究与验证生成的现场复核任务。本页新增的视觉/现场/实验室证据会按证据层级登记到同一Case，不会覆盖研究模型结果。")
+            _render_context_kpis([
+                ("当前Case", str(active_case.get("case_id")), "研究、现场、实验室和解释共享同一Case"),
+                ("研究候选区", str(research.get("candidate_region", "NA")), "从研究与验证工作区自动带入"),
+                ("Route / Lag", f"{research.get('route','NA')} / {research.get('lag_days','NA')}d", "研究候选的方向与时滞"),
+                ("研究风险指数", f"{float(risk):.1f}/100" if isinstance(risk, (int,float)) else str(risk or "NA"), "仅用于安排现场复核优先级"),
+            ])
+            st.caption("已读取研究与验证生成的现场复核任务。本页新增的视觉、现场与实验室证据会按证据层级登记到同一Case，不会覆盖研究模型结果。")
     else:
         st.info("当前没有激活的研究Case。可以独立使用影像筛查；如需完整闭环，请先在“研究与验证 → 风险研判”生成现场复核任务。")
 

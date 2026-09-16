@@ -85,3 +85,11 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - The LLM workspace adds `当前完整Case（推荐）`, combining research, visual, field metadata and lab evidence for bounded interpretation.
 - LLM interpretations can be saved back to the Case as explanation records without changing upstream metrics or evidence grades.
 - Added `CASE_EVIDENCE_LOOP_GUIDE.md`, `scripts/check_case_loop.py`, and `tests/test_case_manager.py`.
+
+## 2026-09-16 Case闭环界面一致性与证据链报错修复
+- 修复 `app.py` 中生物响应说明表局部变量 `evidence_rows` 覆盖同名证据链函数的问题；该问题会在Streamlit整页执行tabs时导致研究与验证各页底部统一出现 `TypeError`。
+- “从风险候选生成现场复核任务”改为与全站一致的四列科研KPI卡片，不再使用会截断长海区名称的原生metric布局。
+- 现场影像甄别的当前Case摘要同步改为相同KPI卡片风格，候选海区、Case ID和Route/Lag允许自动换行，不再遮挡。
+- 大模型结果解读Hero移除“让大模型解释已经计算完成的科学结果，而不是替代模型计算”一句，保留更简洁的工作区能力说明。
+- 自有数据分析新增与其他一级工作区一致的深海蓝Hero宣传卡，统一导航后的视觉入口。
+- 新增 `tests/test_case_ui_regression.py`，防止证据链函数重名覆盖、Case卡片样式和工作区Hero文案回归。

@@ -280,7 +280,12 @@ def kpi_grid(items: list[tuple[str, str, str]]) -> None:
         '</div>'
         for label, value, note in items
     )
-    grid_class = " kpi-3" if len(items) == 3 else ""
+    if len(items) == 3:
+        grid_class = " kpi-3"
+    elif len(items) == 4:
+        grid_class = " kpi-4"
+    else:
+        grid_class = ""
     st.markdown(f'<div class="kpi-grid{grid_class}">{cards}</div>', unsafe_allow_html=True)
 
 
@@ -555,8 +560,17 @@ if case_list:
 else:
     active_case_id = None
 if workspace_mode == "自有数据分析":
-    st.title("自有数据分析")
-    st.caption("使用现场观测训练模型、比较预测结果，并下载本次分析。")
+    st.markdown(
+        """
+        <div class="hero">
+          <div class="eyebrow" style="color:#b5d9dc">OWN DATA WORKBENCH</div>
+          <h1>自有数据分析</h1>
+          <p class="tagline">上传现场观测，比较模型、验证历史结果并形成可下载的独立分析记录</p>
+          <p class="value">同一套数据完成质量检查、模型比较、时间留出与可选未来预测；所有结果与项目固定证据分开保存。</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     from globalhab_demo.real_training.own_observations import render as render_own_observations
     render_own_observations()
     st.stop()
@@ -828,11 +842,12 @@ with tab_alert:
 
     with st.container(border=True, key="field_task_from_research"):
         st.markdown("#### 从风险候选生成现场复核任务")
-        task1, task2, task3, task4 = st.columns(4)
-        task1.metric("候选海区", str(top["候选海区"]))
-        task2.metric("风险指数", f"{float(top['综合风险指数']):.1f}/100")
-        task3.metric("Route / Lag", f"{best.get('route','NA')} / {int(best.get('lag_days',0))}d")
-        task4.metric("Top20%事件覆盖", f"{float(best.get('recall_at_top20',0)):.1%}")
+        kpi_grid([
+            ("候选海区", html.escape(str(top["候选海区"])), "当前情景排序最高的现场复核候选"),
+            ("风险指数", f"{float(top['综合风险指数']):.1f}/100", "当前情景相对风险，不是业务预报概率"),
+            ("Route / Lag", f"{html.escape(str(best.get('route','NA')))} / {int(best.get('lag_days',0))}d", "当前Agent识别的方向与响应时滞"),
+            ("Top20%事件覆盖", f"{float(best.get('recall_at_top20',0)):.1%}", "固定监测容量下的事件覆盖"),
+        ])
         st.caption("把当前研究结果转成同一个Case中的现场任务；后续影像、实验室确认、视觉训练和大模型解释都会回写到这条证据链。")
         if st.button("生成现场复核任务并前往影像甄别", type="primary", use_container_width=True, key="create_field_case"):
             research_payload = {
@@ -1973,7 +1988,7 @@ with tab_bio:
             "Cₜ为0–1综合挑战，Pₜ为0–100相对生理压力。平滑中心和权重均在下表列出，"
             "但尚未通过具体鱼种的死亡、生长或代谢数据进行现场标定。"
         )
-        evidence_rows = [
+        sandbox_evidence_rows = [
             ["藻华危害压力", "真实回放相对峰值" if "真实" in bio_preset_name else "情景参数", "危害外部输入"],
             ["MHW强度", "情景假设", "热压力输入"],
             ["溶解氧", "情景假设", "低氧压力输入"],
@@ -1982,7 +1997,7 @@ with tab_bio:
             ["生物响应参数", "未标定参数", "需用物种/场站数据再标定"],
         ]
         evidence_frame = pd.DataFrame(
-            evidence_rows, columns=["模型输入", "证据属性", "在沙盘中的作用"]
+            sandbox_evidence_rows, columns=["模型输入", "证据属性", "在沙盘中的作用"]
         )
         st.dataframe(evidence_frame, width="stretch", hide_index=True)
         st.dataframe(bio_simulation["parameters"], width="stretch", hide_index=True)

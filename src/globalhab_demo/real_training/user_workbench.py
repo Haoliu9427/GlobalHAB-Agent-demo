@@ -1,5 +1,5 @@
 """Independent data workbench: model inventory, verification and forecasts."""
-import hashlib,json
+import hashlib,json,html
 import pandas as pd
 from .model_registry import MODELS,FOUNDATIONS,FUSIONS,OTHER,missing,expand,SCIENCE_COLUMNS,REMOTE
 from .user_engine import build,run
@@ -43,6 +43,7 @@ def render():
     def clear_key():
         st.session_state['user_api_key']=''
         st.session_state.pop('qwen_explanation',None)
+        st.session_state.pop('remote_action_notice',None)
         st.session_state.pop('user_result',None)
     def change_provider():
         provider=st.session_state['remote_provider']
@@ -52,6 +53,7 @@ def render():
         st.session_state.pop('remote_model_list',None)
         st.session_state.pop('user_result',None)
         st.session_state.pop('qwen_explanation',None)
+        st.session_state.pop('remote_action_notice',None)
     service_col,models_col=st.columns([1,1],gap='large')
     with service_col, st.container(border=True,key='obs_service_card'):
         st.markdown('### 远程大模型服务')
@@ -67,6 +69,13 @@ def render():
             remote={'base_url':endpoint.strip().rstrip('/'),'model':model_id.strip(),'api_key':key.strip()}
         else:
             remote=settings()
+        # Keep all action feedback outside the three narrow button columns.
+        # This avoids Streamlit alerts being squeezed into a tall, thin block.
+        remote_sig=hashlib.sha256(json.dumps({
+            'base_url':remote.get('base_url',''),
+            'model':remote.get('model',''),
+            'api_key_hash':hashlib.sha256(remote.get('api_key','').encode()).hexdigest(),
+        },sort_keys=True).encode()).hexdigest()
         action_a, action_b, action_c = st.columns(3, gap='small')
         with action_a:
             st.button('清除凭证',on_click=clear_key,use_container_width=True)
@@ -74,24 +83,46 @@ def render():
             if st.button('读取模型',disabled=not remote.get('base_url') or not remote.get('api_key'),use_container_width=True):
                 try:
                     from .remote_qwen import list_models
-                    st.session_state['remote_model_list']=list_models(remote)
-                except ValueError as exc:st.error(str(exc))
+                    models=list_models(remote)
+                    st.session_state['remote_model_list']=models
+                    st.session_state['remote_action_notice']={
+                        'signature':remote_sig,'kind':'info',
+                        'text':'已读取可用模型 · '+str(len(models))+' 个'
+                    }
+                except ValueError as exc:
+                    st.session_state['remote_action_notice']={
+                        'signature':remote_sig,'kind':'error','text':'读取模型失败 · '+str(exc)
+                    }
         with action_c:
             if st.button('测试连接',disabled=not ready(remote),use_container_width=True):
                 try:
-                    chat(remote,[{'role':'user','content':'Reply OK.'}]);st.success('服务可访问；正式运行仍会检查输出格式。')
-                except ValueError as exc:st.error(str(exc))
-        if st.session_state.get('remote_model_list'):
-            with st.expander('服务返回的模型ID',expanded=False):
-                st.write(st.session_state['remote_model_list'])
-        if ready(remote):
-            st.success('连接参数已完整 · '+remote['model']+'。可先测试连接，也可仅使用本地模型继续分析。')
+                    chat(remote,[{'role':'user','content':'Reply OK.'}])
+                    provider_label=(provider if mode=='自行填写' else '服务器配置')
+                    st.session_state['remote_action_notice']={
+                        'signature':remote_sig,'kind':'success',
+                        'text':'连接成功 · '+provider_label+' · '+str(remote.get('model',''))
+                    }
+                except ValueError as exc:
+                    st.session_state['remote_action_notice']={
+                        'signature':remote_sig,'kind':'error','text':'连接失败 · '+str(exc)
+                    }
+        notice=st.session_state.get('remote_action_notice')
+        if notice and notice.get('signature')==remote_sig:
+            kind=notice.get('kind','info')
+            text=html.escape(str(notice.get('text','')))
+            st.markdown(f'<div class="remote-status-strip {kind}"><span class="remote-status-dot"></span>{text}</div>',unsafe_allow_html=True)
+        elif ready(remote):
+            st.markdown('<div class="remote-status-strip ready"><span class="remote-status-dot"></span>参数已就绪 · '+html.escape(str(remote.get('model','')))+'</div>',unsafe_allow_html=True)
         else:
             missing_parts=[]
             if not remote.get('base_url'):missing_parts.append('API地址')
             if not remote.get('model'):missing_parts.append('模型名称')
             if not remote.get('api_key'):missing_parts.append('API Key')
-            st.info('远程服务尚未启用'+('：缺少'+'、'.join(missing_parts) if missing_parts else '。'))
+            missing_text='缺少 '+'、'.join(missing_parts) if missing_parts else '尚未启用'
+            st.markdown('<div class="remote-status-strip muted"><span class="remote-status-dot"></span>'+html.escape(missing_text)+'</div>',unsafe_allow_html=True)
+        if st.session_state.get('remote_model_list'):
+            with st.expander('服务返回的模型ID',expanded=False):
+                st.write(st.session_state['remote_model_list'])
         consent=st.checkbox('允许本次使用远程服务发送上述数据',key='remote_consent')
         with st.expander('远程调用与隐私说明',expanded=False):
             if mode=='自行填写' and provider=='DeepSeek':

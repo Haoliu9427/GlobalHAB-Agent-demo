@@ -173,3 +173,8 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - 留白优先分布在卡片内部内容区块之间，减少顶部和底部的无效空白。
 
 - 2026-09-16：精简自有数据分析与大模型结果解读卡片的常驻文字；保留等宽等高布局，将字段要求、验证规则和远程调用说明收进折叠项，并用紧凑底部状态替代大段说明。
+
+## 2026-09-16 remote model status strip fix
+- Moved remote-service action feedback out of the three narrow action-button columns.
+- Replaced squeezed Streamlit success/error alerts with a full-width compact horizontal status strip below the action row.
+- Removed duplicate large connection-status messaging while preserving equal-width/equal-height paired card geometry.

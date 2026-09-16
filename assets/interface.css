@@ -557,3 +557,27 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
 .st-key-llm_mode_card [data-testid="stCaptionContainer"]{
   line-height:1.45!important;
 }
+
+
+/* 2026-09-16 remote-service action feedback: full-width compact status strip. */
+.remote-status-strip{
+  box-sizing:border-box;
+  width:100%;
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  gap:.55rem;
+  padding:.62rem .82rem;
+  margin:.35rem 0 .7rem 0;
+  border-radius:10px;
+  font-size:.88rem;
+  font-weight:600;
+  line-height:1.35;
+  border:1px solid transparent;
+}
+.remote-status-dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:0 0 8px;}
+.remote-status-strip.success{background:#edf8f1;color:#277a47;border-color:#d7eedf;}
+.remote-status-strip.ready{background:#f0f7f5;color:#376f69;border-color:#dcebe7;}
+.remote-status-strip.info{background:#eef5f8;color:#35677a;border-color:#dbe9ef;}
+.remote-status-strip.error{background:#fff1f0;color:#a6443e;border-color:#f4d7d4;}
+.remote-status-strip.muted{background:#f5f7f7;color:#6f8288;border-color:#e5ebeb;}

@@ -467,3 +467,6 @@ The Own Data observation/task pair and the LLM source/mode pair now use a strict
 自有数据分析和大模型结果解读的成对卡片继续保持等宽等高，但去除重复说明和过大的固定高度；核心信息改为更紧凑的字段/规则摘要，使留白更多出现在内容区块之间，而不是卡片顶部或底部。
 
 - 2026-09-16：精简自有数据分析与大模型结果解读卡片的常驻文字；保留等宽等高布局，将字段要求、验证规则和远程调用说明收进折叠项，并用紧凑底部状态替代大段说明。
+
+### Remote model connection status UI
+The own-data workspace now renders model-list/test-connection feedback as a compact full-width status strip below the action buttons. This prevents success/error messages from being squeezed into a narrow button column and keeps the paired “远程大模型服务 / 模型与运行” cards aligned.

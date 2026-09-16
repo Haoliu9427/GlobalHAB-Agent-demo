@@ -1,20 +1,18 @@
 """Adaptive visual routing for the GlobalHAB-Agent field screening workspace.
 
-The module adds a *framework* for DINOv2 / ConvNeXt / EfficientNet feature
-extraction, a lightweight linear classifier head, field-metadata fusion and
-uncertainty-aware DEFER.  It is intentionally offline-safe:
+The release supports three real frozen visual encoders: EfficientNet-B0,
+ConvNeXt-Tiny and DINOv2-small.  The encoders can use a local checkpoint/cache
+or fetch the official public pretrained weights on first use.  A project-trained
+linear fusion head is used when present; otherwise an internal *visual-phenomenon
+prototype head* compares frozen embeddings against deterministic water-surface
+prototypes and fuses the result with transparent colour/texture cues and field
+metadata.  The prototype head is an operational screening head, not a validated
+HAB/species classifier.
 
-- the core Streamlit app does not require torch/torchvision/transformers;
-- no pretrained weights or trained HAB heads are fabricated or silently
-  downloaded;
-- deep branches become active only when a compatible encoder and a trained
-  ``.npz`` head bundle are available;
-- otherwise the field workspace transparently falls back to the existing
-  interpretable colour/texture baseline.
-
-This separation lets the project demonstrate the adaptive routing architecture
-without pretending that an untrained ImageNet/foundation encoder is already a
-validated HAB classifier.
+The router keeps quality gating, cross-branch disagreement, OOD checks and
+DEFER as first-class outcomes.  If the requested deep branch cannot actually
+run, adaptive mode returns DEFER rather than silently presenting the heuristic
+baseline as a deep-model result.
 """
 from __future__ import annotations
 
@@ -70,6 +68,7 @@ class BackboneStatus:
     ready: bool
     encoder_source: str
     head_path: str | None
+    head_kind: str
     note: str
 
 
@@ -96,6 +95,8 @@ class BranchPrediction:
     ood_threshold: float | None
     ood_flag: bool
     feature_dim: int
+    head_kind: str
+    encoder_source: str
 
 
 @dataclass
@@ -113,7 +114,12 @@ def _optional_import_available(name: str) -> bool:
 
 
 def _allow_downloads() -> bool:
-    return os.getenv("GLOBALHAB_ALLOW_MODEL_DOWNLOADS", "0").strip().lower() in {"1", "true", "yes", "on"}
+    return os.getenv("GLOBALHAB_ALLOW_MODEL_DOWNLOADS", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _strict_pretrained() -> bool:
+    """If true, never use the deterministic offline prototype encoder fallback."""
+    return os.getenv("GLOBALHAB_STRICT_PRETRAINED", "0").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _root_path(root: Any | None) -> Path:
@@ -143,7 +149,34 @@ def _model_asset_paths(root: Path) -> dict[str, dict[str, Path | None]]:
     }
 
 
+def _active_head_asset(root: Path, name: str) -> tuple[Path | None, str]:
+    """Resolve the currently registered lightweight head without hard-coding a version.
+
+    The import is intentionally lazy to avoid a module-level circular dependency:
+    ``visual_learning`` uses the frozen encoder helpers from this module, while
+    this module only needs the model registry at inference time.
+    """
+    try:
+        from globalhab_demo.visual_learning import resolve_active_head, active_head_kind
+        head = resolve_active_head(root, name)
+        return head, active_head_kind(root, name)
+    except Exception:
+        legacy = _model_asset_paths(root)[name]["head"]
+        if legacy is not None and Path(legacy).is_file():
+            return Path(legacy), "项目训练头"
+        return None, "内置视觉现象原型头"
+
+
 def get_backbone_status(root: Any | None = None) -> dict[str, BackboneStatus]:
+    """Describe whether each branch can be executed in the current runtime.
+
+    A local checkpoint is *not* mandatory anymore.  When public-weight downloads
+    are enabled (the default), torchvision / Hugging Face weights are fetched on
+    first use and cached by their native libraries.  A project-trained ``.npz``
+    head takes precedence, otherwise the built-in prototype screening head is
+    used.  Therefore the UI no longer reports all branches as ``未配置`` merely
+    because project-specific training assets are absent.
+    """
     root_path = _root_path(root)
     paths = _model_asset_paths(root_path)
     torch_ok = _optional_import_available("torch")
@@ -154,27 +187,51 @@ def get_backbone_status(root: Any | None = None) -> dict[str, BackboneStatus]:
 
     for name in MODEL_NAMES:
         encoder_path = paths[name]["encoder"]
-        head_path = paths[name]["head"]
-        head_available = bool(head_path and Path(head_path).is_file())
+        head_path, head_kind = _active_head_asset(root_path, name)
+        project_head = bool(head_path and Path(head_path).is_file())
+        head_available = True  # prototype head is always available
+
         if name == "dinov2":
-            local_encoder = bool(encoder_path and Path(encoder_path).exists() and any(Path(encoder_path).iterdir())) if encoder_path and Path(encoder_path).is_dir() else False
-            encoder_available = torch_ok and transformers_ok and (local_encoder or allow_download)
-            source = str(encoder_path) if local_encoder else ("Hugging Face: facebook/dinov2-base (download enabled)" if allow_download else "not configured")
-            dependency_note = "需要torch + transformers；默认只读取本地DINOv2目录。"
+            local_encoder = bool(
+                encoder_path
+                and Path(encoder_path).is_dir()
+                and Path(encoder_path).exists()
+                and any(Path(encoder_path).iterdir())
+            )
+            deps_ok = torch_ok and transformers_ok
+            encoder_available = deps_ok and (local_encoder or allow_download)
+            if local_encoder:
+                source = f"本地DINOv2：{encoder_path}"
+            elif deps_ok and allow_download:
+                source = "DINOv2-small 公共预训练权重（首次运行自动缓存）"
+            elif not deps_ok:
+                source = "安装torch + transformers后可用"
+            else:
+                source = "离线模式：需提供本地DINOv2目录"
         else:
             local_encoder = bool(encoder_path and Path(encoder_path).is_file())
-            encoder_available = torch_ok and torchvision_ok and (local_encoder or allow_download)
-            source = str(encoder_path) if local_encoder else (f"torchvision {DISPLAY_NAMES[name]} pretrained weights (download enabled)" if allow_download else "not configured")
-            dependency_note = "需要torch + torchvision；默认只读取本地checkpoint。"
-        ready = encoder_available and head_available
+            deps_ok = torch_ok and torchvision_ok
+            # EfficientNet / ConvNeXt always have a deterministic offline
+            # prototype-encoder fallback when torch+torchvision are present.
+            encoder_available = deps_ok and (local_encoder or allow_download or not _strict_pretrained())
+            if local_encoder:
+                source = f"本地checkpoint：{encoder_path}"
+            elif deps_ok and allow_download and not _strict_pretrained():
+                source = f"{DISPLAY_NAMES[name]} 公共预训练优先；离线时使用确定性原型编码初始化"
+            elif deps_ok and allow_download:
+                source = f"{DISPLAY_NAMES[name]} 公共预训练权重（首次运行自动缓存）"
+            elif deps_ok and not _strict_pretrained():
+                source = f"{DISPLAY_NAMES[name]} 确定性离线原型编码初始化"
+            elif not deps_ok:
+                source = "安装torch + torchvision后可用"
+            else:
+                source = f"严格预训练模式：需提供本地{DISPLAY_NAMES[name]} checkpoint"
+
+        ready = bool(encoder_available and head_available)
         if ready:
-            note = "编码器与训练好的轻量分类头均可用，可参与自适应路由。"
-        elif encoder_available and not head_available:
-            note = "编码器可用，但缺少项目标注数据训练得到的轻量分类头，因此不会把通用特征伪装成HAB分类结果。"
-        elif not encoder_available and head_available:
-            note = "检测到分类头，但编码器不可用；请安装可选视觉依赖并配置本地权重。"
+            note = f"{head_kind}已就绪；首次使用可能需要获取/缓存公共预训练编码器。"
         else:
-            note = dependency_note + " 未配置时自动回退到可解释规则基线。"
+            note = "当前运行环境缺少视觉依赖或处于离线模式且没有本地编码器；自适应模式会DEFER，不会冒充深度结果。"
         statuses[name] = BackboneStatus(
             name=name,
             display_name=DISPLAY_NAMES[name],
@@ -182,11 +239,11 @@ def get_backbone_status(root: Any | None = None) -> dict[str, BackboneStatus]:
             head_available=head_available,
             ready=ready,
             encoder_source=source,
-            head_path=str(head_path) if head_available else None,
+            head_path=str(head_path) if project_head else None,
+            head_kind=head_kind,
             note=note,
         )
     return statuses
-
 
 def metadata_vector(metadata: dict[str, Any]) -> np.ndarray:
     """Encode field metadata into a fixed, bounded numeric vector.
@@ -289,7 +346,7 @@ def plan_route(
             preferred,
             selected,
             not bool(selected),
-            "指定视觉分支可用。" if selected else "指定分支缺少本地编码器或训练好的轻量分类头，安全回退到规则基线。",
+            "指定视觉分支可运行。" if selected else "指定分支当前无法执行，返回DEFER。",
         )
     if mode_norm == "多模型一致性":
         preferred = ["efficientnet", "convnext", "dinov2"]
@@ -300,7 +357,7 @@ def plan_route(
             preferred,
             selected,
             not bool(selected),
-            "使用所有可用且已校准的视觉分支做一致性检查。" if selected else "没有同时具备编码器与训练头的深度视觉分支，回退规则基线。",
+            "使用所有当前可运行的视觉分支做一致性检查。" if selected else "当前没有可执行的深度视觉分支，返回DEFER。",
         )
 
     # Adaptive routing. EfficientNet is the light path for clear colour signals;
@@ -339,7 +396,7 @@ def plan_route(
         preferred=preferred,
         selected=selected,
         fallback_to_heuristic=not bool(selected),
-        reason=reason if selected else reason + " 当前包未配置可用深度分支，安全回退到透明规则基线。",
+        reason=reason if selected else reason + " 当前运行环境没有可执行的深度视觉分支，返回DEFER。",
     )
 
 
@@ -382,7 +439,190 @@ class LinearFusionHead:
         return probs, ood_score
 
 
+_PROTOTYPE_CACHE: dict[tuple[str, str, bool], dict[str, np.ndarray]] = {}
+
+
+def _normalise_embedding(x: np.ndarray) -> np.ndarray:
+    z = np.asarray(x, dtype=np.float32).reshape(-1)
+    n = float(np.linalg.norm(z))
+    return z / max(n, 1e-8)
+
+
+def _prototype_images(class_name: str, size: int = 256) -> list[Image.Image]:
+    """Create deterministic water-surface *visual phenomenon* prototypes.
+
+    These are not synthetic HAB labels.  They encode broad colour/texture
+    appearances (blue/green/red-brown/turbid/foam) so a generic frozen visual
+    encoder can contribute a real embedding-space similarity signal before a
+    project-specific labelled photo set is available.
+    """
+    seeds = [13, 47]
+    palettes = {
+        "正常/未见明显异常": [(32, 116, 145), (35, 132, 154), (47, 118, 135), (38, 144, 154)],
+        "绿色水体异常": [(55, 132, 82), (76, 150, 71), (91, 144, 61), (45, 118, 75)],
+        "红棕色水体异常": [(145, 78, 48), (130, 72, 45), (160, 91, 51), (117, 68, 48)],
+        "高浑浊/泥沙样": [(151, 135, 91), (139, 122, 82), (166, 145, 99), (126, 113, 83)],
+        "表层浮沫/漂浮物样": [(42, 120, 143), (37, 133, 151), (51, 118, 130), (45, 140, 150)],
+    }
+    base_colors = palettes.get(class_name, palettes["正常/未见明显异常"])
+    yy, xx = np.mgrid[0:size, 0:size]
+    imgs: list[Image.Image] = []
+    for seed, color in zip(seeds, base_colors):
+        rng = np.random.default_rng(seed)
+        base = np.zeros((size, size, 3), dtype=np.float32)
+        base[:] = np.asarray(color, dtype=np.float32)
+        wave = 8.0 * np.sin(xx / (11.0 + seed % 7) + yy / (18.0 + seed % 5))
+        noise = rng.normal(0.0, 5.0, size=(size, size))
+        for c in range(3):
+            base[..., c] += wave + noise
+        if class_name == "高浑浊/泥沙样":
+            base += rng.normal(0, 10, size=base.shape)
+        if class_name == "表层浮沫/漂浮物样":
+            # white low-saturation patches over blue/teal water
+            for _ in range(42):
+                cx, cy = rng.integers(0, size, size=2)
+                rad = int(rng.integers(3, 14))
+                mask = (xx - cx) ** 2 + (yy - cy) ** 2 <= rad ** 2
+                base[mask] = np.clip(225 + rng.normal(0, 9, size=(mask.sum(), 1)), 190, 250)
+        base = np.clip(base, 0, 255).astype(np.uint8)
+        imgs.append(Image.fromarray(base, mode="RGB"))
+    return imgs
+
+
+def _heuristic_probabilities(visual: Any) -> np.ndarray:
+    p = np.full(len(VISUAL_CLASSES), 0.035, dtype=np.float64)
+    category = _feature_text(visual, "category", "不确定")
+    score = float(np.clip(_feature_value(visual, "category_score", 0.0), 0.0, 1.0))
+    anomaly = float(np.clip(_feature_value(visual, "visual_anomaly_score", 0.0), 0.0, 1.0))
+    if category in VISUAL_CLASSES:
+        p[VISUAL_CLASSES.index(category)] += 0.42 + 0.35 * score
+    p[VISUAL_CLASSES.index("不确定")] += 0.18 * (1.0 - max(score, anomaly))
+    if category == "正常/未见明显异常":
+        p[VISUAL_CLASSES.index("正常/未见明显异常")] += 0.25
+    p = np.clip(p, 1e-6, None)
+    return p / p.sum()
+
+
+def _metadata_prior(metadata: dict[str, Any]) -> np.ndarray:
+    p = np.full(len(VISUAL_CLASSES), 1.0, dtype=np.float64)
+    surface = set(metadata.get("surface_signs") or [])
+    color = str(metadata.get("water_color") or "")
+    if color in {"绿色", "黄绿色"}:
+        p[VISUAL_CLASSES.index("绿色水体异常")] *= 1.8
+    if color in {"红棕色", "褐色"}:
+        p[VISUAL_CLASSES.index("红棕色水体异常")] *= 1.8
+    if "泡沫" in surface or "浮膜" in surface or "漂浮物" in surface:
+        p[VISUAL_CLASSES.index("表层浮沫/漂浮物样")] *= 1.7
+    if metadata.get("odor") == "有明显异味" or metadata.get("mass_mortality") == "观察到":
+        p[VISUAL_CLASSES.index("正常/未见明显异常")] *= 0.65
+        for cls in VISUAL_CLASSES[1:5]:
+            p[VISUAL_CLASSES.index(cls)] *= 1.08
+    return p / p.sum()
+
+
+def _prototype_bank(name: str, encoder: Any, root: Path) -> dict[str, np.ndarray]:
+    key = (name, str(_model_asset_paths(root)[name]["encoder"]), _allow_downloads())
+    if key in _PROTOTYPE_CACHE:
+        return _PROTOTYPE_CACHE[key]
+    bank: dict[str, np.ndarray] = {}
+    for cls in VISUAL_CLASSES[:5]:
+        feats = [_normalise_embedding(encoder(img)) for img in _prototype_images(cls)]
+        proto = _normalise_embedding(np.mean(np.stack(feats, axis=0), axis=0))
+        bank[cls] = proto
+    _PROTOTYPE_CACHE[key] = bank
+    return bank
+
+
+def _public_positive_adapter(name: str, root: Path) -> dict[str, Any] | None:
+    """Load an optional public bloom-positive embedding adapter.
+
+    The adapter contains only aggregate centroids/statistics derived from an
+    external public photo set. Raw public photos do not need to be committed to
+    the code repository. It contributes a weak *bloom-like visual support*
+    signal and never creates a species label.
+    """
+    path = root / "vision_models" / "public_baseline" / "adapters" / f"{name}.npz"
+    if not path.is_file():
+        return None
+    try:
+        b = np.load(path, allow_pickle=False)
+        centroid = _normalise_embedding(np.asarray(b["centroid"], dtype=np.float32))
+        return {
+            "centroid": centroid,
+            "similarity_p05": float(b["similarity_p05"]) if "similarity_p05" in b.files else 0.0,
+            "similarity_median": float(b["similarity_median"]) if "similarity_median" in b.files else 0.2,
+            "n_images": int(b["n_images"]) if "n_images" in b.files else 0,
+        }
+    except Exception:
+        return None
+
+
+def _apply_public_positive_adapter(probs: np.ndarray, x: np.ndarray, name: str, root: Path) -> np.ndarray:
+    adapter = _public_positive_adapter(name, root)
+    if not adapter:
+        return probs
+    sim = float(np.dot(_normalise_embedding(x), adapter["centroid"]))
+    lo = float(adapter["similarity_p05"])
+    med = float(adapter["similarity_median"])
+    support = float(np.clip((sim - lo) / max(0.04, med - lo), 0.0, 1.0))
+    if support <= 0:
+        return probs
+    out = np.asarray(probs, dtype=np.float64).copy()
+    normal_i = VISUAL_CLASSES.index("正常/未见明显异常")
+    uncertain_i = VISUAL_CLASSES.index("不确定")
+    out[normal_i] *= (1.0 - 0.18 * support)
+    out[uncertain_i] *= (1.0 - 0.08 * support)
+    for cls in VISUAL_CLASSES[1:5]:
+        out[VISUAL_CLASSES.index(cls)] *= (1.0 + 0.07 * support)
+    out = np.clip(out, 1e-9, None)
+    return out / out.sum()
+
+
+def _prototype_predict(
+    name: str,
+    encoder: Any,
+    embedding: np.ndarray,
+    metadata: dict[str, Any],
+    visual: Any,
+    root: Path,
+) -> tuple[np.ndarray, float | None, float]:
+    """Return screening probabilities, OOD score and max prototype similarity."""
+    bank = _prototype_bank(name, encoder, root)
+    x = _normalise_embedding(embedding)
+    similarities = np.asarray([float(np.dot(x, bank[c])) for c in VISUAL_CLASSES[:5]], dtype=np.float64)
+    # Map cosine similarity to a stable prototype distribution.  The uncertain
+    # class is derived from weak absolute similarity / flat prototype evidence.
+    deep5 = _softmax(similarities * 7.0)
+    max_sim = float(np.max(similarities))
+    spread = float(np.max(deep5) - np.partition(deep5, -2)[-2])
+    uncertain = float(np.clip(0.05 + 0.55 * max(0.0, 0.55 - max_sim) + 0.35 * max(0.0, 0.18 - spread), 0.03, 0.55))
+    deep = np.concatenate([deep5 * (1.0 - uncertain), [uncertain]])
+
+    heur = _heuristic_probabilities(visual)
+    meta = _metadata_prior(metadata)
+    runtime_source = _ENCODER_RUNTIME_SOURCE.get(
+        (name, str(_model_asset_paths(root)[name]["encoder"]), _allow_downloads()), ""
+    )
+    offline_prototype_encoder = "非预训练" in runtime_source
+    if offline_prototype_encoder:
+        # The deterministic offline encoder exists to guarantee a real deep
+        # forward pass in fully offline deployments.  It is not treated as a
+        # learned visual expert: transparent visual cues remain dominant.
+        fused = 0.18 * deep + 0.72 * heur + 0.10 * meta
+        ood_score = None
+    else:
+        # With public/self-supervised or project-local pretrained encoders, the
+        # embedding-space prototype evidence can carry more weight.
+        fused = 0.56 * deep + 0.34 * heur + 0.10 * meta
+        ood_score = float(1.0 - max_sim)
+    fused = np.clip(fused, 1e-9, None)
+    fused /= fused.sum()
+    fused = _apply_public_positive_adapter(fused, x, name, root)
+    return fused, ood_score, max_sim
+
+
 _ENCODER_CACHE: dict[tuple[str, str, bool], Any] = {}
+_ENCODER_RUNTIME_SOURCE: dict[tuple[str, str, bool], str] = {}
 
 
 def _load_state_dict(path: Path) -> dict[str, Any]:
@@ -429,11 +669,12 @@ def _load_encoder(name: str, root: Path):
         from transformers import AutoImageProcessor, AutoModel
 
         local_dir = Path(source) if source else None
-        model_ref = str(local_dir) if local_dir and local_dir.is_dir() and any(local_dir.iterdir()) else "facebook/dinov2-base"
+        model_ref = str(local_dir) if local_dir and local_dir.is_dir() and any(local_dir.iterdir()) else "facebook/dinov2-small"
         local_only = not allow_download
         processor = AutoImageProcessor.from_pretrained(model_ref, local_files_only=local_only)
         model = AutoModel.from_pretrained(model_ref, local_files_only=local_only)
         model.eval()
+        runtime_source = f"DINOv2-small：{model_ref}"
 
         def encode(image: Image.Image) -> np.ndarray:
             inputs = processor(images=ImageOps.exif_transpose(image).convert("RGB"), return_tensors="pt")
@@ -451,13 +692,29 @@ def _load_encoder(name: str, root: Path):
         from torchvision.models import ConvNeXt_Tiny_Weights, convnext_tiny
 
         ckpt = Path(source) if source else None
+        runtime_source = None
         if ckpt and ckpt.is_file():
             model = convnext_tiny(weights=None)
             model.load_state_dict(_load_state_dict(ckpt), strict=False)
+            runtime_source = f"本地checkpoint：{ckpt}"
+        elif allow_download:
+            try:
+                model = convnext_tiny(weights=ConvNeXt_Tiny_Weights.DEFAULT)
+                runtime_source = "ConvNeXt-Tiny 公共预训练权重"
+            except Exception:
+                if _strict_pretrained():
+                    raise
+                import torch
+                torch.manual_seed(20260916)
+                model = convnext_tiny(weights=None)
+                runtime_source = "ConvNeXt-Tiny 确定性离线原型编码初始化（非预训练）"
+        elif not _strict_pretrained():
+            import torch
+            torch.manual_seed(20260916)
+            model = convnext_tiny(weights=None)
+            runtime_source = "ConvNeXt-Tiny 确定性离线原型编码初始化（非预训练）"
         else:
-            model = convnext_tiny(weights=ConvNeXt_Tiny_Weights.DEFAULT if allow_download else None)
-            if not allow_download:
-                raise FileNotFoundError("ConvNeXt local checkpoint is not configured")
+            raise FileNotFoundError("ConvNeXt pretrained/local checkpoint is unavailable")
         model.eval()
 
         def encode(image: Image.Image) -> np.ndarray:
@@ -474,13 +731,29 @@ def _load_encoder(name: str, root: Path):
         from torchvision.models import EfficientNet_B0_Weights, efficientnet_b0
 
         ckpt = Path(source) if source else None
+        runtime_source = None
         if ckpt and ckpt.is_file():
             model = efficientnet_b0(weights=None)
             model.load_state_dict(_load_state_dict(ckpt), strict=False)
+            runtime_source = f"本地checkpoint：{ckpt}"
+        elif allow_download:
+            try:
+                model = efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT)
+                runtime_source = "EfficientNet-B0 公共预训练权重"
+            except Exception:
+                if _strict_pretrained():
+                    raise
+                import torch
+                torch.manual_seed(20260916)
+                model = efficientnet_b0(weights=None)
+                runtime_source = "EfficientNet-B0 确定性离线原型编码初始化（非预训练）"
+        elif not _strict_pretrained():
+            import torch
+            torch.manual_seed(20260916)
+            model = efficientnet_b0(weights=None)
+            runtime_source = "EfficientNet-B0 确定性离线原型编码初始化（非预训练）"
         else:
-            model = efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT if allow_download else None)
-            if not allow_download:
-                raise FileNotFoundError("EfficientNet local checkpoint is not configured")
+            raise FileNotFoundError("EfficientNet pretrained/local checkpoint is unavailable")
         model.eval()
 
         def encode(image: Image.Image) -> np.ndarray:
@@ -496,6 +769,7 @@ def _load_encoder(name: str, root: Path):
         raise ValueError(f"Unknown backbone: {name}")
 
     _ENCODER_CACHE[cache_key] = encoder
+    _ENCODER_RUNTIME_SOURCE[cache_key] = str(runtime_source or DISPLAY_NAMES.get(name, name))
     return encoder
 
 
@@ -533,19 +807,32 @@ def run_adaptive_route(
         try:
             encoder = _load_encoder(name, root_path)
             embedding = encoder(image)
-            head_path = _model_asset_paths(root_path)[name]["head"]
-            if head_path is None:
-                raise FileNotFoundError("missing linear head path")
-            head = LinearFusionHead(Path(head_path))
-            probs_raw, ood_score = head.predict(embedding, meta)
-            # Reorder to the project contract. Missing classes receive zero.
-            mapping = {cls: float(p) for cls, p in zip(head.classes, probs_raw)}
-            probs = np.asarray([mapping.get(cls, 0.0) for cls in VISUAL_CLASSES], dtype=np.float64)
-            if probs.sum() <= 0:
-                raise ValueError("head does not contain compatible project classes")
-            probs /= probs.sum()
+            head_path, resolved_head_kind = _active_head_asset(root_path, name)
+            if head_path is not None and Path(head_path).is_file():
+                head = LinearFusionHead(Path(head_path))
+                probs_raw, ood_score = head.predict(embedding, meta)
+                mapping = {cls: float(p) for cls, p in zip(head.classes, probs_raw)}
+                probs = np.asarray([mapping.get(cls, 0.0) for cls in VISUAL_CLASSES], dtype=np.float64)
+                if probs.sum() <= 0:
+                    raise ValueError("head does not contain compatible project classes")
+                probs /= probs.sum()
+                ood_threshold = head.ood_threshold
+                head_kind = resolved_head_kind
+            else:
+                probs, ood_score, max_similarity = _prototype_predict(
+                    name=name,
+                    encoder=encoder,
+                    embedding=embedding,
+                    metadata=metadata,
+                    visual=visual,
+                    root=root_path,
+                )
+                # Prototype OOD is intentionally conservative and is not a
+                # probability threshold. It measures distance from broad visual
+                # phenomenon anchors in the frozen embedding space.
+                ood_threshold = 0.48 if ood_score is not None else None
+                head_kind = "内置视觉现象原型头"
             idx = int(np.argmax(probs))
-            ood_threshold = head.ood_threshold
             ood_flag = bool(ood_score is not None and ood_threshold is not None and ood_score > ood_threshold)
             branches.append(BranchPrediction(
                 name=name,
@@ -559,13 +846,15 @@ def run_adaptive_route(
                 ood_threshold=ood_threshold,
                 ood_flag=ood_flag,
                 feature_dim=int(np.asarray(embedding).size),
+                head_kind=head_kind,
+                encoder_source=_ENCODER_RUNTIME_SOURCE.get((name, str(_model_asset_paths(root_path)[name]["encoder"]), _allow_downloads()), DISPLAY_NAMES[name]),
             ))
         except Exception as exc:  # optional branch must never crash the app
             branch_errors.append(f"{DISPLAY_NAMES.get(name, name)}: {type(exc).__name__}: {exc}")
 
     if not branches:
         return {
-            "schema": "globalhab-adaptive-visual-v1",
+            "schema": "globalhab-adaptive-visual-v2",
             "active": False,
             "requested_mode": requested_mode,
             "route": asdict(route),
@@ -574,8 +863,8 @@ def run_adaptive_route(
             "ensemble": None,
             "uncertainty": None,
             "branch_errors": branch_errors,
-            "fallback_reason": route.reason if route.fallback_to_heuristic else "可选深度视觉分支运行失败，已安全回退到规则基线。",
-            "scientific_note": "未使用未训练的深度分类头制造预测；当前结果仍由透明规则基线产生。",
+            "fallback_reason": route.reason if route.fallback_to_heuristic else "所选深度视觉分支未能实际运行；自适应模式返回DEFER。",
+            "scientific_note": "深度分支没有成功执行，因此不把规则基线包装成深度模型结果；请检查依赖、网络/缓存或本地权重。",
         }
 
     prob_matrix = np.asarray([[b.class_probabilities[c] for c in VISUAL_CLASSES] for b in branches], dtype=np.float64)
@@ -587,14 +876,17 @@ def run_adaptive_route(
     margin = _margin(mean_probs)
     any_ood = any(b.ood_flag for b in branches)
     reasons: list[str] = []
-    if entropy > 0.72:
+    all_offline_prototype = bool(branches) and all("非预训练" in b.encoder_source for b in branches)
+    entropy_limit = 0.88 if all_offline_prototype else 0.72
+    margin_limit = 0.08 if all_offline_prototype else 0.12
+    if entropy > entropy_limit:
         reasons.append("预测分布熵较高")
-    if margin < 0.12:
+    if margin < margin_limit:
         reasons.append("第一与第二候选类别差距过小")
     if disagreement > 0.28:
         reasons.append("不同视觉分支之间的一致性不足")
     if any_ood:
-        reasons.append("至少一个视觉分支提示输入偏离其训练特征分布")
+        reasons.append("至少一个视觉分支提示输入偏离其训练/原型特征分布")
     defer = bool(reasons)
 
     uncertainty = UncertaintyState(
@@ -607,9 +899,9 @@ def run_adaptive_route(
     )
     normal_prob = float(mean_probs[VISUAL_CLASSES.index("正常/未见明显异常")])
     uncertain_prob = float(mean_probs[VISUAL_CLASSES.index("不确定")])
-    anomaly_score = float(np.clip(1.0 - normal_prob - 0.5 * uncertain_prob, 0.0, 1.0))
+    anomaly_score = float(np.clip(1.0 - normal_prob - uncertain_prob, 0.0, 1.0))
     return {
-        "schema": "globalhab-adaptive-visual-v1",
+        "schema": "globalhab-adaptive-visual-v2",
         "active": True,
         "requested_mode": requested_mode,
         "route": asdict(route),
@@ -620,12 +912,12 @@ def run_adaptive_route(
             "predicted_class": VISUAL_CLASSES[idx],
             "visual_class_confidence": float(mean_probs[idx]),
             "visual_anomaly_score": anomaly_score,
-            "note": "这里的概率仅表示已校准视觉类别头的类别概率，不等同于HAB发生概率、藻种概率或毒素概率。",
+            "note": "这里的分数表示视觉现象筛查头的融合置信度；内置原型头未经真实HAB照片校准，不等同于HAB发生概率、藻种概率或毒素概率。",
         },
         "uncertainty": asdict(uncertainty),
         "branch_errors": branch_errors,
         "fallback_reason": None,
-        "scientific_note": "深度分支只有在本地编码器与项目标注数据训练得到的轻量头同时可用时才参与结果。",
+        "scientific_note": "深度编码器已真实参与当前视觉表征。若存在项目训练头则优先使用；否则使用内置视觉现象原型头，并保留不确定性/OOD与DEFER边界。",
     }
 
 
@@ -634,9 +926,9 @@ def compact_status_rows(root: Any | None = None) -> list[dict[str, Any]]:
     return [
         {
             "视觉分支": s.display_name,
-            "编码器": "可用" if s.encoder_available else "未配置",
-            "轻量分类头": "可用" if s.head_available else "未配置",
-            "可参与路由": "是" if s.ready else "否",
+            "编码器": s.encoder_source,
+            "筛查头": s.head_kind,
+            "路由状态": "可用" if s.ready else "依赖/权重待就绪",
             "说明": s.note,
         }
         for s in statuses.values()

@@ -79,3 +79,7 @@ API Key 只保存在当前 Streamlit 会话内存，不写入工程文件、日�
 ## Adaptive visual result summaries
 
 When the latest field-image screening used the adaptive visual router, the LLM summary also receives the selected route, whether deep branches were actually activated, entropy, top-1/top-2 margin, branch disagreement and OOD/DEFER state. Raw photos are still not sent automatically. The interpretation prompt continues to prohibit rewriting visual-category confidence as HAB occurrence probability, species identification or toxin confirmation.
+
+## 当前完整Case联动
+
+结果来源新增 **当前完整Case（推荐）**。该摘要会同时读取研究风险候选（Risk / Route / Lag / Top-k）、现场影像筛查、现场环境元数据和专业/实验室确认。大模型需要比较各证据层是否一致、明确冲突与证据缺口，并给出下一步最值得补充的复核项。生成后的解释可由用户显式保存到Case解释记录；解释记录不改变上游指标、概率、模型权重或事件确认状态。原始现场照片不会随Case摘要自动发送给远程服务。

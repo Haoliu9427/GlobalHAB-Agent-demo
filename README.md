@@ -10,7 +10,7 @@ Streamlit 侧栏包含四个一级工作区：
 
 - **研究与验证**：项目主体科研流程，包含下列七个研究页签；
 - **自有数据分析**：上传现场CSV，完成历史验证、多模型比较和可选未来预测；
-- **现场影像甄别**：手机拍摄或上传海面照片，先做图像质量门控，再按场景自适应路由到 EfficientNet / ConvNeXt / DINOv2（仅在本地编码器与项目训练头均可用时启用），融合现场元数据并执行不确定性/OOD检查；未配置深度视觉资产时安全回退透明规则基线；
+- **现场影像甄别**：手机拍摄或上传海面照片，先做图像质量门控，再按场景自适应路由到 EfficientNet / ConvNeXt / DINOv2，融合现场元数据并执行不确定性/OOD检查；EfficientNet 与 ConvNeXt 即使在完全离线环境也可执行确定性的深度原型编码路径，公共预训练权重可在首次运行时自动缓存；DINOv2在依赖与权重可用时进入路由。若自适应模式没有任何深度分支真正执行，则直接 DEFER，而不是把规则基线伪装成深度结果；
 - **大模型结果解读**：调用用户配置的DeepSeek、Qwen或其他Chat Completions兼容服务，对已经计算完成的项目结果、自有数据结果或用户上传结果文件进行结构化解释。该工作区不重新训练模型、不修改指标。
 
 “研究与验证”工作区包含七个页签：
@@ -28,7 +28,7 @@ Streamlit 侧栏包含四个一级工作区：
 
 该工作区支持手机直接拍摄或上传JPG/PNG海面照片，先检查分辨率、亮度、过曝、反光和纹理质量，再输出“正常/未见明显异常、绿色水体异常、红棕色水体异常、高浑浊/泥沙样、表层浮沫/漂浮物样或不确定”等**视觉现象**。用户还可以填写水色、异味、泡沫/浮膜、近期高温以及温盐、DO、Chl-a等现场信息。
 
-决赛工程进一步加入 **Adaptive Visual Screening Router (AVSR)**：质量合格后根据颜色异常、浮沫/浑浊纹理和场景不确定性，优先选择 EfficientNet-B0、ConvNeXt-Tiny 或 DINOv2；冻结视觉特征与12维现场元数据进入轻量线性分类头，并用预测熵、Top1/Top2 margin、多分支 disagreement 和 OOD 检查决定是否 `DEFER`。为了避免把通用视觉模型伪装成HAB分类器，只有“编码器 + 用项目标注数据训练/校准的轻量头”同时存在时深度分支才会影响结果；否则自动回退 `规则 + 通用颜色/纹理特征演示基线`。页面输出的是 `低 / 中 / 高 / DEFER` **复核优先级**，不是HAB发生概率；普通照片不能确诊具体藻种或毒素。完成甄别后可一键跳转到“大模型结果解读”，但只传递结构化文字摘要，照片本身不会自动发送给远程模型。完整说明见 `FIELD_VISUAL_SCREENING_GUIDE.md` 与 `VISION_ROUTER_GUIDE.md`。
+决赛工程进一步加入 **Adaptive Visual Screening Router (AVSR)**：质量合格后根据颜色异常、浮沫/浑浊纹理和场景不确定性，优先选择 EfficientNet-B0、ConvNeXt-Tiny 或 DINOv2。编码器之后先查找项目训练得到的轻量融合头；若不存在，则使用内置“视觉现象原型头”，将冻结视觉 embedding 与透明颜色/纹理线索、12维现场元数据共同融合。系统再用预测熵、Top1/Top2 margin、多分支 disagreement 与 OOD 检查决定是否 `DEFER`。内置原型头让深度路由在没有项目照片训练头时仍可真正执行，但它只是视觉现象筛查头，并不等于经过真实HAB现场照片校准的藻华分类器。页面输出的是 `低 / 中 / 高 / DEFER` **复核优先级**，不是HAB发生概率；普通照片不能确诊具体藻种或毒素。完成甄别后可一键跳转到“大模型结果解读”，但只传递结构化文字摘要，照片本身不会自动发送给远程模型。完整说明见 `FIELD_VISUAL_SCREENING_GUIDE.md` 与 `VISION_ROUTER_GUIDE.md`。
 
 ## 1.2 大模型结果解读工作区
 
@@ -242,7 +242,7 @@ python -m pip install -r requirements.txt
 python -m pip install -r requirements-vision.txt
 ```
 
-深度视觉分支还需要本地编码器权重与项目训练头；未配置时网页仍可完整启动并安全回退规则基线。
+主 `requirements.txt` 已包含深度视觉运行依赖。EfficientNet / ConvNeXt 优先使用公共预训练或本地权重，完全离线时仍可使用确定性原型编码初始化保证真实深度前向；DINOv2在Transformers与模型缓存/下载可用时启用。自适应模式若没有任何深度分支成功执行，则返回DEFER。
 
 ### 8.2 启动网页
 
@@ -403,3 +403,15 @@ THIRD_PARTY_DATA.md
 
 ## 用户自填远程API
 在自有数据分析中选择自行填写，输入公网HTTPS API地址、模型ID和密钥；支持Chat Completions兼容大模型，不限Qwen。详见QWEN_ONLINE_SETUP.md。
+
+## 1.2 持续学习型现场视觉 Agent
+
+“现场影像甄别”现在包含三个子页：**现场影像甄别 / 我的影像数据 / 模型训练与版本**。用户可以把人工或实验室确认后的照片保存在本地影像库中，选择哪些照片进入后续训练；系统优先把 entropy 高、margin 小、多模型不一致、OOD 或 DEFER 的照片加入主动学习待确认队列。重新训练时冻结 DINOv2 / ConvNeXt / EfficientNet 视觉编码器，只更新轻量分类/现场元数据融合头，并在固定留出集上与公共视觉基线比较。训练完成不会自动覆盖当前模型，只有通过门槛且由用户显式注册的候选版本才写入 `vision_models/active_model.json` 并进入后续推理。详见 `CONTINUOUS_VISUAL_AGENT_GUIDE.md`。
+
+公共第三方原始照片不会直接打包进普通Git工程。项目提供 `PUBLIC_VISUAL_DATA_SOURCES.md`、`scripts/fetch_public_visual_data.py` 和 `scripts/build_public_visual_adapter.py`，用于按需获取公开表层藻华影像并只保存聚合embedding adapter/轻量模型资产。
+
+## 1.3 Case驱动的跨工作区证据闭环
+
+研究与验证、现场影像甄别、视觉持续学习和大模型结果解读现在由统一 `Case / Evidence Ledger` 串联。风险研判页可把当前高风险候选、Route、Lag、Top-k容量与事件覆盖生成现场复核任务；影像页自动读取该Case，并把视觉筛查登记为独立的现场证据层。专业人员、显微镜、qPCR或毒素确认可继续写入同一证据链，并可把确认后的照片加入视觉训练库。大模型工作区新增“当前完整Case（推荐）”，综合解释风险、视觉、现场环境和实验室证据，并可把解释文本保存为Case记录，但不会改变上游指标或证据等级。
+
+详细结构、证据等级和复现命令见 `CASE_EVIDENCE_LOOP_GUIDE.md`。

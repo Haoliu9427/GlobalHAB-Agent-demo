@@ -1,0 +1,1 @@
+sample_id,case_id,image_relpath,filename,sha256,source,label,evidence_level,include_in_training,site_id,capture_date,capture_time,location_text,water_color,odor,surface_signs,recent_heat,mass_mortality,water_temp_c,salinity,dissolved_oxygen_mg_l,chlorophyll_a,notes,metadata_json,screening_priority,screening_category,active_learning_score,created_at,updated_at

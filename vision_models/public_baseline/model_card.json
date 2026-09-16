@@ -1,0 +1,10 @@
+{
+  "version_id": "public-baseline-v1",
+  "display_name": "公共视觉基线",
+  "status": "baseline",
+  "method": "公共预训练视觉编码器优先 + 内置水体现象原型头 + 透明颜色/纹理 + 现场元数据",
+  "trained_supervised_head": false,
+  "public_source_catalog": "data/field_visual/public/PUBLIC_DATA_SOURCES.json",
+  "scientific_boundary": "公共基线用于视觉现象筛查，不代表经过全球海洋HAB现场照片监督校准。",
+  "created_at": "2026-09-16T08:16:44+00:00"
+}

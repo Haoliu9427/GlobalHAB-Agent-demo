@@ -1,42 +1,73 @@
 {
   "status": "pass",
   "assertions": {
-    "schema_v2": true,
+    "schema_v3": true,
     "router_present": true,
     "metadata_vector_12": true,
     "route_reason_present": true,
-    "safe_without_assets": true,
+    "deep_branch_executed": true,
+    "real_feature_dim": true,
+    "prototype_head_present": true,
     "scientific_boundary": true
   },
   "backbone_status": {
     "efficientnet": {
-      "encoder": false,
-      "head": false,
-      "ready": false
+      "encoder": true,
+      "head": "内置视觉现象原型头",
+      "ready": true,
+      "source": "EfficientNet-B0 确定性离线原型编码初始化"
     },
     "convnext": {
-      "encoder": false,
-      "head": false,
-      "ready": false
+      "encoder": true,
+      "head": "内置视觉现象原型头",
+      "ready": true,
+      "source": "ConvNeXt-Tiny 确定性离线原型编码初始化"
     },
     "dinov2": {
       "encoder": false,
-      "head": false,
-      "ready": false
+      "head": "内置视觉现象原型头",
+      "ready": false,
+      "source": "安装torch + transformers后可用"
     }
   },
   "route": {
-    "requested_mode": "自适应路由",
+    "requested_mode": "自适应路由（推荐）",
     "route_family": "colour_route",
     "preferred": [
       "efficientnet",
       "dinov2",
       "convnext"
     ],
-    "selected": [],
-    "fallback_to_heuristic": true,
-    "reason": "颜色异常较明确，优先轻量EfficientNet；若证据边界接近则用DINOv2复核。 当前包未配置可用深度分支，安全回退到透明规则基线。"
+    "selected": [
+      "efficientnet"
+    ],
+    "fallback_to_heuristic": false,
+    "reason": "颜色异常较明确，优先轻量EfficientNet；若证据边界接近则用DINOv2复核。"
   },
-  "active": false,
+  "active": true,
+  "branches": [
+    {
+      "name": "efficientnet",
+      "display_name": "EfficientNet-B0",
+      "class_probabilities": {
+        "正常/未见明显异常": 0.06146308551037398,
+        "绿色水体异常": 0.638965937203834,
+        "红棕色水体异常": 0.06146186106440593,
+        "高浑浊/泥沙样": 0.061468565407141476,
+        "表层浮沫/漂浮物样": 0.061461108663312225,
+        "不确定": 0.11517944215093243
+      },
+      "predicted_class": "绿色水体异常",
+      "confidence": 0.638965937203834,
+      "entropy": 0.6813934874120183,
+      "margin": 0.5237864950529015,
+      "ood_score": null,
+      "ood_threshold": null,
+      "ood_flag": false,
+      "feature_dim": 1280,
+      "head_kind": "内置视觉现象原型头",
+      "encoder_source": "EfficientNet-B0 确定性离线原型编码初始化（非预训练）"
+    }
+  ],
   "priority": "高"
 }

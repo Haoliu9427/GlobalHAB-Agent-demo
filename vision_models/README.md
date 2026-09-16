@@ -1,19 +1,20 @@
-# Optional adaptive visual assets
+# Visual model assets
 
-The core GlobalHAB-Agent package starts without PyTorch and without any external downloads.
-Deep visual branches are activated **only** when both a feature encoder and a project-trained
-lightweight head are available.
+This directory stores optional local visual assets for the field-image workspace.
 
-Supported branches:
+- `efficientnet_b0.pth`: optional local EfficientNet-B0 checkpoint. If absent, the app first tries the public Torchvision pretrained weights; in a fully offline non-strict deployment it can use the explicitly labelled deterministic prototype-encoder initialisation.
+- `convnext_tiny.pth`: optional local ConvNeXt-Tiny checkpoint with the same resolution order.
+- `dinov2_local/`: optional local Hugging Face-compatible DINOv2-small directory. DINOv2 has no random-weight fallback; it participates only when a real local/cache/downloaded model is available.
+- `heads/*.npz`: optional project-trained fusion heads. When missing, the built-in visual-phenomenon prototype head is used instead.
 
-- `DINOv2`: local Hugging Face-compatible directory at `vision_models/dinov2_local/`, or set `GLOBALHAB_DINOV2_MODEL_DIR`.
-- `ConvNeXt-Tiny`: local checkpoint `vision_models/convnext_tiny.pth`, or set `GLOBALHAB_CONVNEXT_CHECKPOINT`.
-- `EfficientNet-B0`: local checkpoint `vision_models/efficientnet_b0.pth`, or set `GLOBALHAB_EFFICIENTNET_CHECKPOINT`.
+Environment variables:
 
-For development only, set `GLOBALHAB_ALLOW_MODEL_DOWNLOADS=1` to allow torchvision/Hugging Face
-pretrained weights to be downloaded when the optional dependencies are installed. Production
-releases should prefer frozen local assets.
+```text
+GLOBALHAB_EFFICIENTNET_CHECKPOINT
+GLOBALHAB_CONVNEXT_CHECKPOINT
+GLOBALHAB_DINOV2_MODEL_DIR
+GLOBALHAB_ALLOW_MODEL_DOWNLOADS=1
+GLOBALHAB_STRICT_PRETRAINED=0
+```
 
-Each encoder also needs a matching NumPy head bundle under `vision_models/heads/`. Do not copy an
-ImageNet classifier and call it a HAB model: train/calibrate the head on project-labelled field
-images with site/time holdouts.
+The built-in prototype head is a screening mechanism, not a validated HAB species/toxin classifier. A real project-trained head should be produced from labelled field photographs with independent site/year validation before reporting scientific classification performance.

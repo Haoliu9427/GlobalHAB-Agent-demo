@@ -45,4 +45,16 @@ Bayesian实验设计模块只根据已执行实验的反馈更新代理模型；
 
 ## Visual backbone assets
 
-本仓库提供DINOv2 / ConvNeXt / EfficientNet的适配代码与训练头格式，但不随发布包重新分发第三方预训练权重，也不内置未经真实现场标注验证的HAB视觉分类头。用户自行配置的本地checkpoint须遵守其原始许可；在线下载默认关闭。
+本仓库提供DINOv2 / ConvNeXt / EfficientNet适配、自适应路由和项目训练头格式，但不把通用预训练模型或内置视觉现象原型头宣传为经过真实HAB现场照片验证的分类器。公共预训练权重由其官方库在首次使用时按原许可获取/缓存，本包不重新分发第三方权重；用户也可提供本地checkpoint。EfficientNet/ConvNeXt在完全离线时可使用明确标注为“非预训练”的确定性原型编码初始化，仅用于低成本视觉现象筛查与工程保底。
+
+## User visual data and public visual adapters
+
+- User-uploaded field photos are local project/session assets and are not redistributed by this release.
+- The visual library can be exported/imported as a ZIP so users can persist their own labelled data when a cloud Streamlit filesystem is ephemeral.
+- Third-party public photos are not bundled into the normal source archive. The repository contains a source catalog and fetch/adapter scripts; users must review the upstream record/licence/terms before redistribution.
+- Public bloom-positive adapters store aggregate embedding centroids/statistics only. They do not add species or toxin labels.
+- User-trained lightweight heads remain versioned under `vision_models/user_models/`; a failed or rejected candidate is retained for audit and does not overwrite the active model.
+
+## Case / Evidence Ledger boundary
+
+`data/cases/cases.json` 只负责把研究候选、现场视觉、专业/实验室确认和解释记录串成可追溯Case。后续证据采用追加式登记，不覆盖原研究指标。视觉筛查不自动升级为HAB真值，大模型文本也不改变证据等级；真实确认仍以相应采样、检测方法和检测限为准。

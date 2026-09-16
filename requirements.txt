@@ -11,3 +11,9 @@ lightgbm==4.6.0
 requests>=2.32,<3
 
 Pillow>=10,<13
+# Deep visual screening runtime (used by the field-image workspace)
+torch>=2.4,<3
+torchvision>=0.19,<1
+transformers>=4.46,<5
+safetensors>=0.4,<1
+

@@ -20,10 +20,11 @@ def _status(name: str, ready: bool = True) -> BackboneStatus:
         name=name,
         display_name=display,
         encoder_available=ready,
-        head_available=ready,
+        head_available=True,
         ready=ready,
         encoder_source="test",
         head_path="test.npz" if ready else None,
+        head_kind="项目训练头" if ready else "内置视觉现象原型头",
         note="test",
     )
 
@@ -66,7 +67,6 @@ def test_quality_gate_routes_to_defer_before_deep_models():
     statuses = {k: _status(k) for k in ("efficientnet", "convnext", "dinov2")}
     route = plan_route(_quality(suitable=False, score=0.2), _visual(), statuses, "自适应路由")
     assert route.route_family == "quality_defer"
-    assert route.fallback_to_heuristic is True
     assert route.selected == []
 
 
@@ -89,7 +89,6 @@ def test_metadata_vector_is_fixed_and_finite():
 
 
 def test_numpy_linear_head_roundtrip(tmp_path: Path):
-    # Two-class head with 3 embedding features + 12 metadata features.
     nfeat = 15
     coef = np.vstack([np.zeros(nfeat), np.zeros(nfeat)]).astype(np.float32)
     coef[1, 0] = 2.0
@@ -110,18 +109,21 @@ def test_numpy_linear_head_roundtrip(tmp_path: Path):
     assert ood is not None
 
 
-def test_no_deep_assets_falls_back_without_fabricating_model_result(tmp_path: Path):
+def test_strict_offline_without_assets_defers(monkeypatch, tmp_path: Path):
+    monkeypatch.setenv("GLOBALHAB_ALLOW_MODEL_DOWNLOADS", "0")
+    monkeypatch.setenv("GLOBALHAB_STRICT_PRETRAINED", "1")
     img = Image.new("RGB", (640, 480), (70, 130, 175))
     q = _quality()
     v = _visual(category="正常/未见明显异常", anomaly=0.05, score=0.8)
     result = run_adaptive_route(img, {}, q, v, root=tmp_path, requested_mode="自适应路由")
     assert result["active"] is False
     assert result["branches"] == []
-    assert "未使用未训练" in result["scientific_note"]
+    assert "不把规则基线包装成深度模型结果" in result["scientific_note"]
 
 
-def test_field_result_contract_contains_router_but_preserves_scientific_boundary(tmp_path: Path):
-    # Use a gradient to avoid quality-gate rejection from a perfectly flat synthetic image.
+def test_field_result_contract_preserves_scientific_boundary(monkeypatch, tmp_path: Path):
+    monkeypatch.setenv("GLOBALHAB_ALLOW_MODEL_DOWNLOADS", "0")
+    monkeypatch.setenv("GLOBALHAB_STRICT_PRETRAINED", "1")
     w, h = 640, 480
     x = np.linspace(-30, 30, w)
     arr = np.zeros((h, w, 3), dtype=np.float32)
@@ -137,10 +139,11 @@ def test_field_result_contract_contains_router_but_preserves_scientific_boundary
         "mass_mortality": "未观察",
     }
     result = make_result(img, md, root=tmp_path, requested_mode="自适应路由")
-    assert result["schema"] == "globalhab-field-visual-screening-v2"
+    assert result["schema"] == "globalhab-field-visual-screening-v3"
     assert "adaptive_visual" in result
     assert result["adaptive_visual"]["active"] is False
-    assert any("未配置训练头" in x for x in result["prohibited_claims"])
+    assert result["screening_priority"].startswith("DEFER")
+    assert any("通用预训练表征" in x for x in result["prohibited_claims"])
 
 
 def test_active_routed_branch_with_local_calibrated_head(monkeypatch, tmp_path: Path):
@@ -168,6 +171,8 @@ def test_active_routed_branch_with_local_calibrated_head(monkeypatch, tmp_path: 
     }
     monkeypatch.setattr(av, "get_backbone_status", lambda root=None: statuses)
     monkeypatch.setattr(av, "_load_encoder", lambda name, root: (lambda image: np.asarray([1.0, 0.0, 0.0], dtype=np.float32)))
+    key = ("efficientnet", str(tmp_path / "vision_models" / "efficientnet_b0.pth"), av._allow_downloads())
+    av._ENCODER_RUNTIME_SOURCE[key] = "test pretrained encoder"
 
     img = Image.new("RGB", (640, 480), (55, 155, 90))
     result = av.run_adaptive_route(
@@ -183,3 +188,29 @@ def test_active_routed_branch_with_local_calibrated_head(monkeypatch, tmp_path: 
     assert result["ensemble"]["predicted_class"] == "绿色水体异常"
     assert result["ensemble"]["visual_class_confidence"] > 0.9
     assert result["uncertainty"]["defer"] is False
+    assert result["branches"][0]["head_kind"] == "项目训练头"
+
+
+def test_efficientnet_deep_branch_really_executes_offline(monkeypatch, tmp_path: Path):
+    """Guarantee at least one real deep forward pass even without network."""
+    monkeypatch.setenv("GLOBALHAB_ALLOW_MODEL_DOWNLOADS", "0")
+    monkeypatch.setenv("GLOBALHAB_STRICT_PRETRAINED", "0")
+    w, h = 640, 480
+    x = np.linspace(-30, 30, w)
+    arr = np.zeros((h, w, 3), dtype=np.float32)
+    for c, value in enumerate((55, 155, 90)):
+        arr[:, :, c] = value + x[None, :]
+    img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
+    result = run_adaptive_route(
+        img,
+        {},
+        _quality(),
+        _visual(category="绿色水体异常", anomaly=0.7, score=0.8),
+        root=tmp_path,
+        requested_mode="EfficientNet",
+    )
+    assert result["active"] is True
+    assert result["branches"][0]["display_name"] == "EfficientNet-B0"
+    assert result["branches"][0]["feature_dim"] > 100
+    assert "非预训练" in result["branches"][0]["encoder_source"]
+    assert result["branches"][0]["head_kind"] == "内置视觉现象原型头"

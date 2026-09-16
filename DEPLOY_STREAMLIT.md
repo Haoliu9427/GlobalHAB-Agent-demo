@@ -16,6 +16,10 @@
 本版界面样式文件assets/interface.css必须与app.py一并上传。字体优先微软雅黑；设备未安装时使用系统中文后备字体，不包含字体授权文件。
 
 
-## Optional adaptive vision dependencies
+## Adaptive vision runtime
 
-The default Streamlit deployment remains lightweight and does not require PyTorch. The field visual workspace will safely use the transparent heuristic baseline when optional assets are absent. To activate DINOv2 / ConvNeXt / EfficientNet routing, install `requirements-vision.txt` and provide local backbone assets plus project-trained `.npz` heads as documented in `VISION_ROUTER_GUIDE.md`. Do not enable automatic weight downloads in a frozen competition deployment unless the environment and third-party licenses are explicitly controlled.
+主 `requirements.txt` 已包含 PyTorch / Torchvision / Transformers 视觉运行依赖。EfficientNet-B0 与 ConvNeXt-Tiny优先使用本地或公共预训练权重；首次使用可自动缓存官方权重，完全离线时可使用明确标记的确定性原型编码初始化。DINOv2-small需要Transformers与本地缓存或首次下载。项目 `.npz` 训练头存在时优先使用，否则使用内置视觉现象原型头。若希望比赛部署严格禁止任何非预训练离线路径，请设置 `GLOBALHAB_STRICT_PRETRAINED=1` 并提前缓存/配置权重。详见 `VISION_ROUTER_GUIDE.md`。
+
+## Persistent field-photo learning data
+
+The continuous-learning visual workspace writes user assets under `data/field_visual/user_library/` and model versions under `vision_models/user_models/`. On hosting products whose local filesystem is ephemeral, users should export the visual-library ZIP and model-version ZIP after a session and re-import them when needed. For a durable production deployment, mount these directories on persistent storage rather than relying on the application container filesystem.

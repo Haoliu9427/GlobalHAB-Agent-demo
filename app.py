@@ -63,6 +63,9 @@ from globalhab_demo.real_replay import (  # noqa: E402
 from globalhab_demo.real_benchmark import (  # noqa: E402
     run_forward_monitoring_benchmark,
 )
+from globalhab_demo.case_manager import (  # noqa: E402
+    create_case_from_research, evidence_rows, export_case_json, get_case, list_cases,
+)
 _scenario_module = importlib.import_module("globalhab_demo.scenario")
 if len(getattr(_scenario_module, "DEMO_ZONES", ())) < 12:
     _scenario_module = importlib.import_module("scenario")
@@ -528,6 +531,29 @@ with st.sidebar.container(key="workspace_nav"):
         ["研究与验证", "自有数据分析", "现场影像甄别", "大模型结果解读"],
         key="workspace_mode",
     )
+
+case_list = list_cases(ROOT)
+active_case_id = st.session_state.get("active_case_id")
+if case_list:
+    case_ids = [str(c.get("case_id")) for c in case_list]
+    if active_case_id not in case_ids:
+        active_case_id = case_ids[0]
+        st.session_state["active_case_id"] = active_case_id
+    with st.sidebar.expander("当前Case / 证据链", expanded=bool(active_case_id)):
+        selected_case = st.selectbox(
+            "Case", case_ids, index=case_ids.index(active_case_id), key="case_sidebar_select",
+            format_func=lambda cid: next((f"{cid} · {c.get('status','')}" for c in case_list if str(c.get('case_id')) == cid), cid),
+        )
+        if selected_case != st.session_state.get("active_case_id"):
+            st.session_state["active_case_id"] = selected_case
+            active_case_id = selected_case
+        current_case_sidebar = get_case(active_case_id, ROOT)
+        if current_case_sidebar:
+            r = current_case_sidebar.get("research") or {}
+            st.caption(f"{r.get('candidate_region','NA')} · {r.get('route','NA')} × {r.get('lag_days','NA')}d")
+            st.caption(f"状态：{current_case_sidebar.get('status','NA')} · 证据 {len(current_case_sidebar.get('evidence') or [])} 条")
+else:
+    active_case_id = None
 if workspace_mode == "自有数据分析":
     st.title("自有数据分析")
     st.caption("使用现场观测训练模型、比较预测结果，并下载本次分析。")
@@ -799,6 +825,44 @@ with tab_alert:
         issue_date, horizon_days, mhw, nitrate, phosphate, silicate, transport
     )
     top = scenario.iloc[0]
+
+    with st.container(border=True, key="field_task_from_research"):
+        st.markdown("#### 从风险候选生成现场复核任务")
+        task1, task2, task3, task4 = st.columns(4)
+        task1.metric("候选海区", str(top["候选海区"]))
+        task2.metric("风险指数", f"{float(top['综合风险指数']):.1f}/100")
+        task3.metric("Route / Lag", f"{best.get('route','NA')} / {int(best.get('lag_days',0))}d")
+        task4.metric("Top20%事件覆盖", f"{float(best.get('recall_at_top20',0)):.1%}")
+        st.caption("把当前研究结果转成同一个Case中的现场任务；后续影像、实验室确认、视觉训练和大模型解释都会回写到这条证据链。")
+        if st.button("生成现场复核任务并前往影像甄别", type="primary", use_container_width=True, key="create_field_case"):
+            research_payload = {
+                "source": "风险研判·合成情景与当前Agent候选",
+                "candidate_region": str(top["候选海区"]),
+                "issue_date": str(issue_date),
+                "forecast_window": str(top.get("预计窗口", f"{horizon_days}天")),
+                "horizon_days": int(horizon_days),
+                "risk_score": float(top["综合风险指数"]),
+                "route": str(best.get("route", "NA")),
+                "lag_days": int(best.get("lag_days", 0)),
+                "model": str(best.get("model", "NA")),
+                "top_k_capacity": 0.20,
+                "event_coverage": float(best.get("recall_at_top20", 0)),
+                "average_precision": float(best.get("pr_auc", 0)),
+                "brier_skill": float(best.get("brier_skill", 0)),
+                "ece": float(best.get("ece", 0)),
+                "scenario": {
+                    "mhw_intensity_c": float(mhw), "nitrate_mmol_m3": float(nitrate),
+                    "phosphate_mmol_m3": float(phosphate), "silicate_mmol_m3": float(silicate),
+                    "transport_proxy": float(transport),
+                },
+                "boundary": "情景风险与Agent候选用于安排现场复核，不是实时业务预报或真实HAB确认。",
+            }
+            new_case = create_case_from_research(research_payload, ROOT)
+            st.session_state["active_case_id"] = new_case["case_id"]
+            st.session_state["case_sidebar_select"] = new_case["case_id"]
+            st.session_state["vision_location"] = str(top["候选海区"])
+            st.session_state["_workspace_jump"] = "现场影像甄别"
+            st.rerun()
     with st.container(border=True,key="risk_map_card"):
         st.markdown("#### 候选海区风险分布")
         st.markdown(
@@ -2588,6 +2652,27 @@ with tab_agent:
             )
 
 with tab_evidence:
+    current_case = get_case(st.session_state.get("active_case_id"), ROOT)
+    if current_case:
+        st.markdown("### 当前Case证据链")
+        st.caption("研究候选、现场视觉、专业/实验室确认和大模型解释分别登记；后加入的证据不会覆盖上游原始结果。")
+        rows = evidence_rows(current_case)
+        if rows:
+            st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
+        ec1, ec2, ec3 = st.columns(3)
+        ec1.metric("Case", str(current_case.get("case_id")))
+        ec2.metric("状态", str(current_case.get("status")))
+        ec3.metric("证据条数", len(rows))
+        b1, b2 = st.columns(2)
+        b1.download_button(
+            "下载当前Case JSON", export_case_json(current_case["case_id"], ROOT),
+            file_name=f"{current_case['case_id']}.json", mime="application/json", use_container_width=True,
+        )
+        if b2.button("送入大模型综合解读", use_container_width=True, key="evidence_case_to_llm"):
+            st.session_state["_workspace_jump"] = "大模型结果解读"
+            st.session_state["_llm_source_jump"] = "当前完整Case（推荐）"
+            st.rerun()
+        st.divider()
     st.markdown("### 数据融合与质量控制")
     st.write(
         "环境冲击（SST/MHW/NO₃/PO₄/Si） → 输运背景（停留/汇聚代理） → "

@@ -34,8 +34,10 @@ def main() -> None:
         "location_text": "non-ui-smoke",
         "capture_date": "2026-09-16",
     }
-    green = make_result(image((55, 155, 90)), md)
-    blue = make_result(image((70, 130, 175)), md)
+    # Baseline mode remains available as a transparent reference and should
+    # preserve the original broad visual-screening behaviour.
+    green = make_result(image((55, 155, 90)), md, requested_mode="安全规则基线")
+    blue = make_result(image((70, 130, 175)), md, requested_mode="安全规则基线")
     assertions = {
         "green_visual_type": green["visual"]["category"] == "绿色水体异常",
         "green_not_probability": "不是HAB发生概率" in green["priority_reason"],

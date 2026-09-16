@@ -1,0 +1,19 @@
+{
+  "status": "pass",
+  "required_files": 48,
+  "imported_modules": [
+    "globalhab_demo.workflow",
+    "globalhab_demo.event_risk",
+    "globalhab_demo.bio_response",
+    "globalhab_demo.real_benchmark",
+    "globalhab_demo.sts_gated_tcn",
+    "globalhab_demo.broad_benchmark",
+    "globalhab_demo.bayesian_design",
+    "globalhab_demo.florida_sts",
+    "globalhab_demo.field_visual",
+    "globalhab_demo.adaptive_visual",
+    "globalhab_demo.visual_learning",
+    "globalhab_demo.real_training.result_interpreter"
+  ],
+  "python": "3.13.5"
+}

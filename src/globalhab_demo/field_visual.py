@@ -5,9 +5,12 @@ photos. It is not a trained HAB species classifier. The default backend uses
 simple, transparent colour/texture/quality features plus user-entered field
 context to decide whether a photo deserves higher-priority follow-up sampling.
 
-The backend is intentionally replaceable: a calibrated project-specific vision
-model can implement ``VisualScreeningBackend`` later without changing the UI or
-result contract.
+The transparent baseline remains available as an explicit comparison mode. In
+adaptive mode, the release attempts real EfficientNet / ConvNeXt / DINOv2 frozen
+feature extraction and combines it with an internal visual-phenomenon prototype
+head or an optional project-trained head. If no requested deep branch actually
+runs, the final decision is DEFER rather than silently presenting the heuristic
+baseline as a deep-model result.
 """
 from __future__ import annotations
 
@@ -315,6 +318,11 @@ def make_result(
     elif not quality.suitable:
         priority = "DEFER / 需重拍"
         reason = "图像质量不足以支持稳定的水色/表层特征甄别。"
+    elif requested_mode not in {"安全规则基线", "规则基线"} and not adaptive.get("active"):
+        priority = "DEFER / 视觉引擎未就绪"
+        detail = adaptive.get("fallback_reason") or "当前没有深度视觉分支成功执行"
+        errors = adaptive.get("branch_errors") or []
+        reason = detail + ("；" + "；".join(errors[:2]) if errors else "") + "。规则基线仅作辅助参考，不作为当前自适应模式的最终判定。"
     elif adaptive.get("active") and (adaptive.get("uncertainty") or {}).get("defer"):
         priority = "DEFER / 需人工复核"
         reasons = (adaptive.get("uncertainty") or {}).get("reasons") or ["深度视觉分支不确定性较高"]
@@ -343,10 +351,10 @@ def make_result(
         branch_names = [b.get("display_name", b.get("name", "")) for b in adaptive.get("branches", [])]
         backend_name = "自适应视觉路由 · " + " + ".join(x for x in branch_names if x)
     else:
-        backend_name = f"{backend.name}（自适应深度分支未激活）" if requested_mode != "安全规则基线" else backend.name
+        backend_name = "深度视觉分支未成功执行 · DEFER（规则基线仅供辅助参考）" if requested_mode not in {"安全规则基线", "规则基线"} else backend.name
 
     return {
-        "schema": "globalhab-field-visual-screening-v2",
+        "schema": "globalhab-field-visual-screening-v3",
         "backend": backend_name,
         "baseline_backend": backend.name,
         "scientific_role": "现场影像辅助甄别；不是藻种/毒素确诊器",
@@ -362,7 +370,7 @@ def make_result(
         "recommended_follow_up": follow_up,
         "allowed_claims": [
             "可描述照片中的水色、浑浊、亮白表层和其他视觉异常线索。",
-            "若已配置经过项目标注数据训练/校准的视觉头，可报告视觉类别模型的不确定性与分支一致性。",
+            "深度编码器实际执行时，可报告其视觉现象筛查结果、不确定性与跨分支一致性；若使用内置原型头，应明确其属于未校准的视觉现象筛查。",
             "可将视觉异常作为是否值得进一步采样复核的低成本现场证据。",
         ],
         "prohibited_claims": [
@@ -370,7 +378,7 @@ def make_result(
             "不能仅凭普通海面照片判断是否产毒或毒素浓度。",
             "不能把视觉类别概率或本页复核优先级解释为HAB发生概率、监管阈值或业务预警。",
             "不能用视觉阴性排除肉眼不可见但具有生态风险的HAB。",
-            "不能把未配置训练头的DINOv2/ConvNeXt/EfficientNet通用特征伪装成已经验证的HAB分类结果。",
+            "不能把DINOv2/ConvNeXt/EfficientNet的通用预训练表征或内置原型头表述为经过真实HAB现场照片验证的藻华分类器。",
         ],
     }
 
@@ -399,7 +407,13 @@ def result_summary(result: dict[str, Any] | None) -> str:
     if adaptive:
         route = adaptive.get("route") or {}
         selected = route.get("selected") or []
-        lines.append(f"- 自适应路由：{route.get('route_family','NA')}；选择分支={', '.join(selected) if selected else '无，回退规则基线'}；原因={route.get('reason','NA')}。")
+        lines.append(f"- 自适应路由：{route.get('route_family','NA')}；选择分支={', '.join(selected) if selected else '无'}；原因={route.get('reason','NA')}。")
+        if adaptive.get("active"):
+            branch_bits = []
+            for b in adaptive.get("branches") or []:
+                branch_bits.append(f"{b.get('display_name','NA')}[{b.get('head_kind','NA')}；{b.get('encoder_source','NA')}]")
+            if branch_bits:
+                lines.append("- 实际视觉分支：" + "；".join(branch_bits) + "。")
         if adaptive.get("active") and adaptive.get("uncertainty"):
             u = adaptive["uncertainty"]
             lines.append(f"- 不确定性：entropy={u.get('entropy',0):.3f}；margin={u.get('margin',0):.3f}；disagreement={u.get('disagreement',0):.3f}；OOD={u.get('ood_flag',False)}；DEFER={u.get('defer',False)}。")
@@ -419,28 +433,31 @@ def _parse_optional_float(text: str, label: str) -> float | None:
         raise ValueError(f"{label}需要填写数字或留空。") from exc
 
 
-def render(root: Any = None) -> None:
-    """Render the Streamlit workspace with adaptive routing when assets exist."""
+def _render_screening_tab(root: Any = None) -> None:
+    """Render the screening subpage with adaptive routing when assets exist."""
     import streamlit as st
     from globalhab_demo.adaptive_visual import compact_status_rows
 
     root_path = Path(root) if root is not None else Path(__file__).resolve().parents[2]
+    from globalhab_demo.case_manager import get_case, register_visual_evidence, register_lab_evidence, LAB_METHODS
 
-    st.markdown(
-        """
-        <div class="hero">
-          <div class="eyebrow" style="color:#b5d9dc">FIELD VISUAL SCREENING</div>
-          <h1>现场影像甄别</h1>
-          <p class="tagline">手机拍摄海面照片，先做低成本视觉初筛，再决定是否值得进一步采样复核</p>
-          <p class="value">质量门控 → 自适应路由 → DINOv2 / ConvNeXt / EfficientNet特征 → 轻量分类头 → 现场元数据融合 → 不确定性 / DEFER。未配置训练头时自动回退透明规则基线，不伪装成已验证的藻华分类器。</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    active_case_id = st.session_state.get("active_case_id")
+    active_case = get_case(active_case_id, root_path) if active_case_id else None
 
-    st.info(
-        "科学边界：普通手机照片可以帮助发现水色、浑浊、泡沫/漂浮物等可疑表征，但不能可靠确诊Karenia、Alexandrium、Pseudo-nitzschia等具体藻种，也不能判断毒素浓度。肉眼看起来正常也不能排除HAB。"
-    )
+    st.markdown("### 现场影像甄别")
+    st.caption("拍照 → 自适应路由 → 视觉筛查 → 不确定性门控 / DEFER → 现场复核。")
+    if active_case:
+        research = active_case.get("research") or {}
+        with st.container(border=True, key="vision_case_context"):
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("当前Case", str(active_case.get("case_id")))
+            c2.metric("研究候选区", str(research.get("candidate_region", "NA")))
+            c3.metric("Route / Lag", f"{research.get('route','NA')} / {research.get('lag_days','NA')}d")
+            risk = research.get("risk_score")
+            c4.metric("研究风险指数", f"{float(risk):.1f}/100" if isinstance(risk, (int,float)) else str(risk or "NA"))
+            st.caption("已读取研究与验证生成的现场复核任务。本页新增的视觉/现场/实验室证据会按证据层级登记到同一Case，不会覆盖研究模型结果。")
+    else:
+        st.info("当前没有激活的研究Case。可以独立使用影像筛查；如需完整闭环，请先在“研究与验证 → 风险研判”生成现场复核任务。")
 
     input_col, meta_col = st.columns([1.05, 1], gap="large")
     with input_col, st.container(border=True, key="vision_input_card"):
@@ -455,7 +472,7 @@ def render(root: Any = None) -> None:
             "视觉推理模式",
             ["自适应路由（推荐）", "多模型一致性", "EfficientNet", "ConvNeXt", "DINOv2", "安全规则基线"],
             key="vision_inference_mode",
-            help="只有本地编码器与项目标注数据训练得到的轻量分类头同时可用时，深度视觉分支才会参与结果。",
+            help="自适应模式会按水色、纹理和不确定性选择深度视觉分支；若当前运行环境无法真正执行所选分支，则返回DEFER。",
         )
         sea_surface = st.checkbox("照片主体是海面/水体，而不是天空、岸边或人物", value=True, key="vision_surface_confirm")
         st.caption("建议避开逆光，尽量让海面占画面大部分；同一点位最好从不同角度拍2–3张。图像只在当前会话中分析，不默认上传到远程大模型。")
@@ -465,7 +482,8 @@ def render(root: Any = None) -> None:
         c1, c2 = st.columns(2)
         capture_date = c1.date_input("拍摄日期", value=date.today(), key="vision_date")
         capture_time = c2.time_input("拍摄时间", value=None, key="vision_time")
-        location_text = st.text_input("海域 / 位置（可写站点名或大致海域）", placeholder="例如：南海某近岸养殖区", key="vision_location")
+        default_location = str(((active_case or {}).get("research") or {}).get("candidate_region") or "")
+        location_text = st.text_input("海域 / 位置（可写站点名或大致海域）", value=default_location, placeholder="例如：南海某近岸养殖区", key="vision_location")
         water_color = st.selectbox("现场肉眼水色", ["不确定", "常规蓝/蓝绿", "绿色", "黄绿色", "红棕色", "褐色", "乳白色"], key="vision_water_color")
         odor = st.selectbox("异味", ["未观察", "无明显异味", "有明显异味", "不确定"], key="vision_odor")
         surface_signs = st.multiselect("表面现象", ["泡沫", "浮膜", "漂浮物", "鱼贝聚集", "无明显表面现象", "不确定"], key="vision_surface_signs")
@@ -479,9 +497,9 @@ def render(root: Any = None) -> None:
             chla = st.text_input("Chl-a（请同时在备注中写单位）", key="vision_chla")
             notes = st.text_area("现场备注", max_chars=1000, key="vision_notes")
 
-    with st.expander("自适应视觉路由与深度模型状态", expanded=False):
+    with st.expander("高级视觉模型信息", expanded=False):
         st.dataframe(compact_status_rows(root_path), use_container_width=True, hide_index=True)
-        st.caption("默认部署不下载外部权重。DINOv2 / ConvNeXt / EfficientNet只有在‘编码器 + 项目标注数据训练头’均可用时才参与结果；可选安装见 requirements-vision.txt 与 VISION_ROUTER_GUIDE.md。")
+        st.caption("默认允许在首次使用时获取并缓存公共预训练视觉编码器；已有本地权重时优先使用本地文件。项目训练头存在时优先使用，否则使用内置视觉现象原型头。原型头用于现场视觉筛查，不代表经过真实HAB照片校准的藻华分类器。")
 
     run = st.button("开始现场影像甄别", type="primary", use_container_width=True, key="vision_run")
     if run:
@@ -506,10 +524,12 @@ def render(root: Any = None) -> None:
                     "dissolved_oxygen_mg_l": _parse_optional_float(do, "溶解氧"),
                     "chlorophyll_a": _parse_optional_float(chla, "Chl-a"),
                     "notes": notes.strip(),
+                    "case_id": active_case_id,
                 }
                 result = make_result(image, metadata, root=root_path, requested_mode=vision_mode)
                 st.session_state["field_visual_result"] = result
                 st.session_state["field_visual_image_bytes"] = raw
+                st.session_state["field_visual_image_name"] = getattr(image_file, "name", "field_capture.jpg") or "field_capture.jpg"
             except ValueError as exc:
                 st.error(str(exc))
 
@@ -559,7 +579,7 @@ def render(root: Any = None) -> None:
         a1, a2, a3 = st.columns(3)
         a1.metric("路由类型", route.get("route_family", "规则基线"))
         a2.metric("已激活分支", str(len(adaptive.get("branches") or [])))
-        a3.metric("深度视觉状态", "已激活" if adaptive.get("active") else "安全回退")
+        a3.metric("深度视觉状态", "已执行" if adaptive.get("active") else "DEFER")
         st.write("**路由理由：** " + str(route.get("reason", adaptive.get("fallback_reason", "NA"))))
         if adaptive.get("active"):
             rows = []
@@ -567,19 +587,24 @@ def render(root: Any = None) -> None:
                 rows.append({
                     "分支": b.get("display_name"),
                     "视觉类别": b.get("predicted_class"),
-                    "类别置信度": round(float(b.get("confidence", 0)), 3),
+                    "筛查头": b.get("head_kind", "NA"),
+                    "融合置信度": round(float(b.get("confidence", 0)), 3),
                     "entropy": round(float(b.get("entropy", 0)), 3),
                     "margin": round(float(b.get("margin", 0)), 3),
                     "OOD": bool(b.get("ood_flag", False)),
                 })
             st.dataframe(rows, use_container_width=True, hide_index=True)
             u = adaptive.get("uncertainty") or {}
-            st.caption(f"融合不确定性：entropy={u.get('entropy',0):.3f} · margin={u.get('margin',0):.3f} · disagreement={u.get('disagreement',0):.3f} · OOD={u.get('ood_flag',False)}。类别置信度不是HAB发生概率。")
+            st.caption(f"融合不确定性：entropy={u.get('entropy',0):.3f} · margin={u.get('margin',0):.3f} · disagreement={u.get('disagreement',0):.3f} · OOD={u.get('ood_flag',False)}。融合置信度是视觉现象筛查分数，不是HAB发生概率。")
             if u.get("defer"):
                 st.warning("不确定性门控触发 DEFER：" + "；".join(u.get("reasons") or []))
         else:
-            st.info(adaptive.get("fallback_reason") or "当前未启用深度视觉分支，使用透明规则基线。")
-            st.caption("系统刻意要求‘编码器 + 项目标注数据训练头’同时存在才允许深度分支影响结果，避免把通用视觉特征伪装成HAB分类器。")
+            st.warning(adaptive.get("fallback_reason") or "当前没有深度视觉分支成功执行，因此自适应模式返回DEFER。")
+            if adaptive.get("branch_errors"):
+                with st.expander("查看视觉引擎诊断", expanded=False):
+                    for err in adaptive.get("branch_errors"):
+                        st.code(err)
+            st.caption("透明规则基线仍会显示颜色/纹理辅助线索，但不会在自适应模式中冒充深度模型的最终结果。")
 
     st.markdown("### 05 · 下一步复核")
     follow_col, boundary_col = st.columns(2, gap="large")
@@ -592,6 +617,66 @@ def render(root: Any = None) -> None:
         for x in result["prohibited_claims"]:
             st.write("- " + x)
 
+    st.markdown("### 06 · Case联动与确认")
+    if active_case:
+        with st.container(border=True, key="vision_case_actions"):
+            st.markdown("#### 登记现场视觉证据")
+            st.caption("视觉筛查登记为B级现场证据，不会把研究候选自动改成真实HAB事件。照片可同时保存到“我的影像数据”，但默认不进入监督训练。")
+            ca1, ca2 = st.columns(2)
+            if ca1.button("登记到当前研究Case", type="primary", use_container_width=True, key="vision_register_case"):
+                try:
+                    metadata = result.get("field_metadata") or {}
+                    raw_now = st.session_state.get("field_visual_image_bytes")
+                    sample_id = None
+                    if raw_now:
+                        from globalhab_demo.visual_learning import save_image_sample
+                        sample_id, _ = save_image_sample(
+                            raw_now, st.session_state.get("field_visual_image_name"), metadata,
+                            label="不确定", evidence_level="仅肉眼判断", include_in_training=False,
+                            root=root_path, screening_result=result, source="Case现场视觉筛查",
+                        )
+                    register_visual_evidence(active_case_id, result, metadata, sample_id=sample_id, root=root_path)
+                    st.success("现场视觉证据已登记到当前Case；照片已保存到影像库但不会自动进入训练集。")
+                except Exception as exc:
+                    st.error(str(exc))
+            if ca2.button("返回研究与验证查看证据链", use_container_width=True, key="vision_back_research"):
+                st.session_state["_workspace_jump"] = "研究与验证"
+                st.rerun()
+
+            st.markdown("#### 专业 / 实验室确认")
+            l1, l2 = st.columns(2)
+            method = l1.selectbox("确认方式", LAB_METHODS, key="vision_lab_method")
+            confirmed_label = l2.selectbox("确认后的视觉现象标签", list(VISUAL_CLASSES), key="vision_lab_label")
+            conclusion = st.text_input("确认结论", placeholder="例如：qPCR检出目标藻；显微镜未见目标藻；毒素未检出", key="vision_lab_conclusion")
+            value_text = st.text_input("检测值/方法信息（可选）", placeholder="例如：Ct=24；细胞丰度=...；毒素=...", key="vision_lab_value")
+            lab_notes = st.text_area("确认备注（可选）", max_chars=1000, key="vision_lab_notes")
+            add_train = st.checkbox("将该确认照片写入视觉训练库并进入后续训练", value=True, key="vision_lab_to_train")
+            if st.button("登记确认并更新证据链", use_container_width=True, key="vision_register_lab"):
+                if not conclusion.strip():
+                    st.warning("请填写确认结论。")
+                else:
+                    try:
+                        raw_now = st.session_state.get("field_visual_image_bytes")
+                        metadata = result.get("field_metadata") or {}
+                        sample_id = None
+                        if raw_now:
+                            from globalhab_demo.visual_learning import save_image_sample
+                            sample_id, _ = save_image_sample(
+                                raw_now, st.session_state.get("field_visual_image_name"), metadata,
+                                label=confirmed_label, evidence_level=method,
+                                include_in_training=bool(add_train and confirmed_label != "不确定"),
+                                root=root_path, screening_result=result, source=f"Case确认·{method}",
+                            )
+                        register_lab_evidence(
+                            active_case_id, method, conclusion, confirmed_label, value_text, lab_notes,
+                            sample_id=sample_id, root=root_path,
+                        )
+                        st.success("确认结果已进入研究证据链；如勾选训练，照片已进入视觉训练库。")
+                    except Exception as exc:
+                        st.error(str(exc))
+    else:
+        st.caption("未激活研究Case，因此本次甄别只保留在当前会话/影像库中。")
+
     d1, d2 = st.columns(2)
     d1.download_button(
         "下载本次甄别 JSON",
@@ -600,9 +685,46 @@ def render(root: Any = None) -> None:
         mime="application/json",
         use_container_width=True,
     )
-    if d2.button("送入大模型结果解读", use_container_width=True, key="vision_to_llm"):
+    if d2.button("送入大模型综合解读", use_container_width=True, key="vision_to_llm"):
         st.session_state["_workspace_jump"] = "大模型结果解读"
-        st.session_state["_llm_source_jump"] = "最近一次现场影像甄别"
+        st.session_state["_llm_source_jump"] = "当前完整Case（推荐）" if active_case else "最近一次现场影像甄别"
         st.rerun()
 
-    st.caption("隐私说明：照片本身不会因为点击“大模型结果解读”而发送给远程服务；默认仅发送本页生成的结构化文字摘要，并且仍需在大模型工作区显式勾选授权。")
+    st.caption("隐私说明：照片本身不会因为点击“大模型综合解读”而发送给远程服务；默认仅发送结构化Case摘要，并且仍需在大模型工作区显式勾选授权。")
+
+
+def render(root: Any = None) -> None:
+    """Render the continuous-learning field visual workspace."""
+    import streamlit as st
+    from globalhab_demo.visual_learning import (
+        ensure_visual_learning_store,
+        render_library_tab,
+        render_training_tab,
+    )
+
+    root_path = Path(root) if root is not None else Path(__file__).resolve().parents[2]
+    ensure_visual_learning_store(root_path)
+    st.markdown(
+        """
+        <div class="hero">
+          <div class="eyebrow" style="color:#b5d9dc">CONTINUOUS-LEARNING FIELD VISION</div>
+          <h1>现场影像甄别</h1>
+          <p class="tagline">手机拍摄海面照片，完成低成本视觉初筛，并把人工/实验室确认持续沉淀为新的本地视觉模型</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.info(
+        "科学边界：照片用于水色、浑浊、泡沫/漂浮物等视觉现象筛查与复核优先级，不替代显微镜、qPCR、毒素检测或具体藻种鉴定。"
+    )
+    tab_screen, tab_data, tab_model = st.tabs([
+        "① 现场影像甄别",
+        "② 我的影像数据",
+        "③ 模型训练与版本",
+    ])
+    with tab_screen:
+        _render_screening_tab(root_path)
+    with tab_data:
+        render_library_tab(root_path)
+    with tab_model:
+        render_training_tab(root_path)

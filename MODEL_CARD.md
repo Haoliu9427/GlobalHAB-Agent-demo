@@ -77,4 +77,10 @@ The default field-photo component is a transparent heuristic baseline based on i
 
 ## 现场影像自适应视觉路由
 
-现场影像模块采用两级发布策略：基础包始终可运行透明的颜色/纹理筛查；可选的AVSR仅在本地视觉编码器与项目标注数据训练头同时存在时启用。支持 EfficientNet-B0、ConvNeXt-Tiny 和 DINOv2 冻结特征，轻量分类头融合12维现场元数据，并以预测熵、margin、跨分支 disagreement 和训练分布距离进行不确定性检查。任何质量失败、分支冲突或OOD都允许输出 `DEFER`。该模块只描述视觉现象和复核优先级，不做藻种、毒素或业务HAB概率确诊。
+现场影像模块采用AVSR：图像质量合格后自适应选择 EfficientNet-B0、ConvNeXt-Tiny 或 DINOv2 冻结特征。项目训练头存在时优先使用；否则使用内置视觉现象原型头，将深度embedding、透明颜色/纹理线索和12维现场元数据融合。EfficientNet/ConvNeXt在完全离线环境可使用显式标注为“非预训练”的确定性原型编码初始化，保证至少一个真实深度forward路径可执行；DINOv2仅在其真实模型依赖/权重可用时参与。预测熵、margin、跨分支 disagreement 与 OOD 控制DEFER。该模块只描述视觉现象和复核优先级，不做藻种、毒素或业务HAB概率确诊。
+
+## Continuous-learning field visual heads
+
+The field-vision subsystem now separates the public baseline from versioned user heads. User photos are stored with visual labels and evidence levels; only explicitly selected, non-uncertain labels enter supervised training. Backbones remain frozen and a small multinomial fusion head is refit on visual embeddings plus 12 field-metadata features. Candidate versions report balanced accuracy, macro-F1, log loss and ECE on a held-out split and are compared with the public prototype baseline on the same holdout. Training does not automatically replace the active model. A candidate must satisfy the release gate and be explicitly promoted by the user. The active pointer is `vision_models/active_model.json`.
+
+Public image adapters are optional one-class/domain adapters and are not species/toxin classifiers. The initial public source catalog includes the Zenodo record `10.5281/zenodo.10599927`; its record describes verified Baltic Sea surface bloom observations without microscopy/genetic taxonomic annotation, so it is used only as bloom-like visual-domain support.

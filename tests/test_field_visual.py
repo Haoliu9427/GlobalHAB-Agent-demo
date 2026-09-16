@@ -31,7 +31,7 @@ def _metadata(**extra):
 
 
 def test_green_visual_signal_is_screened_not_species_label():
-    result = make_result(_gradient_image((55, 155, 90)), _metadata())
+    result = make_result(_gradient_image((55, 155, 90)), _metadata(), requested_mode="安全规则基线")
     assert result["visual"]["category"] == "绿色水体异常"
     assert result["screening_priority"] in {"中", "高"}
     assert "不是藻种/毒素确诊器" in result["scientific_role"]
@@ -39,13 +39,13 @@ def test_green_visual_signal_is_screened_not_species_label():
 
 
 def test_blue_water_can_return_low_priority():
-    result = make_result(_gradient_image((70, 130, 175)), _metadata())
+    result = make_result(_gradient_image((70, 130, 175)), _metadata(), requested_mode="安全规则基线")
     assert result["visual"]["category"] == "正常/未见明显异常"
     assert result["screening_priority"] == "低"
 
 
 def test_bad_image_or_wrong_target_defers():
-    result = make_result(_gradient_image((70, 130, 175)), _metadata(sea_surface_confirmed=False))
+    result = make_result(_gradient_image((70, 130, 175)), _metadata(sea_surface_confirmed=False), requested_mode="安全规则基线")
     assert result["screening_priority"].startswith("DEFER")
 
 
@@ -58,6 +58,7 @@ def test_field_context_can_raise_followup_priority_without_becoming_probability(
             recent_heat="是",
             water_color="绿色",
         ),
+        requested_mode="安全规则基线",
     )
     assert result["screening_priority"] in {"中", "高"}
     assert "不是HAB发生概率" in result["priority_reason"]
@@ -65,7 +66,7 @@ def test_field_context_can_raise_followup_priority_without_becoming_probability(
 
 
 def test_result_summary_never_sends_image_bytes():
-    result = make_result(_gradient_image((160, 110, 60)), _metadata())
+    result = make_result(_gradient_image((160, 110, 60)), _metadata(), requested_mode="安全规则基线")
     text = result_summary(result)
     assert "最近一次现场影像甄别" in text
     assert "红棕色水体异常" in text

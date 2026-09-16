@@ -1,0 +1,13 @@
+[
+  {
+    "dataset_id": "algal-blooms-sweden-2023",
+    "name": "Algal Blooms Sweden - 2023",
+    "doi": "10.5281/zenodo.10599927",
+    "url": "https://zenodo.org/records/10599927",
+    "download_url": "https://zenodo.org/records/10599927/files/algal_blooms_sweden_2023.zip?download=1",
+    "observations": 60,
+    "scope": "Baltic Sea summer surface bloom photographs",
+    "evidence": "Bloom occurrence verified by Swedish information centres; no microscopy/genetic taxonomic annotation in the dataset record.",
+    "role": "Optional public positive-domain adapter / representation calibration; not a species classifier."
+  }
+]

@@ -221,4 +221,12 @@ The Streamlit sidebar now includes a fourth top-level workspace, **Field Visual 
 
 ## Adaptive Visual Screening Router
 
-The field-image workspace now supports an offline-safe adaptive routing framework for EfficientNet-B0, ConvNeXt-Tiny and DINOv2. Deep branches are activated only when a compatible local encoder and a project-trained NumPy linear head are both present. The head fuses frozen image embeddings with field metadata, while entropy, top-1/top-2 margin, branch disagreement and OOD checks can trigger DEFER. Without calibrated assets, the app transparently falls back to the interpretable colour/texture baseline. See `VISION_ROUTER_GUIDE.md`.
+The field-image workspace supports operational adaptive routing across EfficientNet-B0, ConvNeXt-Tiny and DINOv2-small. Project-trained NumPy fusion heads take precedence when present; otherwise a built-in visual-phenomenon prototype head compares real frozen-encoder embeddings with deterministic water-surface prototypes and fuses them with transparent colour/texture cues plus field metadata. EfficientNet and ConvNeXt can still execute a real deep forward pass in fully offline deployments through an explicitly labelled deterministic prototype-encoder initialisation, while public pretrained weights are preferred when available. If adaptive mode cannot execute any deep branch, it returns DEFER instead of silently presenting the heuristic baseline as a deep result. Entropy, top-1/top-2 margin, branch disagreement and OOD checks remain active. See `VISION_ROUTER_GUIDE.md`.
+
+## Continuous-learning field vision agent
+
+The field visual workspace now has three subpages: **screen**, **my visual data**, and **model training & versions**. Confirmed user photos can be saved with evidence levels, selected for training, ranked by active-learning uncertainty, and used to retrain lightweight heads on frozen DINOv2 / ConvNeXt / EfficientNet embeddings. Candidate heads are validated on a holdout set and compared with the public visual baseline before the user can explicitly promote them to the active model. Predictions are never written back as labels automatically. See `CONTINUOUS_VISUAL_AGENT_GUIDE.md`.
+
+## Case-driven evidence loop
+
+A shared Case now links research risk candidates (Risk / Route / Lag / Top-k), field visual screening, field metadata, professional/laboratory confirmation, continuous visual learning, and bounded LLM interpretation. Evidence is append-only: visual screening does not relabel the upstream research result, and LLM notes cannot modify metrics, probabilities, model weights, or confirmation status. Confirmed images can retain `case_id` provenance in the visual training library and model-version manifests.

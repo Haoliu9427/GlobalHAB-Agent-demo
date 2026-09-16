@@ -1,6 +1,6 @@
 {
   "status": "pass",
-  "backend": "规则 + 通用颜色/纹理特征演示基线（自适应深度分支未激活）",
+  "backend": "规则 + 通用颜色/纹理特征演示基线",
   "assertions": {
     "green_visual_type": true,
     "green_not_probability": true,

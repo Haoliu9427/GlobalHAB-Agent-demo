@@ -54,3 +54,34 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - Added entropy, top-1/top-2 margin, multi-branch disagreement and OOD-aware DEFER.
 - Deep branches activate only when both encoder assets and project-trained heads are available; otherwise the workspace falls back to the transparent heuristic baseline.
 - Added `requirements-vision.txt`, training manifest template, lightweight-head training script and `VISION_ROUTER_GUIDE.md`.
+
+
+## 2026-09-16 adaptive visual router operational update
+- Removed the long internal-method sentence from the field-image hero.
+- Replaced the default "all unconfigured" state with runtime-ready encoder/source reporting.
+- Added a built-in visual-phenomenon prototype head; project-trained heads still take precedence.
+- EfficientNet-B0 and ConvNeXt-Tiny now perform a real deep forward pass even in fully offline mode through a deterministic prototype-encoder fallback, explicitly labelled non-pretrained.
+- Public pretrained weights are preferred and may be cached on first use; DINOv2-small joins routing when its real model assets are available.
+- Adaptive mode now DEFERs when no deep branch actually executes; it no longer silently substitutes the heuristic baseline as the final deep result.
+- Added encoder-source/head-type reporting to branch results and LLM summaries.
+
+## 2026-09-16 continuous-learning field vision agent
+- Split the field-vision workspace into three subpages: screening, user visual data, and model training/version management.
+- Added a SHA256-deduplicated user image library with visual labels, evidence levels, training inclusion flags, metadata and active-learning scores.
+- Added active-learning prioritisation for high-entropy, low-margin, cross-backbone disagreement, OOD and DEFER samples.
+- Added lightweight user-head retraining on frozen EfficientNet / ConvNeXt / DINOv2 embeddings plus 12 field-metadata features.
+- Added deterministic holdout diagnostics, same-holdout public-baseline comparison, candidate/active/rejected version states and explicit promotion gates.
+- Added `vision_models/active_model.json`; adaptive inference now resolves the currently registered user head automatically.
+- Added user visual-library ZIP export/import and model-version ZIP export.
+- Added an auditable public visual source catalog plus optional Zenodo fetch and positive-domain embedding-adapter scripts; raw third-party images are not bundled in the normal source package.
+- Added `CONTINUOUS_VISUAL_AGENT_GUIDE.md`, `PUBLIC_VISUAL_DATA_SOURCES.md`, `src/globalhab_demo/visual_learning.py`, and visual-learning tests.
+
+## 2026-09-16 Case-driven cross-workspace evidence loop
+- Added `src/globalhab_demo/case_manager.py` and a persistent `data/cases/cases.json` ledger.
+- Research risk scenarios can create a field-verification Case carrying candidate region, risk score, Route, Lag, Top-k capacity/coverage and scenario context.
+- Field visual screening reads the active Case, registers visual screening as a separate evidence layer, and can return to the research evidence ledger.
+- Professional / microscopy / qPCR / toxin confirmation can be appended to the same Case; confirmed photos may be promoted into the visual training library with `case_id` provenance.
+- The visual library now stores `case_id` and preserves the Case link through retraining data selection.
+- The LLM workspace adds `当前完整Case（推荐）`, combining research, visual, field metadata and lab evidence for bounded interpretation.
+- LLM interpretations can be saved back to the Case as explanation records without changing upstream metrics or evidence grades.
+- Added `CASE_EVIDENCE_LOOP_GUIDE.md`, `scripts/check_case_loop.py`, and `tests/test_case_manager.py`.

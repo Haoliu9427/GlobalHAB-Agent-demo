@@ -1,0 +1,16 @@
+{
+  "status": "pass",
+  "assertions": {
+    "three_subpage_backend_store": true,
+    "training_selection": true,
+    "public_baseline_active": true,
+    "version_registry": true
+  },
+  "summary": {
+    "n_images": 2,
+    "n_training": 2,
+    "n_classes": 2,
+    "n_high_evidence": 0,
+    "n_active_learning": 0
+  }
+}

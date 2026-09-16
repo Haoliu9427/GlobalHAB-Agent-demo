@@ -429,9 +429,11 @@ def render(root: Path) -> None:
         with meta_b:
             st.caption("摘要规模")
             st.markdown(f"**{len(summary):,} 字符**" if summary else "**等待结果**")
+        st.markdown('<div class="llm-source-flex-gap"></div>', unsafe_allow_html=True)
         st.caption("摘要预览（只读）")
-        preview = summary[:1800].strip() if summary else "当前来源尚未生成可用摘要。"
-        st.text_area("摘要预览", value=preview, height=340, disabled=True, label_visibility="collapsed")
+        preview = summary[:600].strip() if summary else "当前来源尚未生成可用摘要。"
+        st.text_area("摘要预览", value=preview, height=105, disabled=True, label_visibility="collapsed")
+        st.markdown('<div class="llm-source-flex-gap"></div>', unsafe_allow_html=True)
         with st.expander("查看完整结果摘要", expanded=False):
             if summary:
                 st.text(summary[:50000])
@@ -459,6 +461,7 @@ def render(root: Path) -> None:
     with mode_col, st.container(border=False, key="llm_mode_card"):
         st.markdown("### 解读方式")
         mode = st.radio("输出风格", list(INTERPRETATION_MODES), key="llm_interpret_mode")
+        st.markdown('<div class="llm-mode-flex-gap"></div>', unsafe_allow_html=True)
         set_a, set_b = st.columns(2, gap="small")
         with set_a:
             output_length = st.selectbox(
@@ -474,12 +477,14 @@ def render(root: Path) -> None:
                 key="llm_number_checklist",
                 help="在结果末尾列出关键数字及含义。",
             )
+        st.markdown('<div class="llm-mode-flex-gap"></div>', unsafe_allow_html=True)
         focus_items = st.multiselect(
             "重点关注",
             ["核心信号", "证据一致性", "不确定性", "下一步复核"],
             default=["核心信号", "证据一致性", "不确定性", "下一步复核"],
             key="llm_focus_items",
         )
+        st.markdown('<div class="llm-mode-flex-gap"></div>', unsafe_allow_html=True)
         question = st.text_area(
             "补充问题（可选）",
             placeholder="例如：请指出最值得进一步复核的证据。",
@@ -488,6 +493,7 @@ def render(root: Path) -> None:
             key="llm_interpret_question",
         )
         st.caption("输出：核心结论 · 证据边界 · 下一步建议。")
+        st.markdown('<div class="llm-mode-flex-gap"></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="compact-card-footer">当前：{mode} · {output_length} · 重点{len(focus_items)}项。</div>', unsafe_allow_html=True)
 
     def clear_credentials() -> None:

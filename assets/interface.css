@@ -750,3 +750,129 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
     margin-top:0!important;
   }
 }
+
+
+/* 2026-09-16 final spacing pass: strict paired geometry with distributed internal whitespace. */
+@media(min-width:901px){
+  /* Own-data remote service / model-run pair: use the same explicit desktop card height.
+     The height is chosen to fit the compact service form without scrolling. */
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_service_card) > [data-testid="stColumn"]{
+    height:860px!important;
+    min-height:860px!important;
+    max-height:860px!important;
+  }
+  [data-testid="stColumn"]:has(.st-key-obs_service_card),
+  [data-testid="stColumn"]:has(.st-key-obs_models_card){
+    height:860px!important;
+    min-height:860px!important;
+    max-height:860px!important;
+  }
+  .st-key-obs_service_card,.st-key-obs_models_card,
+  .st-key-obs_service_card > [data-testid="stVerticalBlockBorderWrapper"],
+  .st-key-obs_models_card > [data-testid="stVerticalBlockBorderWrapper"]{
+    height:100%!important;
+    min-height:100%!important;
+    max-height:100%!important;
+  }
+  .st-key-obs_service_card [data-testid="stVerticalBlock"]{
+    gap:.62rem!important;
+  }
+  .st-key-obs_models_card [data-testid="stVerticalBlock"]{
+    height:100%!important;
+    min-height:100%!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  .st-key-obs_models_card [data-testid="stElementContainer"]:has(.model-run-flex-gap){
+    flex:1 1 0!important;
+    min-height:.65rem!important;
+  }
+  .model-run-flex-gap{height:1px;min-height:1px;}
+  .st-key-obs_models_card .st-key-user_run_zone{
+    margin-top:0!important;
+    padding-top:0!important;
+  }
+  .st-key-obs_models_card .st-key-user_run_zone [data-testid="stVerticalBlock"]{
+    min-height:0!important;
+    height:auto!important;
+    gap:.55rem!important;
+  }
+
+  /* LLM pair: the right card is now the natural height driver. The left preview is short,
+     while three equal flex gaps spread the remaining space between content groups. */
+  .st-key-llm_source_card [data-testid="stVerticalBlock"]{
+    height:100%!important;
+    min-height:100%!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  .st-key-llm_source_card [data-testid="stElementContainer"]:has(.llm-source-flex-gap){
+    flex:1 1 0!important;
+    min-height:.55rem!important;
+  }
+  .llm-source-flex-gap{height:1px;min-height:1px;}
+  .st-key-llm_source_card .compact-card-footer{margin-top:0!important;}
+}
+@media(max-width:900px){
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_service_card) > [data-testid="stColumn"],
+  [data-testid="stColumn"]:has(.st-key-obs_service_card),
+  [data-testid="stColumn"]:has(.st-key-obs_models_card){
+    height:auto!important;min-height:0!important;max-height:none!important;
+  }
+}
+
+
+/* 2026-09-16 pair-layout hardening: fixed Streamlit container height plus internal flex distribution. */
+@media(min-width:901px){
+  /* The visible own-data service/model pair is explicitly matched at both the Streamlit
+     container and parent-column levels. This removes dependence on wrapper inheritance. */
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_service_card) > [data-testid="stColumn"],
+  [data-testid="stColumn"]:has(.st-key-obs_service_card),
+  [data-testid="stColumn"]:has(.st-key-obs_models_card){
+    height:944px!important;
+    min-height:944px!important;
+    max-height:944px!important;
+  }
+  .st-key-obs_service_card,.st-key-obs_models_card{
+    height:900px!important;
+    min-height:900px!important;
+    max-height:900px!important;
+  }
+  .st-key-obs_models_card [data-testid="stVerticalBlock"]{
+    height:100%!important;
+    min-height:100%!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  .st-key-obs_models_card [data-testid="stElementContainer"]:has(.model-run-flex-gap){
+    flex:1 1 0!important;
+    min-height:.7rem!important;
+  }
+  .st-key-obs_models_card .st-key-user_run_zone{
+    margin-top:0!important;
+    padding-top:0!important;
+  }
+
+  /* LLM cards stay equal-height; spare room is split across content intervals on BOTH sides,
+     never accumulated as an empty block under the final content. */
+  .st-key-llm_source_card [data-testid="stVerticalBlock"],
+  .st-key-llm_mode_card [data-testid="stVerticalBlock"]{
+    height:100%!important;
+    min-height:100%!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  .st-key-llm_source_card [data-testid="stElementContainer"]:has(.llm-source-flex-gap),
+  .st-key-llm_mode_card [data-testid="stElementContainer"]:has(.llm-mode-flex-gap){
+    flex:1 1 0!important;
+    min-height:.55rem!important;
+  }
+  .llm-mode-flex-gap,.llm-source-flex-gap{height:1px;min-height:1px;}
+  .st-key-llm_source_card .compact-card-footer,
+  .st-key-llm_mode_card .compact-card-footer{margin-top:0!important;}
+}
+@media(max-width:900px){
+  .st-key-obs_service_card,.st-key-obs_models_card{
+    height:auto!important;min-height:0!important;max-height:none!important;
+  }
+}

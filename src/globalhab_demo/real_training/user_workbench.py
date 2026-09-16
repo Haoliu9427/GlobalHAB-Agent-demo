@@ -55,7 +55,7 @@ def render():
         st.session_state.pop('qwen_explanation',None)
         st.session_state.pop('remote_action_notice',None)
     service_col,models_col=st.columns([1,1],gap='large')
-    with service_col, st.container(border=False,key='obs_service_card'):
+    with service_col, st.container(border=False,key='obs_service_card',height=900):
         st.markdown('### 远程大模型服务')
         mode=st.radio('服务配置来源',['自行填写','使用服务器配置'],key='remote_mode',horizontal=True)
         if mode=='自行填写':
@@ -121,10 +121,17 @@ def render():
                         'signature':remote_sig,'kind':'error','text':'读取模型失败 · '+str(exc)
                     }
         with action_c:
-            can_test=bool(remote.get('base_url') and remote.get('api_key'))
-            if st.button('测试连接',disabled=not can_test,use_container_width=True):
+            # Keep the connection test clickable at all times. Streamlit password/text
+            # widgets can momentarily desynchronise their browser value and session state
+            # after a rerun; validate inside the click handler instead of greying out a
+            # configuration that is visibly complete to the user.
+            if st.button('测试连接',use_container_width=True):
                 try:
                     test_remote=dict(remote)
+                    if not str(test_remote.get('base_url','')).strip():
+                        raise ValueError('请先填写API地址。')
+                    if not str(test_remote.get('api_key','')).strip():
+                        raise ValueError('请先填写API Key。')
                     if not str(test_remote.get('model','')).strip():
                         discovered=[str(x).strip() for x in (st.session_state.get('remote_model_list') or []) if str(x).strip()]
                         if discovered:
@@ -166,7 +173,7 @@ def render():
                 st.caption('DeepSeek使用官方API基础地址；模型ID请以账户当前可用列表为准。')
             st.caption('凭证仅供当前会话使用，不保存到工程、结果包或服务器配置。API地址填写兼容接口基础地址，不含/chat/completions。')
             st.caption('调用可能产生API费用；请仅发送你有权使用的数据。')
-    with models_col, st.container(border=False,key='obs_models_card'):
+    with models_col, st.container(border=False,key='obs_models_card',height=900):
         st.markdown('### 模型与运行')
         records=[];allowed=[]
         for n in MODELS:
@@ -184,13 +191,18 @@ def render():
             st.dataframe(pd.DataFrame([{'模型/方法':n,'用途与入口':v} for n,v in OTHER.items()]),hide_index=True,use_container_width=True)
             st.caption('同一家族在不同历史任务中的参数配置不作为新模型重复计数。STS字段：'+', '.join(SCIENCE_COLUMNS)+', upstream_available_at。上游对齐需由数据提供者完成。')
             st.write('本地基础模型为3种Chronos规格、3种Qwen规格和SmolLM2。首次运行需要下载权重；大规格需要更多内存。目录可选择不代表已在所有主机或数据集上验证。')
+        st.markdown('<div class="model-run-flex-gap"></div>', unsafe_allow_html=True)
         # Only reset unavailable entries when the new data invalidate their prerequisites.
         if 'user_models' in st.session_state:st.session_state['user_models']=[n for n in st.session_state['user_models'] if n in allowed]
         selected=st.multiselect('选择本次运行模型（可多选）',allowed,default=[n for n in ['Logistic','HistGradientBoosting'] if n in allowed],key='user_models')
+        st.markdown('<div class="model-run-flex-gap"></div>', unsafe_allow_html=True)
         epochs=st.slider('时序模型训练轮数上限',5,50,20,key='user_epochs')
+        st.markdown('<div class="model-run-flex-gap"></div>', unsafe_allow_html=True)
         if selected:st.caption('实际运行（含融合组件与季节基线）：'+', '.join(expand(['Seasonal Climatology']+selected)))
         st.caption(f'验证：时间留出 · {len(selected)}个选择模型 + 季节基线 · {horizon}天 · 上限{epochs}轮。')
-        # Keep the primary action anchored to the bottom of the matched card.
+        st.markdown('<div class="model-run-flex-gap"></div>', unsafe_allow_html=True)
+        # Keep the primary action in the final card section; flexible gaps above
+        # distribute spare height between content groups instead of below the button.
         signature=hashlib.sha256((data or b'')+json.dumps([task,horizon,description,selected,epochs,remote.get('model'),remote.get('base_url'),hashlib.sha256(remote.get('api_key','').encode()).hexdigest(),mode],ensure_ascii=False).encode()).hexdigest()
         with st.container(border=False,key='user_run_zone'):
             st.markdown('<div class="compact-card-footer">运行后保存指标、验证样本、预测结果与数据质量记录。</div>', unsafe_allow_html=True)

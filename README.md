@@ -458,3 +458,6 @@ DeepSeek 结果解读现使用后端有效默认值，而不是只依赖浏览�
 The Own Data observation/task pair and the LLM source/mode pair now use a stricter equal-height desktop grid. The observation card adds upload checks, the prediction-task card adds pre-run checks, and the LLM source card adds send-readiness information so the cards remain visually balanced without decorative blank space. The template-download and upload-status controls are now matched in width and height.
 
 - 大模型结果解读的左右卡片采用严格等高布局；右侧新增输出长度、重点关注、关键数字核对清单等实际解读控制，使卡片在对齐的同时保持内容密度。
+
+### 2026-09-16 最终卡片平衡
+自有数据分析“观测数据 / 预测任务”和大模型结果解读“选择要解读的结果 / 解读方式”两组卡片改为由外层等高列直接承担白底、边框和顶部强调线，避免 Streamlit 内部容器高度不同导致底边错位。内部同时补充推荐数据组织、结果记录、可解释内容、结构化摘要下载和适用场景，使卡片在严格对齐的同时保持有效信息密度。

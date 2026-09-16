@@ -359,7 +359,7 @@ def render(root: Path) -> None:
     )
 
     source_col, mode_col = st.columns([1, 1], gap="large")
-    with source_col, st.container(border=True, key="llm_source_card"):
+    with source_col, st.container(border=False, key="llm_source_card"):
         st.markdown("### 选择要解读的结果")
         pending_source = st.session_state.pop("_llm_source_jump", None)
         if pending_source in BUILTIN_SOURCES:
@@ -422,6 +422,19 @@ def render(root: Path) -> None:
             "最近一次自有数据分析": "用户数据 · 模型比较 · 可选未来预测",
             "上传结果文件": "用户提供的结构化结果文件",
         }
+        explainable_items = {
+            "项目核心发现（合成探索 + 负对照）": ["候选路径与响应时滞", "负对照与机制约束", "Agent有限预算探索结果"],
+            "模型Benchmark与结构模型审计": ["模型性能差异", "复杂模型与简单基线关系", "适用条件与结构限制"],
+            "挪威长期前向验证": ["前向留出表现", "Top-k监测覆盖", "真实监测中的泛化边界"],
+            "南澳真实事件回放": ["qPCR事件时间线", "回放证据一致性", "可确认与不可确认部分"],
+            "真实观测训练与验证": ["训练/测试性能", "样本与事件支持", "模型适用范围"],
+            "中国近海跨年检验": ["跨年迁移表现", "海域差异", "复核优先级"],
+            "生物响应沙盘": ["相对响应方向", "情景稳健性", "管理准备优先级"],
+            "当前完整Case（推荐）": ["研究风险候选", "现场视觉与环境证据", "实验室/专家确认与证据冲突"],
+            "最近一次现场影像甄别": ["视觉异常类别", "模型不确定性与DEFER", "现场元数据与复核建议"],
+            "最近一次自有数据分析": ["模型比较", "历史验证", "可选未来预测与数据质量"],
+            "上传结果文件": ["文件中的核心结果", "关键数字与证据边界", "需要进一步复核的部分"],
+        }
         st.markdown("#### 当前输入概览")
         info_a, info_b = st.columns(2, gap="small")
         info_a.caption("证据范围")
@@ -429,7 +442,19 @@ def render(root: Path) -> None:
         info_b.caption("摘要规模")
         info_b.write(f"{len(summary):,} 字符" if summary else "等待可用结果")
         preview = summary[:1400].strip() if summary else "当前来源尚未生成可用摘要。请选择已有结果、完整Case，或上传结果文件。"
-        st.text_area("摘要预览（只读）", value=preview, height=120, disabled=True)
+        st.text_area("摘要预览（只读）", value=preview, height=150, disabled=True)
+        st.markdown("#### 可解释内容")
+        for item in explainable_items.get(source, ["核心结果", "关键数字", "证据边界"]):
+            st.markdown(f"- {item}")
+        if summary:
+            st.download_button(
+                "下载当前结构化摘要",
+                data=summary,
+                file_name="globalhab_result_summary.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="llm_summary_download",
+            )
         st.markdown("#### 发送前检查")
         ready_a, ready_b = st.columns(2, gap="small")
         with ready_a:
@@ -442,9 +467,17 @@ def render(root: Path) -> None:
             st.write(scope_labels.get(source, "结构化结果"))
             st.caption("远程发送上限")
             st.write("最多 45,000 字符")
+        st.markdown("#### 适用场景")
+        scene_a, scene_b = st.columns(2, gap="small")
+        with scene_a:
+            st.caption("科研与复核")
+            st.write("结果总结 · 证据一致性 · 不确定性")
+        with scene_b:
+            st.caption("沟通与输出")
+            st.write("答辩讲解 · 论文结果段 · 管理摘要")
         st.caption("实际调用远程模型前仍需在下方明确授权；未授权时只在本地查看与组织摘要。")
 
-    with mode_col, st.container(border=True, key="llm_mode_card"):
+    with mode_col, st.container(border=False, key="llm_mode_card"):
         st.markdown("### 解读方式")
         mode = st.radio("输出风格", list(INTERPRETATION_MODES), key="llm_interpret_mode")
 

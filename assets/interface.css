@@ -418,3 +418,79 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
     min-height:790px!important;
   }
 }
+
+/* 2026-09-16 final card-balance fix.
+   The visible card now belongs to the equal-height column itself for the two most important pairs.
+   This avoids Streamlit's nested container wrappers determining two different card bottoms. */
+[data-testid="stHorizontalBlock"]:has(.st-key-obs_upload_card),
+[data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card){
+  align-items:stretch!important;
+}
+[data-testid="stColumn"]:has(.st-key-obs_upload_card),
+[data-testid="stColumn"]:has(.st-key-obs_task_card),
+[data-testid="stColumn"]:has(.st-key-llm_source_card),
+[data-testid="stColumn"]:has(.st-key-llm_mode_card){
+  background:#fff!important;
+  border:1px solid #d5e2e5!important;
+  border-radius:16px!important;
+  padding:24px!important;
+  box-shadow:0 5px 18px rgba(24,63,80,.045)!important;
+  box-sizing:border-box!important;
+  min-width:0!important;
+}
+[data-testid="stColumn"]:has(.st-key-obs_upload_card),
+[data-testid="stColumn"]:has(.st-key-llm_source_card){border-top:4px solid #286b79!important;}
+[data-testid="stColumn"]:has(.st-key-obs_task_card),
+[data-testid="stColumn"]:has(.st-key-llm_mode_card){border-top:4px solid #657f9b!important;}
+
+/* Remove the duplicate inner visual card. Interactive Streamlit widgets stay inside it. */
+.st-key-obs_upload_card,.st-key-obs_task_card,.st-key-llm_source_card,.st-key-llm_mode_card{
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  padding:0!important;
+  margin:0!important;
+  box-shadow:none!important;
+  min-height:0!important;
+  height:auto!important;
+}
+.st-key-obs_upload_card > [data-testid="stVerticalBlockBorderWrapper"],
+.st-key-obs_task_card > [data-testid="stVerticalBlockBorderWrapper"],
+.st-key-llm_source_card > [data-testid="stVerticalBlockBorderWrapper"],
+.st-key-llm_mode_card > [data-testid="stVerticalBlockBorderWrapper"]{
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  min-height:0!important;
+  height:auto!important;
+}
+
+@media(min-width:901px){
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_upload_card),
+  [data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card){
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    gap:1.5rem!important;
+    align-items:stretch!important;
+  }
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_upload_card) > [data-testid="stColumn"],
+  [data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card) > [data-testid="stColumn"]{
+    width:auto!important;
+    flex:none!important;
+    align-self:stretch!important;
+    height:100%!important;
+  }
+  [data-testid="stColumn"]:has(.st-key-obs_upload_card),
+  [data-testid="stColumn"]:has(.st-key-obs_task_card){min-height:790px!important;}
+  [data-testid="stColumn"]:has(.st-key-llm_source_card),
+  [data-testid="stColumn"]:has(.st-key-llm_mode_card){min-height:980px!important;}
+}
+@media(max-width:900px){
+  [data-testid="stColumn"]:has(.st-key-obs_upload_card),
+  [data-testid="stColumn"]:has(.st-key-obs_task_card),
+  [data-testid="stColumn"]:has(.st-key-llm_source_card),
+  [data-testid="stColumn"]:has(.st-key-llm_mode_card){
+    padding:18px!important;
+    min-height:0!important;
+  }
+}

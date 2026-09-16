@@ -159,3 +159,9 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - 大模型结果解读左右卡片改为更严格的等高布局。
 - 右侧新增输出长度、重点关注、关键数字核对清单和当前解读配置，避免以空白换对齐。
 - 摘要预览略收紧，使左右内容密度更接近；上述设置会真实进入大模型提示词与结果签名。
+
+## 2026-09-16 visible-card ownership and final balance
+- Moved the visible border/background of the Own Data observation/task pair and LLM source/mode pair from nested Streamlit containers to the equal-height parent columns, eliminating residual bottom-edge mismatch caused by Streamlit wrapper height inheritance.
+- Kept the inner keyed containers for widgets and state only; they are now visually transparent.
+- Enriched the Own Data observation card with recommended row organisation and the task card with explicit result-record contents.
+- Enriched the LLM source card with source-specific explainable topics, downloadable structured summary and intended usage scenarios, so the equal-height layout is filled with real user-facing functions rather than blank space.

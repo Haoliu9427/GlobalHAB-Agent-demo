@@ -7,7 +7,7 @@ from .user_engine import build,run
 def render():
     import streamlit as st
     data_col,task_col=st.columns([1,1],gap='large')
-    with data_col, st.container(border=True,key='obs_upload_card'):
+    with data_col, st.container(border=False,key='obs_upload_card'):
         st.markdown('### 观测数据')
         st.caption('上传现场记录，建立本次分析的数据集。')
         upload=st.file_uploader('现场观测CSV',type=['csv'],key='real_training_upload')
@@ -33,9 +33,17 @@ def render():
         with check_b:
             st.caption('标签与字段')
             st.write('未知标签 · 缺失值 · 必需字段')
-        st.caption('温度、盐度、溶解氧等环境变量可作为可选协变量；通过检查后再进入统一验证和模型比较。')
+        st.markdown('#### 推荐数据组织')
+        org_a, org_b = st.columns(2, gap='small')
+        with org_a:
+            st.caption('一行一条观测')
+            st.write('同一站点可跨日期重复记录；日期与可用时间分开保存。')
+        with org_b:
+            st.caption('标签与协变量')
+            st.write('事件标签可留空；温度、盐度、溶解氧等按实际可得性补充。')
+        st.caption('通过检查后再进入统一验证和模型比较；系统会保留未知标签，并记录缺失与时间留出条件。')
         if upload:st.caption('当前文件：'+upload.name)
-    with task_col, st.container(border=True,key='obs_task_card'):
+    with task_col, st.container(border=False,key='obs_task_card'):
         st.markdown('### 预测任务')
         task_top, horizon_top = st.columns([1.55, 0.75], gap='small')
         with task_top:
@@ -60,6 +68,14 @@ def render():
             st.write('每站最新有标签观测')
             st.caption('结果保存')
             st.write('指标表 · 预测表 · 运行清单')
+        st.markdown('#### 结果记录')
+        out_a, out_b = st.columns(2, gap='small')
+        with out_a:
+            st.caption('核心文件')
+            st.write('模型指标 · 逐样本预测 · 运行清单')
+        with out_b:
+            st.caption('复核信息')
+            st.write('样本/事件支持 · 缺失比例 · 训练范围外特征')
         st.caption(f'当前设置：{task} · {horizon}天。运行后会生成独立结果记录，不覆盖项目固定证据。')
     st.caption('未知标签不作为阴性。未来预测以每站最新有标签观测为起点，并不自动等于今天；历史不足或无法留出时会说明原因。')
     data=upload.getvalue() if upload else None;m=None

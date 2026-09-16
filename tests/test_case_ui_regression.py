@@ -142,3 +142,21 @@ def test_final_pair_balance_and_matched_upload_actions():
     assert 'grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;' in css
     assert '.st-key-obs_upload_card,.st-key-obs_task_card{min-height:650px!important;}' in css
     assert '.st-key-llm_source_card,.st-key-llm_mode_card{min-height:650px!important;}' in css
+
+
+def test_parent_owned_equal_height_cards_and_content_fill():
+    workbench = (ROOT / "src" / "globalhab_demo" / "real_training" / "user_workbench.py").read_text(encoding="utf-8")
+    llm = LLM.read_text(encoding="utf-8")
+    css = (ROOT / "assets" / "interface.css").read_text(encoding="utf-8")
+    assert "st.container(border=False,key='obs_upload_card')" in workbench
+    assert "st.container(border=False,key='obs_task_card')" in workbench
+    assert 'st.container(border=False, key="llm_source_card")' in llm
+    assert 'st.container(border=False, key="llm_mode_card")' in llm
+    assert "#### 推荐数据组织" in workbench
+    assert "#### 结果记录" in workbench
+    assert "#### 可解释内容" in llm
+    assert "下载当前结构化摘要" in llm
+    assert "#### 适用场景" in llm
+    assert '[data-testid="stColumn"]:has(.st-key-obs_upload_card)' in css
+    assert '[data-testid="stColumn"]:has(.st-key-llm_source_card)' in css
+    assert 'min-height:980px!important;' in css

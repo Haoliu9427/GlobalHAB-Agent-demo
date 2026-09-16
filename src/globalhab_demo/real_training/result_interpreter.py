@@ -410,6 +410,19 @@ def render(root: Path) -> None:
         info_b.write(f"{len(summary):,} 字符" if summary else "等待可用结果")
         preview = summary[:1400].strip() if summary else "当前来源尚未生成可用摘要。请选择已有结果、完整Case，或上传结果文件。"
         st.text_area("摘要预览（只读）", value=preview, height=150, disabled=True)
+        st.markdown("#### 发送前检查")
+        ready_a, ready_b = st.columns(2, gap="small")
+        with ready_a:
+            st.caption("结构化摘要")
+            st.write("已就绪" if summary else "等待可用结果")
+            st.caption("原始文件")
+            st.write("默认不发送")
+        with ready_b:
+            st.caption("证据来源")
+            st.write(scope_labels.get(source, "结构化结果"))
+            st.caption("远程发送上限")
+            st.write("最多 45,000 字符")
+        st.caption("实际调用远程模型前仍需在下方明确授权；未授权时只在本地查看与组织摘要。")
 
     with mode_col, st.container(border=True, key="llm_mode_card"):
         st.markdown("### 解读方式")

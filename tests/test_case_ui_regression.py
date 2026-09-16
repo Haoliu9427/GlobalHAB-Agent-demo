@@ -127,3 +127,18 @@ def test_content_density_and_user_facing_llm_prompt_examples():
     assert "#### 本次远程调用范围" in workbench
     assert "#### 运行前检查" in workbench
     assert "#### 分析记录" in workbench
+
+
+def test_final_pair_balance_and_matched_upload_actions():
+    workbench = (ROOT / "src" / "globalhab_demo" / "real_training" / "user_workbench.py").read_text(encoding="utf-8")
+    llm = LLM.read_text(encoding="utf-8")
+    css = (ROOT / "assets" / "interface.css").read_text(encoding="utf-8")
+    assert "prep_a, prep_b = st.columns([1, 1], gap='small')" in workbench
+    assert "real_training_upload_status" in workbench
+    assert "#### 上传后自动检查" in workbench
+    assert "#### 分析前检查" in workbench
+    assert "#### 发送前检查" in llm
+    assert "最多 45,000 字符" in llm
+    assert 'grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;' in css
+    assert '.st-key-obs_upload_card,.st-key-obs_task_card{min-height:650px!important;}' in css
+    assert '.st-key-llm_source_card,.st-key-llm_mode_card{min-height:650px!important;}' in css

@@ -11,14 +11,12 @@ def render():
         st.markdown('### 观测数据')
         st.caption('上传现场记录，建立本次分析的数据集。')
         upload=st.file_uploader('现场观测CSV',type=['csv'],key='real_training_upload')
-        prep_a, prep_b = st.columns([0.9, 1.1], gap='small')
+        prep_a, prep_b = st.columns([1, 1], gap='small')
         with prep_a:
             st.download_button('下载字段模板',data='station_id,date,available_at,latitude,longitude,observed_event,value,source,temperature,salinity,dissolved_oxygen\n',file_name='field_observations_template.csv',use_container_width=True)
         with prep_b:
-            if upload:
-                st.success('文件已选择 · '+str(round(upload.size/1024,1))+' KB')
-            else:
-                st.info('等待上传CSV')
+            status_text = ('已选择 · '+str(round(upload.size/1024,1))+' KB') if upload else '等待上传CSV'
+            st.button(status_text, disabled=True, use_container_width=True, key='real_training_upload_status')
         st.markdown('#### 数据结构')
         field_a, field_b = st.columns(2, gap='small')
         with field_a:
@@ -27,7 +25,15 @@ def render():
         with field_b:
             st.caption('标签与观测')
             st.write('事件标签 · value · 数据来源')
-        st.caption('温度、盐度、溶解氧等环境变量可作为可选协变量。上传后会先检查时间可用性、标签质量和历史留出条件。')
+        st.markdown('#### 上传后自动检查')
+        check_a, check_b = st.columns(2, gap='small')
+        with check_a:
+            st.caption('时间与留出')
+            st.write('可用时间 · 历史跨度 · 留出窗口')
+        with check_b:
+            st.caption('标签与字段')
+            st.write('未知标签 · 缺失值 · 必需字段')
+        st.caption('温度、盐度、溶解氧等环境变量可作为可选协变量；通过检查后再进入统一验证和模型比较。')
         if upload:st.caption('当前文件：'+upload.name)
     with task_col, st.container(border=True,key='obs_task_card'):
         st.markdown('### 预测任务')
@@ -42,7 +48,19 @@ def render():
             st.markdown('- 同一历史留出集上的模型比较\n- AP、Brier、ECE与样本/事件支持\n- 训练范围与数据质量说明')
         else:
             st.markdown('- 历史验证指标与模型比较\n- 各站最新时点的未来风险概率\n- 超出训练范围特征与缺失比例提示')
-        st.caption(f'当前设置：{task} · {horizon}天。')
+        st.markdown('#### 分析前检查')
+        pre_a, pre_b = st.columns(2, gap='small')
+        with pre_a:
+            st.caption('验证方式')
+            st.write('按时间留出 · 同一测试集比较')
+            st.caption('未知标签')
+            st.write('保留为未知，不自动记作阴性')
+        with pre_b:
+            st.caption('未来预测起点')
+            st.write('每站最新有标签观测')
+            st.caption('结果保存')
+            st.write('指标表 · 预测表 · 运行清单')
+        st.caption(f'当前设置：{task} · {horizon}天。运行后会生成独立结果记录，不覆盖项目固定证据。')
     st.caption('未知标签不作为阴性。未来预测以每站最新有标签观测为起点，并不自动等于今天；历史不足或无法留出时会说明原因。')
     data=upload.getvalue() if upload else None;m=None
     if data:

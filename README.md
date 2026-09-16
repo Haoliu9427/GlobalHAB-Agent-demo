@@ -453,3 +453,6 @@ DeepSeek 结果解读现使用后端有效默认值，而不是只依赖浏览�
 - 大模型结果解读的结果来源卡新增“当前输入概览”和只读摘要预览，使左右等高卡片保持信息密度一致。
 - “特别想让大模型回答什么”使用面向普通用户的证据一致性与后续复核示例，不展示项目内部修改过程。
 - 自有数据分析的观测数据、预测任务、远程服务、模型运行卡片重新组织内容，在保持等宽等高的同时补充字段结构、输出内容、连接状态、发送范围和运行前检查。
+
+### 2026-09-16 card balance refinement
+The Own Data observation/task pair and the LLM source/mode pair now use a stricter equal-height desktop grid. The observation card adds upload checks, the prediction-task card adds pre-run checks, and the LLM source card adds send-readiness information so the cards remain visually balanced without decorative blank space. The template-download and upload-status controls are now matched in width and height.

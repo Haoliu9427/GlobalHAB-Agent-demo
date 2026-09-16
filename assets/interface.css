@@ -333,3 +333,52 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
   .st-key-obs_service_card,.st-key-obs_models_card{min-height:690px!important;}
   .st-key-llm_source_card,.st-key-llm_mode_card{min-height:520px!important;}
 }
+
+/* 2026-09-16 final paired-card balance refinement.
+   Use a two-column CSS grid for the two most content-dense pairs so both visible card bottoms
+   follow the tallest card in the row. This is more reliable than relying on nested flex wrappers. */
+@media(min-width:901px){
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_upload_card),
+  [data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card){
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    column-gap:1.5rem!important;
+    align-items:stretch!important;
+  }
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_upload_card) > [data-testid="stColumn"],
+  [data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card) > [data-testid="stColumn"]{
+    width:auto!important;
+    min-width:0!important;
+    flex:unset!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-self:stretch!important;
+  }
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_upload_card) > [data-testid="stColumn"] > div,
+  [data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card) > [data-testid="stColumn"] > div{
+    width:100%!important;
+    height:100%!important;
+    flex:1 1 auto!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  .st-key-obs_upload_card,.st-key-obs_task_card,
+  .st-key-llm_source_card,.st-key-llm_mode_card{
+    height:100%!important;
+    min-height:0!important;
+    flex:1 1 auto!important;
+  }
+  .st-key-obs_upload_card > [data-testid="stVerticalBlockBorderWrapper"],
+  .st-key-obs_task_card > [data-testid="stVerticalBlockBorderWrapper"],
+  .st-key-llm_source_card > [data-testid="stVerticalBlockBorderWrapper"],
+  .st-key-llm_mode_card > [data-testid="stVerticalBlockBorderWrapper"]{
+    height:100%!important;
+    min-height:100%!important;
+  }
+  /* Give the pair a calm minimum floor; final height still follows the taller member. */
+  .st-key-obs_upload_card,.st-key-obs_task_card{min-height:650px!important;}
+  .st-key-llm_source_card,.st-key-llm_mode_card{min-height:650px!important;}
+}
+
+/* Download template and upload-status controls form one matched action row. */
+.st-key-real_training_upload_status button{min-height:3rem!important;width:100%!important;}

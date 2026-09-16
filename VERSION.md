@@ -147,3 +147,10 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - Own-data observation cards now show upload readiness, field groups and preprocessing expectations; task cards show the outputs implied by the selected validation/forecast mode.
 - Remote-service cards now expose connection readiness and the exact remote data scope; model/run cards show validation strategy, selected model count, horizon/training budget and saved analysis records.
 - No model, Case, visual-routing, continuous-learning or remote-LLM logic was removed.
+
+## 2026-09-16 paired-card content balance refinement
+- Reworked the Own Data first-row cards so `观测数据` and `预测任务` share a stricter two-column grid and matched visible bottoms on desktop.
+- Replaced the unequal `下载字段模板 / 等待上传CSV` controls with two equal-width, equal-height action buttons.
+- Added upload-side automatic checks (time/holdout and label/field checks) and task-side pre-run checks (validation split, unknown-label handling, forecast origin and saved outputs) so alignment no longer creates empty white space.
+- Added LLM source-card send-readiness details: structured-summary readiness, raw-file default, evidence scope and remote character limit.
+- Switched the Own Data and LLM top paired rows to a CSS-grid based equal-height strategy, which follows the taller card rather than relying on Streamlit's nested flex wrappers.

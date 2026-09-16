@@ -397,6 +397,7 @@ def render(root: Path) -> None:
             "特别想让大模型回答什么？（可选）",
             placeholder="例如：为什么AP不高但仍有价值？哪些结论适合在答辩中强调？",
             max_chars=800,
+            height=110,
             key="llm_interpret_question",
         )
         st.caption("解读模板会主动要求区分证据层级、报告限制，并避免因果、死亡率或自动运营等越界表述。")

@@ -289,3 +289,47 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
  [data-testid="stHorizontalBlock"]:has(.st-key-vision_preview_card) > [data-testid="stColumn"],
  [data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card) > [data-testid="stColumn"]{display:block!important;}
 }
+
+/* 2026-09-16 strict paired-card height alignment.
+   Streamlit inserts several wrappers between st.columns and keyed containers; stretch the keyed
+   container and its border wrapper explicitly so content length no longer determines row height. */
+@media(min-width:901px){
+  [data-testid="stColumn"]:has(.st-key-obs_upload_card),
+  [data-testid="stColumn"]:has(.st-key-obs_task_card),
+  [data-testid="stColumn"]:has(.st-key-obs_service_card),
+  [data-testid="stColumn"]:has(.st-key-obs_models_card),
+  [data-testid="stColumn"]:has(.st-key-llm_source_card),
+  [data-testid="stColumn"]:has(.st-key-llm_mode_card){
+    align-self:stretch!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  [data-testid="stColumn"]:has(.st-key-obs_upload_card) > div,
+  [data-testid="stColumn"]:has(.st-key-obs_task_card) > div,
+  [data-testid="stColumn"]:has(.st-key-obs_service_card) > div,
+  [data-testid="stColumn"]:has(.st-key-obs_models_card) > div,
+  [data-testid="stColumn"]:has(.st-key-llm_source_card) > div,
+  [data-testid="stColumn"]:has(.st-key-llm_mode_card) > div{
+    flex:1 1 auto!important;
+    width:100%!important;
+  }
+  .st-key-obs_upload_card,.st-key-obs_task_card,
+  .st-key-obs_service_card,.st-key-obs_models_card,
+  .st-key-llm_source_card,.st-key-llm_mode_card{
+    box-sizing:border-box!important;
+    align-self:stretch!important;
+  }
+  .st-key-obs_upload_card > [data-testid="stVerticalBlockBorderWrapper"],
+  .st-key-obs_task_card > [data-testid="stVerticalBlockBorderWrapper"],
+  .st-key-obs_service_card > [data-testid="stVerticalBlockBorderWrapper"],
+  .st-key-obs_models_card > [data-testid="stVerticalBlockBorderWrapper"],
+  .st-key-llm_source_card > [data-testid="stVerticalBlockBorderWrapper"],
+  .st-key-llm_mode_card > [data-testid="stVerticalBlockBorderWrapper"]{
+    height:100%!important;
+  }
+  /* Desktop floors are deliberately set above the longest normal content in each pair.
+     This guarantees equal visible card bottoms even when Streamlit wrapper flex inheritance changes. */
+  .st-key-obs_upload_card,.st-key-obs_task_card{min-height:520px!important;}
+  .st-key-obs_service_card,.st-key-obs_models_card{min-height:690px!important;}
+  .st-key-llm_source_card,.st-key-llm_mode_card{min-height:520px!important;}
+}

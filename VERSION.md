@@ -132,3 +132,10 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - Standardised the LLM workspace Hero subtitle to the same tagline typography used by the other top-level workspaces.
 - Rebalanced Own Data, Field Vision and LLM paired cards to equal column widths and stretch-to-row card heights on desktop, with responsive auto-height fallback on smaller screens.
 - Unified card padding, heading scale, border radius and visual rhythm across these three workspaces.
+
+## 2026-09-16 paired-card strict height alignment
+- Fixed remaining desktop height mismatch in the Own Data and LLM workspaces by targeting Streamlit's keyed container wrappers directly rather than relying only on the outer column flex row.
+- Compactified the remote-service card: API URL/model ID share a row, service actions share one row, returned model IDs and privacy details are collapsed into expanders.
+- Increased the prediction-task description area slightly so the first Own Data pair uses the same visual rhythm.
+- The LLM question box now uses a fixed compact height; paired result-source and interpretation-mode cards share the same desktop height floor.
+- Mobile/tablet layouts below 900 px keep natural heights.

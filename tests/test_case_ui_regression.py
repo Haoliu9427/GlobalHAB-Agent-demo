@@ -95,3 +95,19 @@ def test_workspace_copy_and_balanced_card_layout_regression():
     assert ':has(.st-key-vision_input_card)' in css
     assert ':has(.st-key-obs_upload_card)' in css
     assert ':has(.st-key-llm_source_card)' in css
+
+
+def test_strict_equal_height_cards_and_compact_remote_service():
+    workbench = (ROOT / "src" / "globalhab_demo" / "real_training" / "user_workbench.py").read_text(encoding="utf-8")
+    llm = LLM.read_text(encoding="utf-8")
+    css = (ROOT / "assets" / "interface.css").read_text(encoding="utf-8")
+    assert "endpoint_col, model_col = st.columns([1.25, 1], gap='small')" in workbench
+    assert "action_a, action_b, action_c = st.columns(3, gap='small')" in workbench
+    assert "远程调用与隐私说明" in workbench
+    assert "height=132" in workbench
+    assert "height=110" in llm
+    assert '.st-key-obs_upload_card,.st-key-obs_task_card{min-height:520px!important;}' in css
+    assert '.st-key-obs_service_card,.st-key-obs_models_card{min-height:690px!important;}' in css
+    assert '.st-key-llm_source_card,.st-key-llm_mode_card{min-height:520px!important;}' in css
+    assert '[data-testid="stColumn"]:has(.st-key-llm_source_card)' in css
+    assert '[data-testid="stVerticalBlockBorderWrapper"]' in css

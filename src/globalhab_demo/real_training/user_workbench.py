@@ -18,7 +18,7 @@ def render():
         st.markdown('### 预测任务')
         task=st.radio('分析任务',['历史预测验证','历史验证 + 最新时点未来预测'],key='user_task')
         horizon=st.selectbox('预测时效（天）',[7,14,30],key='user_horizon')
-        description=st.text_area('物种、事件阈值及value的含义/单位',max_chars=500,key='user_description')
+        description=st.text_area('物种、事件阈值及value的含义/单位',max_chars=500,height=132,key='user_description')
     st.caption('未知标签不作为阴性。未来预测以每站最新有标签观测为起点，并不自动等于今天；历史不足或无法留出时会说明原因。')
     data=upload.getvalue() if upload else None;m=None
     if data:
@@ -46,30 +46,39 @@ def render():
         mode=st.radio('服务配置来源',['自行填写','使用服务器配置'],key='remote_mode',horizontal=True)
         if mode=='自行填写':
             provider=st.selectbox('模型服务',['自定义兼容服务','DeepSeek','Qwen'],key='remote_provider',on_change=change_provider)
-            endpoint=st.text_input('API地址',placeholder='https://服务域名/compatible-mode/v1',key='user_api_url')
-            model_id=st.text_input('模型名称',placeholder='填写服务商提供的模型ID',key='user_api_model')
+            endpoint_col, model_col = st.columns([1.25, 1], gap='small')
+            with endpoint_col:
+                endpoint=st.text_input('API地址',placeholder='https://服务域名/compatible-mode/v1',key='user_api_url')
+            with model_col:
+                model_id=st.text_input('模型名称',placeholder='填写服务商提供的模型ID',key='user_api_model')
             key=st.text_input('API Key',type='password',key='user_api_key')
-            st.button('清除本次密钥和结果',on_click=clear_key)
-            if provider=='DeepSeek':
-                st.caption('已提供DeepSeek官方API基础地址。模型ID请以账户当前可用列表为准；下方可读取模型列表。')
             remote={'base_url':endpoint.strip().rstrip('/'),'model':model_id.strip(),'api_key':key.strip()}
-            st.caption('凭证仅供当前会话使用，不保存到工程、结果包或服务器配置。请勿在公共设备上保留会话。API地址填写兼容接口基础地址，不含/chat/completions。')
         else:
             remote=settings()
-        if st.button('读取服务可用模型',disabled=not remote.get('base_url') or not remote.get('api_key')):
-            try:
-                from .remote_qwen import list_models
-                st.session_state['remote_model_list']=list_models(remote)
-            except ValueError as exc:st.error(str(exc))
+        action_a, action_b, action_c = st.columns(3, gap='small')
+        with action_a:
+            st.button('清除凭证',on_click=clear_key,use_container_width=True)
+        with action_b:
+            if st.button('读取模型',disabled=not remote.get('base_url') or not remote.get('api_key'),use_container_width=True):
+                try:
+                    from .remote_qwen import list_models
+                    st.session_state['remote_model_list']=list_models(remote)
+                except ValueError as exc:st.error(str(exc))
+        with action_c:
+            if st.button('测试连接',disabled=not ready(remote),use_container_width=True):
+                try:
+                    chat(remote,[{'role':'user','content':'Reply OK.'}]);st.success('服务可访问；正式运行仍会检查输出格式。')
+                except ValueError as exc:st.error(str(exc))
         if st.session_state.get('remote_model_list'):
-            st.write('服务返回的模型ID（复制到模型名称）：',st.session_state['remote_model_list'])
+            with st.expander('服务返回的模型ID',expanded=False):
+                st.write(st.session_state['remote_model_list'])
         st.write('远程API：'+('配置已填写 · '+remote['model']+'（尚未验证连接）' if ready(remote) else '请填写API地址、模型名称和API Key，或使用已配置的服务器服务。'))
-        st.caption('远程预测会发送特征名、历史数值和事件说明，不发送站点ID、未来标签或完整原始文件。解读仅发送本次结果摘要。可能产生API费用。')
         consent=st.checkbox('允许本次使用远程服务发送上述数据',key='remote_consent')
-        if st.button('测试模型连接',disabled=not ready(remote)):
-            try:
-                chat(remote,[{'role':'user','content':'Reply OK.'}]);st.success('服务可访问；预测输出格式仍将在正式运行时检查。')
-            except ValueError as exc:st.error(str(exc))
+        with st.expander('远程调用与隐私说明',expanded=False):
+            if mode=='自行填写' and provider=='DeepSeek':
+                st.caption('DeepSeek使用官方API基础地址；模型ID请以账户当前可用列表为准。')
+            st.caption('凭证仅供当前会话使用，不保存到工程、结果包或服务器配置。API地址填写兼容接口基础地址，不含/chat/completions。')
+            st.caption('远程预测只发送特征名、历史数值和事件说明，不发送站点ID、未来标签或完整原始文件；结果解读只发送本次结构化摘要。调用可能产生API费用。')
     with models_col, st.container(border=True,key='obs_models_card'):
         st.markdown('### 模型与运行')
         st.caption('选择参与本次分析的模型，使用同一组验证样本比较。')

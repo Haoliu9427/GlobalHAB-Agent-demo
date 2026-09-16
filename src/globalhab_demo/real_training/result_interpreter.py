@@ -435,17 +435,16 @@ def render(root: Path) -> None:
             "最近一次自有数据分析": ["模型比较", "历史验证", "可选未来预测与数据质量"],
             "上传结果文件": ["文件中的核心结果", "关键数字与证据边界", "需要进一步复核的部分"],
         }
-        st.markdown("#### 当前输入概览")
+        st.markdown("#### 当前输入")
         info_a, info_b = st.columns(2, gap="small")
         info_a.caption("证据范围")
         info_a.write(scope_labels.get(source, "结构化结果"))
         info_b.caption("摘要规模")
         info_b.write(f"{len(summary):,} 字符" if summary else "等待可用结果")
-        preview = summary[:1400].strip() if summary else "当前来源尚未生成可用摘要。请选择已有结果、完整Case，或上传结果文件。"
-        st.text_area("摘要预览（只读）", value=preview, height=150, disabled=True)
-        st.markdown("#### 可解释内容")
-        for item in explainable_items.get(source, ["核心结果", "关键数字", "证据边界"]):
-            st.markdown(f"- {item}")
+        preview = summary[:1000].strip() if summary else "当前来源尚未生成可用摘要。请选择已有结果、完整Case，或上传结果文件。"
+        st.text_area("摘要预览（只读）", value=preview, height=105, disabled=True)
+        st.caption("可解读重点")
+        st.write(" · ".join(explainable_items.get(source, ["核心结果", "关键数字", "证据边界"])))
         if summary:
             st.download_button(
                 "下载当前结构化摘要",
@@ -455,27 +454,13 @@ def render(root: Path) -> None:
                 use_container_width=True,
                 key="llm_summary_download",
             )
-        st.markdown("#### 发送前检查")
-        ready_a, ready_b = st.columns(2, gap="small")
-        with ready_a:
-            st.caption("结构化摘要")
-            st.write("已就绪" if summary else "等待可用结果")
-            st.caption("原始文件")
-            st.write("默认不发送")
-        with ready_b:
-            st.caption("证据来源")
-            st.write(scope_labels.get(source, "结构化结果"))
-            st.caption("远程发送上限")
-            st.write("最多 45,000 字符")
-        st.markdown("#### 适用场景")
-        scene_a, scene_b = st.columns(2, gap="small")
-        with scene_a:
-            st.caption("科研与复核")
-            st.write("结果总结 · 证据一致性 · 不确定性")
-        with scene_b:
-            st.caption("沟通与输出")
-            st.write("答辩讲解 · 论文结果段 · 管理摘要")
-        st.caption("实际调用远程模型前仍需在下方明确授权；未授权时只在本地查看与组织摘要。")
+        st.markdown("#### 发送设置")
+        send_a, send_b = st.columns(2, gap="small")
+        send_a.caption("原始文件")
+        send_a.write("默认不发送")
+        send_b.caption("远程上限")
+        send_b.write("45,000 字符")
+        st.caption("调用远程模型前仍需在下方明确授权。")
 
     with mode_col, st.container(border=False, key="llm_mode_card"):
         st.markdown("### 解读方式")
@@ -492,41 +477,35 @@ def render(root: Path) -> None:
             )
         with set_b:
             include_number_checklist = st.checkbox(
-                "关键数字核对清单",
+                "关键数字核对",
                 value=True,
                 key="llm_number_checklist",
-                help="在解读结尾列出引用到的关键数字及其含义，便于复核。",
+                help="在解读结尾列出关键数字及其含义，便于复核。",
             )
         focus_items = st.multiselect(
             "重点关注",
             ["核心信号", "证据一致性", "不确定性", "下一步复核"],
             default=["核心信号", "证据一致性", "不确定性", "下一步复核"],
             key="llm_focus_items",
-            help="这些选项会直接写入远程大模型的解读要求。",
+            help="这些选项会写入大模型的解读要求。",
         )
-
         question = st.text_area(
             "特别想让大模型回答什么？（可选）",
             placeholder="例如：请比较不同证据来源是否一致，并指出最值得进一步复核的部分。",
             max_chars=800,
-            height=110,
+            height=100,
             key="llm_interpret_question",
         )
-        st.caption("解读模板会主动区分证据层级与报告限制，并避免把相关性、视觉筛查或情景结果写成超出证据范围的结论。")
-
-        st.markdown("#### 输出内容")
-        st.markdown(
-            "- **核心结论**：提炼当前结果最重要的信号与数字。\n"
-            "- **证据与不确定性**：比较不同来源是否一致，并明确证据边界。\n"
-            "- **下一步建议**：指出最值得补采、复核或继续验证的事项。\n"
-            "- **数字核对**：启用时，单列关键数字、指标含义与对应证据。"
-        )
-        st.markdown("#### 当前解读配置")
-        cfg_a, cfg_b = st.columns(2, gap="small")
-        cfg_a.caption("用途 / 篇幅")
-        cfg_a.write(f"{mode} · {output_length}")
-        cfg_b.caption("重点维度")
-        cfg_b.write(" · ".join(focus_items) if focus_items else "按默认结构")
+        st.caption("解读会区分证据层级、不确定性与报告边界。")
+        st.markdown("#### 输出结构")
+        out_a, out_b = st.columns(2, gap="small")
+        with out_a:
+            st.caption("结论与数字")
+            st.write("核心信号 · 关键指标")
+        with out_b:
+            st.caption("证据与建议")
+            st.write("一致性 · 不确定性 · 下一步")
+        st.caption(f"当前：{mode} · {output_length} · 重点 {len(focus_items)} 项。")
 
     with st.expander("查看将发送给大模型的结果摘要", expanded=True):
         if summary:

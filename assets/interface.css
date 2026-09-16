@@ -494,3 +494,33 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
     min-height:0!important;
   }
 }
+
+/* 2026-09-16 compact balanced cards.
+   Keep the paired rows strictly aligned, but let content determine row height instead of using large fixed floors. */
+@media(min-width:901px){
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_upload_card),
+  [data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card){
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    align-items:stretch!important;
+  }
+  [data-testid="stColumn"]:has(.st-key-obs_upload_card),
+  [data-testid="stColumn"]:has(.st-key-obs_task_card),
+  [data-testid="stColumn"]:has(.st-key-llm_source_card),
+  [data-testid="stColumn"]:has(.st-key-llm_mode_card){
+    min-height:0!important;
+    height:auto!important;
+    align-self:stretch!important;
+  }
+}
+.st-key-obs_upload_card h4,.st-key-obs_task_card h4,
+.st-key-llm_source_card h4,.st-key-llm_mode_card h4{
+  margin-top:.95rem!important;
+  margin-bottom:.38rem!important;
+}
+.st-key-obs_upload_card [data-testid="stCaptionContainer"],
+.st-key-obs_task_card [data-testid="stCaptionContainer"],
+.st-key-llm_source_card [data-testid="stCaptionContainer"],
+.st-key-llm_mode_card [data-testid="stCaptionContainer"]{
+  line-height:1.42!important;
+}

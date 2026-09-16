@@ -165,3 +165,9 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - Kept the inner keyed containers for widgets and state only; they are now visually transparent.
 - Enriched the Own Data observation card with recommended row organisation and the task card with explicit result-record contents.
 - Enriched the LLM source card with source-specific explainable topics, downloadable structured summary and intended usage scenarios, so the equal-height layout is filled with real user-facing functions rather than blank space.
+
+
+## 2026-09-16 · 卡片信息精简与留白优化
+- 保留自有数据分析与大模型解读成对卡片的严格对齐，同时取消过大的固定高度下限，由同一行较高卡片自然决定高度。
+- 精简重复说明：自有数据卡仅保留必要字段、自动检查、输出和验证规则；大模型解读卡仅保留输入摘要、发送设置、解读控制与输出结构。
+- 留白优先分布在卡片内部内容区块之间，减少顶部和底部的无效空白。

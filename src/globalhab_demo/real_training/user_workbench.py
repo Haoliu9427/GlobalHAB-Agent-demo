@@ -17,7 +17,7 @@ def render():
         with prep_b:
             status_text = ('已选择 · '+str(round(upload.size/1024,1))+' KB') if upload else '等待上传CSV'
             st.button(status_text, disabled=True, use_container_width=True, key='real_training_upload_status')
-        st.markdown('#### 数据结构')
+        st.markdown('#### 必要信息')
         field_a, field_b = st.columns(2, gap='small')
         with field_a:
             st.caption('定位与时间')
@@ -25,23 +25,15 @@ def render():
         with field_b:
             st.caption('标签与观测')
             st.write('事件标签 · value · 数据来源')
-        st.markdown('#### 上传后自动检查')
+        st.markdown('#### 自动检查')
         check_a, check_b = st.columns(2, gap='small')
         with check_a:
-            st.caption('时间与留出')
-            st.write('可用时间 · 历史跨度 · 留出窗口')
+            st.caption('时间')
+            st.write('历史跨度 · 留出窗口')
         with check_b:
-            st.caption('标签与字段')
+            st.caption('质量')
             st.write('未知标签 · 缺失值 · 必需字段')
-        st.markdown('#### 推荐数据组织')
-        org_a, org_b = st.columns(2, gap='small')
-        with org_a:
-            st.caption('一行一条观测')
-            st.write('同一站点可跨日期重复记录；日期与可用时间分开保存。')
-        with org_b:
-            st.caption('标签与协变量')
-            st.write('事件标签可留空；温度、盐度、溶解氧等按实际可得性补充。')
-        st.caption('通过检查后再进入统一验证和模型比较；系统会保留未知标签，并记录缺失与时间留出条件。')
+        st.caption('可选补充温度、盐度、溶解氧等环境变量。')
         if upload:st.caption('当前文件：'+upload.name)
     with task_col, st.container(border=False,key='obs_task_card'):
         st.markdown('### 预测任务')
@@ -52,32 +44,23 @@ def render():
             horizon=st.selectbox('预测时效（天）',[7,14,30],key='user_horizon')
         description=st.text_area('物种、事件阈值及value的含义/单位',max_chars=500,height=108,key='user_description')
         st.markdown('#### 本次输出')
-        if task=='历史预测验证':
-            st.markdown('- 同一历史留出集上的模型比较\n- AP、Brier、ECE与样本/事件支持\n- 训练范围与数据质量说明')
-        else:
-            st.markdown('- 历史验证指标与模型比较\n- 各站最新时点的未来风险概率\n- 超出训练范围特征与缺失比例提示')
-        st.markdown('#### 分析前检查')
-        pre_a, pre_b = st.columns(2, gap='small')
-        with pre_a:
-            st.caption('验证方式')
-            st.write('按时间留出 · 同一测试集比较')
-            st.caption('未知标签')
-            st.write('保留为未知，不自动记作阴性')
-        with pre_b:
-            st.caption('未来预测起点')
-            st.write('每站最新有标签观测')
-            st.caption('结果保存')
-            st.write('指标表 · 预测表 · 运行清单')
-        st.markdown('#### 结果记录')
         out_a, out_b = st.columns(2, gap='small')
         with out_a:
-            st.caption('核心文件')
-            st.write('模型指标 · 逐样本预测 · 运行清单')
+            st.caption('模型与指标')
+            st.write('同一留出集比较 · AP / Brier / ECE')
         with out_b:
-            st.caption('复核信息')
-            st.write('样本/事件支持 · 缺失比例 · 训练范围外特征')
-        st.caption(f'当前设置：{task} · {horizon}天。运行后会生成独立结果记录，不覆盖项目固定证据。')
-    st.caption('未知标签不作为阴性。未来预测以每站最新有标签观测为起点，并不自动等于今天；历史不足或无法留出时会说明原因。')
+            st.caption('结果支持')
+            st.write('样本/事件数 · 数据质量' if task=='历史预测验证' else '未来风险 · 超范围/缺失提示')
+        st.markdown('#### 验证规则')
+        rule_a, rule_b = st.columns(2, gap='small')
+        with rule_a:
+            st.caption('时间留出')
+            st.write('历史在前 · 测试在后')
+        with rule_b:
+            st.caption('标签处理')
+            st.write('未知保留 · 不自动记阴性')
+        st.caption(f'当前设置：{task} · {horizon}天 · 结果独立保存。')
+    st.caption('未知标签保留为未知；历史不足或无法留出时会明确说明。')
     data=upload.getvalue() if upload else None;m=None
     if data:
         try:
@@ -140,8 +123,8 @@ def render():
             if not remote.get('api_key'):missing_parts.append('API Key')
             st.info('远程服务尚未启用'+('：缺少'+'、'.join(missing_parts) if missing_parts else '。'))
         consent=st.checkbox('允许本次使用远程服务发送上述数据',key='remote_consent')
-        st.markdown('#### 本次远程调用范围')
-        st.markdown('- 预测：仅发送特征名、历史数值与事件说明。\n- 解读：仅发送本次结构化结果摘要。\n- 默认不发送站点ID、未来标签或完整原始CSV。')
+        st.markdown('#### 远程发送范围')
+        st.caption('仅发送预测所需特征/历史数值或结构化结果摘要；不发送完整原始CSV。')
         with st.expander('远程调用与隐私说明',expanded=False):
             if mode=='自行填写' and provider=='DeepSeek':
                 st.caption('DeepSeek使用官方API基础地址；模型ID请以账户当前可用列表为准。')
@@ -184,7 +167,7 @@ def render():
             st.caption('预测时效 / 训练预算')
             st.write(f'{horizon} 天 · 上限 {epochs} 轮')
         st.markdown('#### 分析记录')
-        st.markdown('- 保存模型指标、验证样本与数据质量信息。\n- 如启用未来预测，同时记录训练范围外特征与缺失比例。\n- 所有输出与项目固定证据分开保存，可单独下载。')
+        st.caption('保存指标、验证样本和数据质量；未来预测另记录超范围特征与缺失比例。')
         signature=hashlib.sha256((data or b'')+json.dumps([task,horizon,description,selected,epochs,remote.get('model'),remote.get('base_url'),hashlib.sha256(remote.get('api_key','').encode()).hexdigest(),mode],ensure_ascii=False).encode()).hexdigest()
         if st.button('开始分析',key='user_run',type='primary',use_container_width=True):
             st.session_state.pop('user_result',None)

@@ -7,5 +7,10 @@
   "compiled_new_python_modules": true,
   "saved_model_inference_reproduced": true,
   "github_writes": false,
-  "online_deployment_changed": false
+  "online_deployment_changed": false,
+  "field_visual_unit_tests": 6,
+  "field_visual_unit_tests_passed": 6,
+  "field_visual_non_ui_smoke": true,
+  "field_visual_default_backend": "规则 + 通用颜色/纹理特征演示基线",
+  "field_visual_trained_hab_classifier_claimed": false
 }

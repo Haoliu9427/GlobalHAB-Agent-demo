@@ -109,3 +109,26 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
 .st-key-llm_source_card{border-top:4px solid #286b79!important;min-height:300px;}
 .st-key-llm_mode_card{border-top:4px solid #657f9b!important;min-height:300px;}
 .st-key-llm_service_card{border-top:4px solid #91b4ae!important;}
+
+/* Field visual screening workspace. */
+.st-key-vision_input_card,.st-key-vision_meta_card,.st-key-vision_preview_card,
+.st-key-vision_result_card,.st-key-vision_follow_card,.st-key-vision_boundary_card{
+ background:#fff;border:1px solid #d5e2e5!important;border-radius:16px!important;
+ padding:22px!important;box-shadow:0 5px 18px rgba(24,63,80,.045);margin-bottom:10px;
+}
+.st-key-vision_input_card{border-top:4px solid #286b79!important;min-height:430px;}
+.st-key-vision_meta_card{border-top:4px solid #657f9b!important;min-height:430px;}
+.st-key-vision_preview_card{border-top:4px solid #91b4ae!important;}
+.st-key-vision_result_card{border-top:4px solid #317d8a!important;}
+.st-key-vision_follow_card{border-top:4px solid #6b9c96!important;}
+.st-key-vision_boundary_card{border-top:4px solid #b38a4a!important;}
+.st-key-vision_input_card h3,.st-key-vision_meta_card h3,.st-key-vision_preview_card h3,
+.st-key-vision_result_card h3,.st-key-vision_follow_card h4,.st-key-vision_boundary_card h4{
+ color:#183e50!important;
+}
+.st-key-vision_result_card [data-testid="stMetricValue"]{font-size:1.25rem!important;white-space:normal!important;}
+.st-key-vision_result_card [data-testid="stMetricLabel"]{color:#5a727b!important;}
+@media(max-width:700px){
+ .st-key-vision_input_card,.st-key-vision_meta_card,.st-key-vision_preview_card,
+ .st-key-vision_result_card,.st-key-vision_follow_card,.st-key-vision_boundary_card{padding:16px!important;min-height:0;}
+}

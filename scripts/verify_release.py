@@ -16,6 +16,7 @@ REQUIRED_FILES = (
     "app.py",
     "PACKAGE_MANIFEST_SHA256.txt",
     "LLM_INTERPRETATION_GUIDE.md",
+    "FIELD_VISUAL_SCREENING_GUIDE.md",
     "run_demo.py",
     "requirements.txt",
     "src/globalhab_demo/__init__.py",
@@ -26,6 +27,7 @@ REQUIRED_FILES = (
     "src/globalhab_demo/broad_benchmark.py",
     "src/globalhab_demo/bayesian_design.py",
     "src/globalhab_demo/florida_sts.py",
+    "src/globalhab_demo/field_visual.py",
     "src/globalhab_demo/real_training/result_interpreter.py",
     "data/field_validation/field_observations_template.csv",
     "data/field_validation/field_currents_template.csv",
@@ -37,6 +39,7 @@ REQUIRED_FILES = (
     "scripts/run_agent_policy_benchmark.py",
     "scripts/run_broad_benchmark_audit.py",
     "scripts/run_florida_sts_validation.py",
+    "scripts/check_field_visual.py",
     "scripts/run_field_forward_validation.py",
     "data/real_case/derived/sa_qpcr_observations.csv",
     "data/real_case_norway/derived/norway_hab_observations.csv",
@@ -51,6 +54,7 @@ REQUIRED_MODULES = (
     "globalhab_demo.broad_benchmark",
     "globalhab_demo.bayesian_design",
     "globalhab_demo.florida_sts",
+    "globalhab_demo.field_visual",
     "globalhab_demo.real_training.result_interpreter",
 )
 

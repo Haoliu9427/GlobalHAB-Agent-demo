@@ -212,3 +212,8 @@ See `docs/MINIMAL_REPRODUCTION.md` for the shortest reproducible workflows and `
 ## License
 
 Code is released under the MIT License. Third-party datasets retain their original licenses; see `THIRD_PARTY_DATA.md`.
+
+
+## Field Visual Screening workspace
+
+The Streamlit sidebar now includes a fourth top-level workspace, **Field Visual Screening**. Users can capture a sea-surface photo with the browser camera or upload JPG/PNG, run local image-quality checks, and obtain a bounded visual-anomaly / follow-up-priority result. The default backend is an explicit heuristic colour/texture baseline, not a trained HAB species or toxin classifier. Results can be handed to the LLM interpretation workspace as structured text; raw photos are not sent to the remote LLM by default. See `FIELD_VISUAL_SCREENING_GUIDE.md`.

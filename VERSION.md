@@ -34,3 +34,13 @@ python scripts/run_agent_policy_benchmark.py
 python scripts/run_florida_sts_validation.py --online
 python scripts/run_field_forward_validation.py --observations <csv> --currents <csv>
 ```
+
+
+## Field visual screening workspace
+
+- Added a fourth top-level workspace: `现场影像甄别 / Field Visual Screening`.
+- Supports Streamlit camera capture or JPG/PNG upload, local image-quality checks, transparent colour/texture screening, and field metadata.
+- The default backend is explicitly a heuristic visual baseline, not a trained HAB species/toxin classifier.
+- Outputs a follow-up screening priority (`low / moderate / high / defer`) rather than an HAB probability.
+- Stores the structured result in-session and can hand it to the LLM interpretation workspace; raw photos are not sent to the remote LLM by default.
+- Added `VisualScreeningBackend` as a replaceable interface for a future calibrated project-specific vision model.

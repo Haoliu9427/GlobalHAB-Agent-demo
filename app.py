@@ -517,15 +517,26 @@ def real_qpcr_map(frame: pd.DataFrame) -> go.Figure:
     return style_map(fig, global_view=False)
 
 
-#st.sidebar.caption("GlobalHAB-Agent · Ocean OSM 2026.09.15")
+#st.sidebar.caption("GlobalHAB-Agent · Ocean OSM 2026.09.16")
 st.sidebar.markdown('<div class="ocean-brand">GlobalHAB-Agent</div>', unsafe_allow_html=True)
+pending_workspace = st.session_state.pop("_workspace_jump", None)
+if pending_workspace in {"研究与验证", "自有数据分析", "现场影像甄别", "大模型结果解读"}:
+    st.session_state["workspace_mode"] = pending_workspace
 with st.sidebar.container(key="workspace_nav"):
-    workspace_mode = st.radio("工作区", ["研究与验证", "自有数据分析", "大模型结果解读"], key="workspace_mode")
+    workspace_mode = st.radio(
+        "工作区",
+        ["研究与验证", "自有数据分析", "现场影像甄别", "大模型结果解读"],
+        key="workspace_mode",
+    )
 if workspace_mode == "自有数据分析":
     st.title("自有数据分析")
     st.caption("使用现场观测训练模型、比较预测结果，并下载本次分析。")
     from globalhab_demo.real_training.own_observations import render as render_own_observations
     render_own_observations()
+    st.stop()
+if workspace_mode == "现场影像甄别":
+    from globalhab_demo.field_visual import render as render_field_visual
+    render_field_visual(ROOT)
     st.stop()
 if workspace_mode == "大模型结果解读":
     from globalhab_demo.real_training.result_interpreter import render as render_result_interpreter

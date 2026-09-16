@@ -68,3 +68,8 @@
 现场前向验证接受连续站点观测和流场数据。质量检查通过后，较早时间块用于选择lag，较晚时间块用于一次性评估，并返回真实流向、反向流和无流向指标。最近观测可按局地流速生成下一批采样候选；该位置为一阶近似。
 
 模板仅定义字段结构；验证结果只在用户提供满足质量条件的数据后计算。
+
+
+## Field visual screening
+
+The default field-photo component is a transparent heuristic baseline based on image quality and broad colour/texture cues. It is included to demonstrate the observation-to-follow-up workflow and has not been trained or calibrated as a HAB species/toxin classifier. Its low/moderate/high output is a follow-up priority, not a HAB probability. Species identity, toxicity and regulatory decisions require independent evidence.

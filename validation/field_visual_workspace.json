@@ -1,0 +1,15 @@
+{
+  "status": "pass",
+  "backend": "规则 + 通用颜色/纹理特征演示基线",
+  "assertions": {
+    "green_visual_type": true,
+    "green_not_probability": true,
+    "blue_low_priority": true,
+    "species_boundary_present": true,
+    "llm_text_summary": true
+  },
+  "green_category": "绿色水体异常",
+  "green_priority": "高",
+  "blue_category": "正常/未见明显异常",
+  "blue_priority": "低"
+}

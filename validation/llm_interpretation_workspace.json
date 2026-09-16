@@ -1,8 +1,13 @@
 {
   "status": "pass",
-  "date": "2026-09-15",
+  "date": "2026-09-16",
   "workspace": "大模型结果解读",
-  "top_level_navigation": ["研究与验证", "自有数据分析", "大模型结果解读"],
+  "top_level_navigation": [
+    "研究与验证",
+    "自有数据分析",
+    "现场影像甄别",
+    "大模型结果解读"
+  ],
   "registered_sources": [
     "项目核心发现（合成探索 + 负对照）",
     "模型Benchmark与结构模型审计",
@@ -11,10 +16,16 @@
     "真实观测训练与验证",
     "中国近海跨年检验",
     "生物响应沙盘",
+    "最近一次现场影像甄别",
     "最近一次自有数据分析",
     "上传结果文件"
   ],
-  "interpretation_modes": ["科研结果解读", "答辩讲解", "论文结果段", "管理与应用摘要"],
+  "interpretation_modes": [
+    "科研结果解读",
+    "答辩讲解",
+    "论文结果段",
+    "管理与应用摘要"
+  ],
   "remote_services": "Chat Completions compatible; DeepSeek/Qwen/custom",
   "explicit_consent_required": true,
   "upstream_metrics_mutated": false,
@@ -23,7 +34,9 @@
     "result_interpreter_unit_tests": "4/4 passed",
     "remote_adapter_non_ui_tests": "11/11 passed",
     "release_verification": "pass",
-    "python_compile": "pass"
+    "python_compile": "pass",
+    "field_visual_unit_tests": "6/6 passed",
+    "field_visual_non_ui_smoke": "pass"
   },
-  "note": "The container used for packaging did not have Streamlit installed, so Streamlit AppTest UI checks were not executed here. requirements.txt pins Streamlit 1.62.0 for deployment; existing UI tests remain in the package."
+  "note": "Packaging container has no Streamlit runtime, so AppTest UI checks were not rerun here. requirements.txt pins Streamlit 1.62.0; updated navigation checks remain in the package. Non-UI field-visual, interpreter, release-smoke and remote-adapter tests passed."
 }

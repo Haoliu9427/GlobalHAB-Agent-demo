@@ -496,3 +496,7 @@ The own-data workspace now renders model-list/test-connection feedback as a comp
 
 ### 界面细节
 自有数据分析中的远程模型服务卡采用“配置—状态—授权”三层布局，与右侧模型运行卡保持等宽等高；剩余空间分布在层之间，不在卡片中部形成单块大面积空白。
+
+
+### 2026-09-17 UI refinement
+The own-data remote-service/model pair now uses content-driven equal-height grid cards without fixed minimum height or large blank spacer blocks.

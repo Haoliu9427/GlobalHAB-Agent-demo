@@ -1003,3 +1003,78 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
     margin-top:0!important;
   }
 }
+
+
+/* 2026-09-17 final blank-space cleanup for the own-data service/model pair.
+   Let content determine the row height; the grid still guarantees equal outer
+   geometry. Only the model run action is anchored to the bottom. */
+@media(min-width:901px){
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_service_card){
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    gap:1.5rem!important;
+    align-items:stretch!important;
+  }
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_service_card) > [data-testid="stColumn"],
+  [data-testid="stColumn"]:has(.st-key-obs_service_card),
+  [data-testid="stColumn"]:has(.st-key-obs_models_card){
+    min-height:0!important;
+    height:auto!important;
+    align-self:stretch!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  [data-testid="stHorizontalBlock"]:has(.st-key-obs_service_card) > [data-testid="stColumn"] > div{
+    min-height:0!important;
+    height:100%!important;
+    display:flex!important;
+    flex-direction:column!important;
+    flex:1 1 auto!important;
+  }
+  .st-key-obs_service_card,.st-key-obs_models_card{
+    min-height:0!important;
+    height:100%!important;
+    flex:1 1 auto!important;
+  }
+  .st-key-obs_service_card > [data-testid="stVerticalBlockBorderWrapper"],
+  .st-key-obs_models_card > [data-testid="stVerticalBlockBorderWrapper"]{
+    min-height:0!important;
+    height:100%!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  .st-key-obs_service_card > [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"],
+  .st-key-obs_models_card > [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"]{
+    min-height:0!important;
+    height:100%!important;
+    display:flex!important;
+    flex-direction:column!important;
+    justify-content:flex-start!important;
+    gap:.9rem!important;
+  }
+  .st-key-obs_service_top_zone,
+  .st-key-obs_service_middle_zone,
+  .st-key-obs_service_bottom_zone{
+    flex:0 0 auto!important;
+    margin-top:0!important;
+    margin-bottom:0!important;
+  }
+  .st-key-obs_service_bottom_zone{
+    margin-top:.2rem!important;
+  }
+  .st-key-obs_models_card [data-testid="stElementContainer"]:has(.pair-card-spacer),
+  .pair-card-spacer{
+    display:none!important;
+    min-height:0!important;
+    height:0!important;
+  }
+  .st-key-obs_models_card .st-key-user_run_zone{
+    margin-top:auto!important;
+    padding-top:1rem!important;
+  }
+  .st-key-obs_models_card .st-key-user_run_zone [data-testid="stVerticalBlock"]{
+    min-height:0!important;
+    height:auto!important;
+    gap:.55rem!important;
+  }
+}

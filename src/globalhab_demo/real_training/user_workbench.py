@@ -215,8 +215,6 @@ def render():
         if selected:
             st.caption('实际运行：'+', '.join(expand(['Seasonal Climatology']+selected)))
 
-        # One flexible region only. The bottom action area remains fixed to the card base.
-        st.markdown('<div class="pair-card-spacer"></div>', unsafe_allow_html=True)
 
         signature=hashlib.sha256((data or b'')+json.dumps([task,horizon,description,selected,epochs,remote.get('model'),remote.get('base_url'),hashlib.sha256(remote.get('api_key','').encode()).hexdigest(),mode],ensure_ascii=False).encode()).hexdigest()
         with st.container(border=False,key='user_run_zone'):

@@ -154,3 +154,8 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - Added upload-side automatic checks (time/holdout and label/field checks) and task-side pre-run checks (validation split, unknown-label handling, forecast origin and saved outputs) so alignment no longer creates empty white space.
 - Added LLM source-card send-readiness details: structured-summary readiness, raw-file default, evidence scope and remote character limit.
 - Switched the Own Data and LLM top paired rows to a CSS-grid based equal-height strategy, which follows the taller card rather than relying on Streamlit's nested flex wrappers.
+
+### 2026-09-16 · LLM 解读卡片最终平衡
+- 大模型结果解读左右卡片改为更严格的等高布局。
+- 右侧新增输出长度、重点关注、关键数字核对清单和当前解读配置，避免以空白换对齐。
+- 摘要预览略收紧，使左右内容密度更接近；上述设置会真实进入大模型提示词与结果签名。

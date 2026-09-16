@@ -382,3 +382,39 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
 
 /* Download template and upload-status controls form one matched action row. */
 .st-key-real_training_upload_status button{min-height:3rem!important;width:100%!important;}
+
+/* 2026-09-16 LLM interpretation card final balance.
+   Keep both cards visually equal while using the right card for real output controls rather than blank space. */
+@media(min-width:901px){
+  [data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card){
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    align-items:stretch!important;
+    column-gap:1.5rem!important;
+  }
+  [data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card) > [data-testid="stColumn"]{
+    display:flex!important;
+    flex-direction:column!important;
+    align-self:stretch!important;
+    min-width:0!important;
+    width:auto!important;
+  }
+  [data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card) > [data-testid="stColumn"] > div{
+    display:flex!important;
+    flex-direction:column!important;
+    flex:1 1 auto!important;
+    height:100%!important;
+    width:100%!important;
+  }
+  .st-key-llm_source_card,.st-key-llm_mode_card{
+    min-height:790px!important;
+    height:100%!important;
+    flex:1 1 auto!important;
+    box-sizing:border-box!important;
+  }
+  .st-key-llm_source_card > [data-testid="stVerticalBlockBorderWrapper"],
+  .st-key-llm_mode_card > [data-testid="stVerticalBlockBorderWrapper"]{
+    height:100%!important;
+    min-height:790px!important;
+  }
+}

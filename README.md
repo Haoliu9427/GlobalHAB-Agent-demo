@@ -456,3 +456,5 @@ DeepSeek 结果解读现使用后端有效默认值，而不是只依赖浏览�
 
 ### 2026-09-16 card balance refinement
 The Own Data observation/task pair and the LLM source/mode pair now use a stricter equal-height desktop grid. The observation card adds upload checks, the prediction-task card adds pre-run checks, and the LLM source card adds send-readiness information so the cards remain visually balanced without decorative blank space. The template-download and upload-status controls are now matched in width and height.
+
+- 大模型结果解读的左右卡片采用严格等高布局；右侧新增输出长度、重点关注、关键数字核对清单等实际解读控制，使卡片在对齐的同时保持内容密度。

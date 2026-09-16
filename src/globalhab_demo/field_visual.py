@@ -505,12 +505,16 @@ def _render_screening_tab(root: Any = None) -> None:
     else:
         st.info("当前没有激活的研究Case。可以独立使用影像筛查；如需完整闭环，请先在“研究与验证 → 风险研判”生成现场复核任务。")
 
-    input_col, meta_col = st.columns([1.05, 1], gap="large")
+    input_col, meta_col = st.columns([1, 1], gap="large")
     with input_col, st.container(border=True, key="vision_input_card"):
-        st.markdown("### 01 · 拍照或上传")
+        st.markdown("### 拍照或上传")
         source_mode = st.radio("图像来源", ["现场拍照", "上传图片"], horizontal=True, key="vision_source_mode")
         image_file = None
         if source_mode == "现场拍照":
+            st.markdown(
+                '<div class="camera-permission-cn">需要使用摄像头。若浏览器尚未授权，请在站点权限中允许摄像头访问后再拍摄。</div>',
+                unsafe_allow_html=True,
+            )
             image_file = st.camera_input("对准海面拍摄", key="vision_camera")
         else:
             image_file = st.file_uploader("上传JPG / JPEG / PNG", type=["jpg", "jpeg", "png"], key="vision_upload")
@@ -524,7 +528,7 @@ def _render_screening_tab(root: Any = None) -> None:
         st.caption("建议避开逆光，尽量让海面占画面大部分；同一点位最好从不同角度拍2–3张。图像只在当前会话中分析，不默认上传到远程大模型。")
 
     with meta_col, st.container(border=True, key="vision_meta_card"):
-        st.markdown("### 02 · 现场信息")
+        st.markdown("### 现场信息")
         c1, c2 = st.columns(2)
         capture_date = c1.date_input("拍摄日期", value=date.today(), key="vision_date")
         capture_time = c2.time_input("拍摄时间", value=None, key="vision_time")
@@ -587,7 +591,7 @@ def _render_screening_tab(root: Any = None) -> None:
     q = result["quality"]
     v = result["visual"]
     raw = st.session_state.get("field_visual_image_bytes")
-    st.markdown("### 03 · 甄别结果")
+    st.markdown("### 甄别结果")
     preview_col, result_col = st.columns([1.05, 1.2], gap="large")
     with preview_col, st.container(border=True, key="vision_preview_card"):
         if raw:
@@ -779,9 +783,6 @@ def render(root: Any = None) -> None:
         </div>
         """,
         unsafe_allow_html=True,
-    )
-    st.info(
-        "科学边界：照片用于水色、浑浊、泡沫/漂浮物等视觉现象筛查与复核优先级，不替代显微镜、qPCR、毒素检测或具体藻种鉴定。"
     )
     with st.container(key="vision_workspace_tabs"):
         tab_screen, tab_data, tab_model = st.tabs([

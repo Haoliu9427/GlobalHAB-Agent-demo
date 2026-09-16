@@ -332,13 +332,13 @@ def render(root: Path) -> None:
         <div class="hero">
           <div class="eyebrow" style="color:#b5d9dc">LLM RESULT INTERPRETATION</div>
           <h1>大模型结果解读</h1>
-          <p class="value">可读取项目固定证据、真实训练、中国近海、自有数据、现场影像与完整Case，生成科研、答辩或管理场景的结构化解释。</p>
+          <p class="tagline">可读取项目固定证据、真实训练、中国近海、自有数据、现场影像与完整Case，生成科研、答辩或管理场景的结构化解释</p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    source_col, mode_col = st.columns([1.2, 1], gap="large")
+    source_col, mode_col = st.columns([1, 1], gap="large")
     with source_col, st.container(border=True, key="llm_source_card"):
         st.markdown("### 选择要解读的结果")
         pending_source = st.session_state.pop("_llm_source_jump", None)

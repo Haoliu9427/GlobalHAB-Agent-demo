@@ -125,3 +125,10 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - After `/models` succeeds, the UI exposes an “实际调用模型” selector and uses that selected returned model for the actual request.
 - Added explicit connection readiness messaging and exact blockers for the generate button.
 - Added regression tests for provider defaults and discovered-model selection.
+
+## 2026-09-16 workspace layout refinement
+- Removed numbered prefixes from field-vision section headings and removed the extra scientific-boundary banner from the workspace landing area.
+- Added Chinese camera-permission guidance and CSS localisation for Streamlit's standard camera permission helper where supported by the current frontend DOM.
+- Standardised the LLM workspace Hero subtitle to the same tagline typography used by the other top-level workspaces.
+- Rebalanced Own Data, Field Vision and LLM paired cards to equal column widths and stretch-to-row card heights on desktop, with responsive auto-height fallback on smaller screens.
+- Unified card padding, heading scale, border radius and visual rhythm across these three workspaces.

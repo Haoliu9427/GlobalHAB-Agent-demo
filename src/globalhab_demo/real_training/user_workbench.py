@@ -6,7 +6,7 @@ from .user_engine import build,run
 
 def render():
     import streamlit as st
-    data_col,task_col=st.columns([1.15,1],gap='large')
+    data_col,task_col=st.columns([1,1],gap='large')
     with data_col, st.container(border=True,key='obs_upload_card'):
         st.markdown('### 观测数据')
         st.caption('上传现场记录，建立本次分析的数据集。')
@@ -39,7 +39,7 @@ def render():
         st.session_state.pop('remote_model_list',None)
         st.session_state.pop('user_result',None)
         st.session_state.pop('qwen_explanation',None)
-    service_col,models_col=st.columns([1.1,1],gap='large')
+    service_col,models_col=st.columns([1,1],gap='large')
     with service_col, st.container(border=True,key='obs_service_card'):
         st.markdown('### 远程大模型服务')
         st.caption('连接DeepSeek、Qwen或其他兼容服务。仅运行本地模型时无需填写。')

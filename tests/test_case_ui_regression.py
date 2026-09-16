@@ -75,3 +75,23 @@ def test_own_data_hero_and_sidebar_polish_regression():
     assert 'label_visibility="collapsed"' in app
     assert '.sidebar-brand-card' in css
     assert '.st-key-workspace_nav [role="radiogroup"]' in css
+
+
+def test_workspace_copy_and_balanced_card_layout_regression():
+    field = FIELD.read_text(encoding="utf-8")
+    llm = LLM.read_text(encoding="utf-8")
+    workbench = (ROOT / "src" / "globalhab_demo" / "real_training" / "user_workbench.py").read_text(encoding="utf-8")
+    css = (ROOT / "assets" / "interface.css").read_text(encoding="utf-8")
+    assert "### 01 · 拍照或上传" not in field
+    assert "### 02 · 现场信息" not in field
+    assert "### 拍照或上传" in field
+    assert "### 现场信息" in field
+    assert "科学边界：照片用于水色、浑浊、泡沫/漂浮物等视觉现象筛查与复核优先级" not in field
+    assert '<p class="tagline">可读取项目固定证据' in llm
+    assert 'st.columns([1, 1], gap="large")' in llm
+    assert "st.columns([1,1],gap='large')" in workbench
+    assert '.camera-permission-cn' in css
+    assert '此应用需要使用您的摄像头。' in css
+    assert ':has(.st-key-vision_input_card)' in css
+    assert ':has(.st-key-obs_upload_card)' in css
+    assert ':has(.st-key-llm_source_card)' in css

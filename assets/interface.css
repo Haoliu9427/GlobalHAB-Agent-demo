@@ -211,3 +211,81 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
  .st-key-vision_library_recent_card,.st-key-vision_library_batch_card,
  .st-key-vision_training_baseline_card,.st-key-vision_training_data_card,.st-key-vision_training_candidate_card{padding:16px!important;}
 }
+
+/* 2026-09-16 cross-workspace card rhythm + camera localisation refinement. */
+/* Equal-width paired cards and a shared visual rhythm across Own Data, Field Vision and LLM workspaces. */
+.st-key-obs_upload_card,.st-key-obs_task_card,.st-key-obs_service_card,.st-key-obs_models_card,
+.st-key-vision_input_card,.st-key-vision_meta_card,.st-key-vision_preview_card,.st-key-vision_result_card,
+.st-key-llm_source_card,.st-key-llm_mode_card,.st-key-llm_service_card{
+ padding:24px!important;
+ border-radius:16px!important;
+}
+
+/* Stretch paired cards to the same row height instead of leaving one card visibly shorter. */
+[data-testid="stHorizontalBlock"]:has(.st-key-obs_upload_card),
+[data-testid="stHorizontalBlock"]:has(.st-key-obs_service_card),
+[data-testid="stHorizontalBlock"]:has(.st-key-vision_input_card),
+[data-testid="stHorizontalBlock"]:has(.st-key-vision_preview_card),
+[data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card){align-items:stretch!important;}
+
+[data-testid="stHorizontalBlock"]:has(.st-key-obs_upload_card) > [data-testid="stColumn"],
+[data-testid="stHorizontalBlock"]:has(.st-key-obs_service_card) > [data-testid="stColumn"],
+[data-testid="stHorizontalBlock"]:has(.st-key-vision_input_card) > [data-testid="stColumn"],
+[data-testid="stHorizontalBlock"]:has(.st-key-vision_preview_card) > [data-testid="stColumn"],
+[data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card) > [data-testid="stColumn"]{
+ display:flex!important;align-items:stretch!important;
+}
+
+[data-testid="stHorizontalBlock"]:has(.st-key-obs_upload_card) > [data-testid="stColumn"] > div,
+[data-testid="stHorizontalBlock"]:has(.st-key-obs_service_card) > [data-testid="stColumn"] > div,
+[data-testid="stHorizontalBlock"]:has(.st-key-vision_input_card) > [data-testid="stColumn"] > div,
+[data-testid="stHorizontalBlock"]:has(.st-key-vision_preview_card) > [data-testid="stColumn"] > div,
+[data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card) > [data-testid="stColumn"] > div{
+ width:100%!important;height:100%!important;
+}
+
+.st-key-obs_upload_card,.st-key-obs_task_card{min-height:390px!important;height:100%;}
+.st-key-obs_service_card,.st-key-obs_models_card{min-height:660px!important;height:100%;}
+.st-key-vision_input_card,.st-key-vision_meta_card{min-height:760px!important;height:100%;}
+.st-key-vision_preview_card,.st-key-vision_result_card{min-height:390px!important;height:100%;}
+.st-key-llm_source_card,.st-key-llm_mode_card{min-height:380px!important;height:100%;}
+
+.st-key-obs_upload_card h3,.st-key-obs_task_card h3,.st-key-obs_service_card h3,.st-key-obs_models_card h3,
+.st-key-vision_input_card h3,.st-key-vision_meta_card h3,.st-key-vision_preview_card h3,.st-key-vision_result_card h3,
+.st-key-llm_source_card h3,.st-key-llm_mode_card h3,.st-key-llm_service_card h3{
+ font-size:1.12rem!important;line-height:1.45!important;margin:0 0 12px!important;letter-spacing:-.01em!important;
+}
+
+/* Chinese guidance around the camera permission state. */
+.camera-permission-cn{
+ background:#eef5f3;border:1px solid #d3e4e1;border-radius:10px;color:#4b6871;
+ padding:.65rem .78rem;margin:.15rem 0 .7rem;font-size:.82rem;line-height:1.55;
+}
+/* Streamlit's core camera widget currently ships an English permission helper.
+   Replace its visible helper/link where the standard enable-camera link is present. */
+.st-key-vision_input_card [data-testid="stCameraInput"] p:has(a[href*="enable-camera"]),
+.st-key-vision_input_card [data-testid="stCameraInput"] div:has(> a[href*="enable-camera"]){font-size:0!important;line-height:1.5!important;}
+.st-key-vision_input_card [data-testid="stCameraInput"] p:has(a[href*="enable-camera"])::before,
+.st-key-vision_input_card [data-testid="stCameraInput"] div:has(> a[href*="enable-camera"])::before{
+ content:"此应用需要使用您的摄像头。";font-size:1rem;color:#263e49;display:block;margin-bottom:.25rem;
+}
+.st-key-vision_input_card [data-testid="stCameraInput"] a[href*="enable-camera"]{font-size:0!important;}
+.st-key-vision_input_card [data-testid="stCameraInput"] a[href*="enable-camera"]::after{
+ content:"查看如何允许摄像头访问";font-size:.9rem;text-decoration:underline;color:#286b79;
+}
+.st-key-vision_input_card [data-testid="stCameraInput"] button{font-size:0!important;}
+.st-key-vision_input_card [data-testid="stCameraInput"] button::after{content:"拍照";font-size:.95rem;}
+
+/* Keep workspace Hero copy on one consistent typographic tier. */
+.hero .tagline{font-size:1.1rem!important;font-weight:650!important;line-height:1.65!important;max-width:1040px;}
+
+@media(max-width:900px){
+ .st-key-obs_upload_card,.st-key-obs_task_card,.st-key-obs_service_card,.st-key-obs_models_card,
+ .st-key-vision_input_card,.st-key-vision_meta_card,.st-key-vision_preview_card,.st-key-vision_result_card,
+ .st-key-llm_source_card,.st-key-llm_mode_card{min-height:0!important;height:auto!important;padding:18px!important;}
+ [data-testid="stHorizontalBlock"]:has(.st-key-obs_upload_card) > [data-testid="stColumn"],
+ [data-testid="stHorizontalBlock"]:has(.st-key-obs_service_card) > [data-testid="stColumn"],
+ [data-testid="stHorizontalBlock"]:has(.st-key-vision_input_card) > [data-testid="stColumn"],
+ [data-testid="stHorizontalBlock"]:has(.st-key-vision_preview_card) > [data-testid="stColumn"],
+ [data-testid="stHorizontalBlock"]:has(.st-key-llm_source_card) > [data-testid="stColumn"]{display:block!important;}
+}

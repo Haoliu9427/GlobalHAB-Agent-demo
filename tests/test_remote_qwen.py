@@ -84,3 +84,40 @@ def test_list_models():
         assert q.list_models(C)==['account-model']
         assert get.call_args.args[0]=='https://example.org/v1/models'
         assert get.call_args.kwargs['allow_redirects'] is False
+
+def test_deepseek_stable_disables_default_thinking():
+    deep={'base_url':'https://api.deepseek.com','api_key':'secret-test','model':'deepseek-flash'}
+    with patch.object(q.requests,'post',return_value=response('可见最终回答')) as post:
+        text,_=q.chat(deep,[{'role':'user','content':'解释结果'}],max_tokens=500,thinking_mode='stable')
+        assert text=='可见最终回答'
+        payload=post.call_args.kwargs['json']
+        assert payload['thinking']=={'type':'disabled'}
+        assert payload['reasoning_effort']=='none'
+        assert payload['stream'] is False
+
+
+def test_deepseek_thinking_empty_content_retries_stable():
+    deep={'base_url':'https://api.deepseek.com','api_key':'secret-test','model':'deepseek-flash'}
+    first=SimpleNamespace(status_code=200,json=lambda:{
+        'choices':[{'message':{'content':None,'reasoning_content':'internal reasoning'},'finish_reason':'length'}],
+        'usage':{'total_tokens':5000},
+    })
+    second=response('重试后的最终回答')
+    with patch.object(q.requests,'post',side_effect=[first,second]) as post:
+        text,_=q.chat(deep,[{'role':'user','content':'解释结果'}],max_tokens=500,thinking_mode='high')
+        assert text=='重试后的最终回答'
+        assert post.call_count==2
+        retry_payload=post.call_args_list[1].kwargs['json']
+        assert retry_payload['thinking']=={'type':'disabled'}
+        assert retry_payload['reasoning_effort']=='none'
+        assert retry_payload['max_tokens']>=2200
+
+
+def test_chat_accepts_text_block_content():
+    block=SimpleNamespace(status_code=200,json=lambda:{
+        'choices':[{'message':{'content':[{'type':'text','text':'第一段'},{'type':'text','text':'第二段'}]},'finish_reason':'stop'}],
+        'usage':{},
+    })
+    with patch.object(q.requests,'post',return_value=block):
+        text,_=q.chat(C,[{'role':'user','content':'x'}])
+    assert text=='第一段\n第二段'

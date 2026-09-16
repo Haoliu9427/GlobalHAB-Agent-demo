@@ -1,0 +1,19 @@
+{
+  "status": "pass",
+  "date": "2026-09-16",
+  "scope": "DeepSeek/OpenAI-compatible result-interpretation response handling",
+  "changes": [
+    "DeepSeek result interpretation defaults to non-thinking stable mode",
+    "Optional low/high thinking modes remain available",
+    "Empty visible content after reasoning triggers one stable retry",
+    "String and text-block content shapes are accepted",
+    "reasoning_content is never used as the final interpretation",
+    "Interpretation output budgets were increased"
+  ],
+  "tests": {
+    "remote_and_interpreter_related": "18 passed, 2 Streamlit UI tests deselected because Streamlit is not installed in the build container",
+    "extended_with_case_management": "22 passed, 2 Streamlit UI tests deselected",
+    "release_verification": "pass"
+  },
+  "network_note": "No real API key or live DeepSeek request was used in release validation; HTTP response variants were covered with mocks."
+}

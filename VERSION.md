@@ -101,3 +101,12 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - Added audit checks before permanent deletion; linked visual samples can be removed from future training while prior trained model snapshots remain immutable.
 - Added a field-vision task queue and `登记并处理下一个` workflow for sequential review of multiple Cases.
 - Added risk-page task overview and dedicated regression tests for queue transitions, batch creation, deletion safeguards and UI controls.
+
+## 2026-09-16 DeepSeek result-interpretation compatibility fix
+- Fixed the LLM interpretation path for current DeepSeek V4 Chat Completions responses.
+- DeepSeek result interpretation now defaults to a stable non-thinking request so the visible `content` field is not starved by reasoning tokens.
+- Added optional low/high thinking modes; if a thinking request returns reasoning but no visible final answer or reaches the output limit, the app retries once in stable mode.
+- The parser now accepts both string content and OpenAI-compatible text-block content, while never substituting `reasoning_content` for the final answer.
+- Increased interpretation output budgets and added provider-specific diagnostics instead of the generic “模型返回格式无效” message.
+- Remote probability scoring continues to require a valid probability JSON and now uses the stable DeepSeek path.
+

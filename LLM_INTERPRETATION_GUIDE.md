@@ -83,3 +83,10 @@ When the latest field-image screening used the adaptive visual router, the LLM s
 ## 当前完整Case联动
 
 结果来源新增 **当前完整Case（推荐）**。该摘要会同时读取研究风险候选（Risk / Route / Lag / Top-k）、现场影像筛查、现场环境元数据和专业/实验室确认。大模型需要比较各证据层是否一致、明确冲突与证据缺口，并给出下一步最值得补充的复核项。生成后的解释可由用户显式保存到Case解释记录；解释记录不改变上游指标、概率、模型权重或事件确认状态。原始现场照片不会随Case摘要自动发送给远程服务。
+
+
+## DeepSeek V4 返回兼容
+
+DeepSeek V4 Chat Completions当前默认开启思考模式。对于结果解读，页面默认选择“稳定解读（推荐）”，显式关闭思考，避免输出预算被推理内容占满而导致最终 `content` 为空。需要时可切换低/高强度思考；若思考模式只返回推理内容、最终回答为空或达到长度上限，程序会自动使用稳定模式重试一次。程序不会把 `reasoning_content` 显示成最终科研解读。
+
+兼容解析同时接受标准字符串 `choices[0].message.content` 与常见OpenAI兼容文本块数组；若服务返回的结构仍不兼容，会给出针对 `/chat/completions` 的明确诊断，而不是笼统提示“模型返回格式无效”。

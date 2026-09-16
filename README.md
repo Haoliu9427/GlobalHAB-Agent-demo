@@ -38,6 +38,8 @@ Streamlit 侧栏包含四个一级工作区：
 
 大模型只负责解释上游已经计算的结果，不重新计算AP、Brier、ECE、概率、阈值或因果关系。系统Prompt固定要求区分合成验证、真实观测、事件回放和未来无标签预测，并禁止把结果改写为未经验证的死亡率、经济损失、监管阈值或自动运营指令。远程服务配置见 `QWEN_ONLINE_SETUP.md`；完整使用说明见 `LLM_INTERPRETATION_GUIDE.md`。
 
+DeepSeek V4 兼容说明：当前 DeepSeek Chat Completions 默认开启思考模式。结果解读页对 DeepSeek 默认使用“稳定解读（推荐）”，显式关闭思考并只读取最终可见 `content`；用户仍可切换低/高强度思考。若思考模式只返回推理内容、最终 `content` 为空或达到输出长度上限，程序会自动以稳定模式重试一次，而不会把 `reasoning_content` 当成解读结果。
+
 ## 2. 数据结构
 
 ### 2.1 机制约束型合成基准

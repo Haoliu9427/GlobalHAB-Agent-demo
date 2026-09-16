@@ -407,6 +407,19 @@ def render(root: Path) -> None:
         else:
             remote = settings()
             st.write("服务器配置：" + (remote.get("model") or "未配置"))
+
+        is_deepseek = "deepseek" in str(remote.get("base_url", "")).lower() or str(remote.get("model", "")).lower().startswith("deepseek-")
+        thinking_mode = "stable"
+        if is_deepseek:
+            thinking_label = st.selectbox(
+                "生成模式",
+                ["稳定解读（推荐）", "低强度思考", "高强度思考"],
+                key="llm_deepseek_thinking_mode",
+                help="DeepSeek V4 默认开启思考模式。稳定解读会显式关闭思考，避免推理内容占满输出预算后最终回答为空；需要更强推理时可选择低/高强度。",
+            )
+            thinking_mode = {"稳定解读（推荐）": "stable", "低强度思考": "low", "高强度思考": "high"}[thinking_label]
+            st.caption("DeepSeek默认采用稳定解读：只读取最终可见回答，不把reasoning_content当作结果。若思考模式未生成最终回答，系统会自动以稳定模式重试一次。")
+
         b1, b2, b3 = st.columns(3)
         if b1.button("读取可用模型", disabled=not remote.get("base_url") or not remote.get("api_key"), use_container_width=True):
             try:
@@ -415,7 +428,7 @@ def render(root: Path) -> None:
                 st.error(str(exc))
         if b2.button("测试连接", disabled=not ready(remote), use_container_width=True):
             try:
-                chat(remote, [{"role": "user", "content": "Reply OK."}])
+                chat(remote, [{"role": "user", "content": "Reply OK."}], max_tokens=120, thinking_mode="stable")
                 st.success("服务可访问。")
             except ValueError as exc:
                 st.error(str(exc))
@@ -425,11 +438,12 @@ def render(root: Path) -> None:
         consent = st.checkbox("允许把上方结果摘要发送给远程大模型", key="llm_interpret_consent")
         st.caption("项目内置结果、最近一次自有数据和现场影像甄别只发送结构化摘要；现场照片本身不会发送，也不会发送完整原始CSV或API Key。若你主动上传结果文件，其摘要中显示的字段和前20行会随请求发送；请先移除不希望发送的敏感标识。调用可能产生服务商费用。")
 
-    signature = hashlib.sha256((source + mode + question + summary + str(remote.get("base_url")) + str(remote.get("model")) + hashlib.sha256(str(remote.get("api_key", "")).encode("utf-8")).hexdigest()).encode("utf-8")).hexdigest()
+    signature = hashlib.sha256((source + mode + question + summary + str(remote.get("base_url")) + str(remote.get("model")) + str(thinking_mode) + hashlib.sha256(str(remote.get("api_key", "")).encode("utf-8")).hexdigest()).encode("utf-8")).hexdigest()
     if st.button("生成大模型解读", type="primary", disabled=not summary or not ready(remote) or not consent, use_container_width=True, key="llm_generate"):
         try:
             with st.spinner("大模型正在解读已计算结果……"):
-                text, usage = chat(remote, make_prompt(summary, mode, question), max_tokens=1800)
+                output_budget = 3200 if thinking_mode == "stable" else (5200 if thinking_mode == "low" else 8000)
+                text, usage = chat(remote, make_prompt(summary, mode, question), max_tokens=output_budget, thinking_mode=thinking_mode)
             st.session_state["llm_interpretation"] = (signature, text, usage)
         except ValueError as exc:
             st.error(str(exc))

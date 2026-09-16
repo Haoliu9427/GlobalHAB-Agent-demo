@@ -196,29 +196,35 @@ def test_llm_source_card_uses_space_for_summary_preview_regression():
     assert 'llm-source-flex-gap' in llm
 
 
-def test_final_distributed_spacing_and_always_clickable_remote_test():
+def test_final_symmetric_spacing_and_always_clickable_remote_test():
     workbench = (ROOT / "src" / "globalhab_demo" / "real_training" / "user_workbench.py").read_text(encoding="utf-8")
     llm = LLM.read_text(encoding="utf-8")
     css = (ROOT / "assets" / "interface.css").read_text(encoding="utf-8")
     assert "if st.button('测试连接',use_container_width=True):" in workbench
-    assert workbench.count('model-run-flex-gap') >= 4
+    assert workbench.count('pair-card-spacer') == 2
+    assert 'pair-status-grid' in workbench
+    assert 'obs_service_bottom_zone' in workbench
+    assert 'user_run_zone' in workbench
     assert llm.count('llm-source-flex-gap') >= 3
     assert 'height=105' in llm
-    assert 'height:860px!important;' in css
-    assert ':has(.model-run-flex-gap)' in css
+    assert ':has(.pair-card-spacer)' in css
+    assert '.pair-status-grid' in css
     assert ':has(.llm-source-flex-gap)' in css
 
 
-def test_fixed_remote_pair_and_distributed_llm_mode_spacing():
+def test_remote_pair_uses_three_layer_symmetric_layout():
     workbench = (ROOT / "src" / "globalhab_demo" / "real_training" / "user_workbench.py").read_text(encoding="utf-8")
     llm = LLM.read_text(encoding="utf-8")
     css = (ROOT / "assets" / "interface.css").read_text(encoding="utf-8")
-    assert "key='obs_service_card',height=900" in workbench
-    assert "key='obs_models_card',height=900" in workbench
-    assert workbench.count('model-run-flex-gap') >= 4
+    assert "key='obs_service_card'" in workbench
+    assert "key='obs_models_card'" in workbench
+    assert "height=900" not in workbench
+    assert workbench.count('pair-card-spacer') == 2
+    assert '连接状态' in workbench and '当前模型' in workbench
+    assert all(x in workbench for x in ['验证方式','模型数','预测时效','训练预算'])
     assert llm.count('llm-mode-flex-gap') >= 4
     assert llm.count('llm-source-flex-gap') >= 3
     assert 'height=105' in llm
     assert 'preview = summary[:600]' in llm
     assert ':has(.llm-mode-flex-gap)' in css
-    assert 'height:900px!important;' in css
+    assert 'min-height:720px!important;' in css

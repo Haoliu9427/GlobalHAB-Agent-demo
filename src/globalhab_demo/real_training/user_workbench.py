@@ -55,8 +55,10 @@ def render():
         st.session_state.pop('qwen_explanation',None)
         st.session_state.pop('remote_action_notice',None)
     service_col,models_col=st.columns([1,1],gap='large')
-    with service_col, st.container(border=False,key='obs_service_card',height=900):
+    with service_col, st.container(border=False,key='obs_service_card'):
         st.markdown('### 远程大模型服务')
+
+        # Top layer: service configuration.
         mode=st.radio('服务配置来源',['自行填写','使用服务器配置'],key='remote_mode',horizontal=True)
         if mode=='自行填写':
             provider=st.selectbox('模型服务',['自定义兼容服务','DeepSeek','Qwen'],key='remote_provider',on_change=change_provider)
@@ -65,9 +67,6 @@ def render():
                 'Qwen':{'base_url':'https://dashscope.aliyuncs.com/compatible-mode/v1','model':'qwen-plus'},
             }
             preset=presets.get(provider,{'base_url':'','model':''})
-            # Apply provider defaults to Streamlit state before the widgets are created.
-            # This prevents a visible browser-restored value from diverging from the
-            # backend value used by ready(), which previously left “测试连接” disabled.
             if preset['base_url'] and not str(st.session_state.get('user_api_url','')).strip():
                 st.session_state['user_api_url']=preset['base_url']
             if preset['model'] and not str(st.session_state.get('user_api_model','')).strip():
@@ -83,12 +82,9 @@ def render():
             remote={'base_url':effective_url,'model':effective_model,'api_key':key.strip()}
         else:
             provider='服务器配置'
+            presets={}
             remote=settings()
 
-        # Resolve the effective model independently of the browser widget state.
-        # Streamlit can visually restore a text_input value while the backend state is
-        # briefly empty on rerun; use provider defaults / discovered models as a safe
-        # fallback so a valid DeepSeek/Qwen setup never leaves "测试连接" disabled.
         if not str(remote.get('model','')).strip():
             discovered=[str(x).strip() for x in (st.session_state.get('remote_model_list') or []) if str(x).strip()]
             fallback_model=(discovered[0] if discovered else '')
@@ -96,8 +92,6 @@ def render():
                 fallback_model=presets.get(provider,{}).get('model','')
             remote={**remote,'model':fallback_model}
 
-        # Keep all action feedback outside the three narrow button columns.
-        # This avoids Streamlit alerts being squeezed into a tall, thin block.
         remote_sig=hashlib.sha256(json.dumps({
             'base_url':remote.get('base_url',''),
             'model':remote.get('model',''),
@@ -113,18 +107,13 @@ def render():
                     models=list_models(remote)
                     st.session_state['remote_model_list']=models
                     st.session_state['remote_action_notice']={
-                        'signature':remote_sig,'kind':'info',
-                        'text':'已读取可用模型 · '+str(len(models))+' 个'
+                        'signature':remote_sig,'kind':'info','text':'已读取可用模型 · '+str(len(models))+' 个'
                     }
                 except ValueError as exc:
                     st.session_state['remote_action_notice']={
                         'signature':remote_sig,'kind':'error','text':'读取模型失败 · '+str(exc)
                     }
         with action_c:
-            # Keep the connection test clickable at all times. Streamlit password/text
-            # widgets can momentarily desynchronise their browser value and session state
-            # after a rerun; validate inside the click handler instead of greying out a
-            # configuration that is visibly complete to the user.
             if st.button('测试连接',use_container_width=True):
                 try:
                     test_remote=dict(remote)
@@ -150,30 +139,47 @@ def render():
                     st.session_state['remote_action_notice']={
                         'signature':remote_sig,'kind':'error','text':'连接失败 · '+str(exc)
                     }
+
+        # Middle layer: compact status summary.
         notice=st.session_state.get('remote_action_notice')
-        if notice and notice.get('signature')==remote_sig:
+        notice_current=bool(notice and notice.get('signature')==remote_sig)
+        if notice_current and notice.get('kind') in {'error','info'}:
             kind=notice.get('kind','info')
             text=html.escape(str(notice.get('text','')))
             st.markdown(f'<div class="remote-status-strip {kind}"><span class="remote-status-dot"></span>{text}</div>',unsafe_allow_html=True)
+        if notice_current and notice.get('kind')=='success':
+            connection_label='已连接'
+            connection_class='success'
         elif ready(remote):
-            st.markdown('<div class="remote-status-strip ready"><span class="remote-status-dot"></span>参数已就绪 · '+html.escape(str(remote.get('model','')))+'</div>',unsafe_allow_html=True)
+            connection_label='参数已就绪'
+            connection_class='ready'
         else:
-            missing_parts=[]
-            if not remote.get('base_url'):missing_parts.append('API地址')
-            if not remote.get('model'):missing_parts.append('模型名称')
-            if not remote.get('api_key'):missing_parts.append('API Key')
-            missing_text='缺少 '+'、'.join(missing_parts) if missing_parts else '尚未启用'
-            st.markdown('<div class="remote-status-strip muted"><span class="remote-status-dot"></span>'+html.escape(missing_text)+'</div>',unsafe_allow_html=True)
+            connection_label='待配置'
+            connection_class='muted'
+        current_model=html.escape(str(remote.get('model') or '—'))
+        st.markdown(
+            '<div class="pair-status-grid">'
+            f'<div class="pair-status-cell"><span>连接状态</span><strong class="{connection_class}">{connection_label}</strong></div>'
+            f'<div class="pair-status-cell"><span>当前模型</span><strong>{current_model}</strong></div>'
+            '</div>',unsafe_allow_html=True)
         if st.session_state.get('remote_model_list'):
             with st.expander('服务返回的模型ID',expanded=False):
                 st.write(st.session_state['remote_model_list'])
-        consent=st.checkbox('允许本次使用远程服务发送上述数据',key='remote_consent')
-        with st.expander('远程调用与隐私说明',expanded=False):
-            if mode=='自行填写' and provider=='DeepSeek':
-                st.caption('DeepSeek使用官方API基础地址；模型ID请以账户当前可用列表为准。')
-            st.caption('凭证仅供当前会话使用，不保存到工程、结果包或服务器配置。API地址填写兼容接口基础地址，不含/chat/completions。')
-            st.caption('调用可能产生API费用；请仅发送你有权使用的数据。')
-    with models_col, st.container(border=False,key='obs_models_card',height=900):
+
+        # A single flexible region keeps the bottom action layer anchored without
+        # scattering large gaps between every control group.
+        st.markdown('<div class="pair-card-spacer"></div>', unsafe_allow_html=True)
+
+        # Bottom layer: final authorization / privacy action.
+        with st.container(border=False,key='obs_service_bottom_zone'):
+            consent=st.checkbox('允许本次使用远程服务发送上述数据',key='remote_consent')
+            with st.expander('远程调用与隐私说明',expanded=False):
+                if mode=='自行填写' and provider=='DeepSeek':
+                    st.caption('DeepSeek使用官方API基础地址；模型ID请以账户当前可用列表为准。')
+                st.caption('凭证仅供当前会话使用，不保存到工程、结果包或服务器配置。API地址填写兼容接口基础地址，不含/chat/completions。')
+                st.caption('调用可能产生API费用；请仅发送你有权使用的数据。')
+
+    with models_col, st.container(border=False,key='obs_models_card'):
         st.markdown('### 模型与运行')
         records=[];allowed=[]
         for n in MODELS:
@@ -186,23 +192,35 @@ def render():
             elif m and n.startswith('STS-') and not m['science_eligible']:reason='不适用：缺少已对齐上游/输运字段或其可用时间'
             else:allowed.append(n)
             records.append({'模型':n,'类型':'融合' if n in FUSIONS else '基础模型' if n in FOUNDATIONS else '预测模型/基线','当前条件':reason})
+
+        # Top layer: run configuration.
         with st.expander('项目完整模型目录与适用条件',expanded=False):
             st.dataframe(pd.DataFrame(records),hide_index=True,use_container_width=True)
             st.dataframe(pd.DataFrame([{'模型/方法':n,'用途与入口':v} for n,v in OTHER.items()]),hide_index=True,use_container_width=True)
             st.caption('同一家族在不同历史任务中的参数配置不作为新模型重复计数。STS字段：'+', '.join(SCIENCE_COLUMNS)+', upstream_available_at。上游对齐需由数据提供者完成。')
             st.write('本地基础模型为3种Chronos规格、3种Qwen规格和SmolLM2。首次运行需要下载权重；大规格需要更多内存。目录可选择不代表已在所有主机或数据集上验证。')
-        st.markdown('<div class="model-run-flex-gap"></div>', unsafe_allow_html=True)
-        # Only reset unavailable entries when the new data invalidate their prerequisites.
-        if 'user_models' in st.session_state:st.session_state['user_models']=[n for n in st.session_state['user_models'] if n in allowed]
+        if 'user_models' in st.session_state:
+            st.session_state['user_models']=[n for n in st.session_state['user_models'] if n in allowed]
         selected=st.multiselect('选择本次运行模型（可多选）',allowed,default=[n for n in ['Logistic','HistGradientBoosting'] if n in allowed],key='user_models')
-        st.markdown('<div class="model-run-flex-gap"></div>', unsafe_allow_html=True)
         epochs=st.slider('时序模型训练轮数上限',5,50,20,key='user_epochs')
-        st.markdown('<div class="model-run-flex-gap"></div>', unsafe_allow_html=True)
-        if selected:st.caption('实际运行（含融合组件与季节基线）：'+', '.join(expand(['Seasonal Climatology']+selected)))
-        st.caption(f'验证：时间留出 · {len(selected)}个选择模型 + 季节基线 · {horizon}天 · 上限{epochs}轮。')
-        st.markdown('<div class="model-run-flex-gap"></div>', unsafe_allow_html=True)
-        # Keep the primary action in the final card section; flexible gaps above
-        # distribute spare height between content groups instead of below the button.
+
+        # Middle layer: compact run summary mirrors the service-status layer.
+        summary_model_count=len(selected)
+        summary_html=(
+            '<div class="pair-status-grid run-summary-grid">'
+            '<div class="pair-status-cell"><span>验证方式</span><strong>时间留出</strong></div>'
+            f'<div class="pair-status-cell"><span>模型数</span><strong>{summary_model_count}个 + 季节基线</strong></div>'
+            f'<div class="pair-status-cell"><span>预测时效</span><strong>{horizon}天</strong></div>'
+            f'<div class="pair-status-cell"><span>训练预算</span><strong>上限{epochs}轮</strong></div>'
+            '</div>'
+        )
+        st.markdown(summary_html,unsafe_allow_html=True)
+        if selected:
+            st.caption('实际运行：'+', '.join(expand(['Seasonal Climatology']+selected)))
+
+        # One flexible region only. The bottom action area remains fixed to the card base.
+        st.markdown('<div class="pair-card-spacer"></div>', unsafe_allow_html=True)
+
         signature=hashlib.sha256((data or b'')+json.dumps([task,horizon,description,selected,epochs,remote.get('model'),remote.get('base_url'),hashlib.sha256(remote.get('api_key','').encode()).hexdigest(),mode],ensure_ascii=False).encode()).hexdigest()
         with st.container(border=False,key='user_run_zone'):
             st.markdown('<div class="compact-card-footer">运行后保存指标、验证样本、预测结果与数据质量记录。</div>', unsafe_allow_html=True)

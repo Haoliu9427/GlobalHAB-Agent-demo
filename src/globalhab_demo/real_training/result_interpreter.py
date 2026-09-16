@@ -388,19 +388,42 @@ def render(root: Path) -> None:
                     st.error("结果文件解析失败：" + str(exc))
             else:
                 summary = ""
-        st.caption("只生成结构化摘要；不会在本地重新训练模型，也不会把完整原始数据默认发给大模型。")
+        st.caption("当前输入只使用结构化结果摘要；原始文件不会默认发送给远程大模型。")
+        scope_labels = {
+            "项目核心发现（合成探索 + 负对照）": "合成机制验证 · 负对照 · Agent探索结果",
+            "模型Benchmark与结构模型审计": "统一测试集模型比较 · 复杂度审计",
+            "挪威长期前向验证": "真实长期监测 · 前向留出验证",
+            "南澳真实事件回放": "真实qPCR观测 · 事件回放",
+            "真实观测训练与验证": "真实观测训练 · 严格测试集",
+            "中国近海跨年检验": "中国近海观测 · 跨年检验",
+            "生物响应沙盘": "情景输入 · 相对响应与稳健性",
+            "当前完整Case（推荐）": "研究候选 · 现场视觉 · 环境元数据 · 实验室证据",
+            "最近一次现场影像甄别": "视觉筛查 · 不确定性 · 现场元数据",
+            "最近一次自有数据分析": "用户数据 · 模型比较 · 可选未来预测",
+            "上传结果文件": "用户提供的结构化结果文件",
+        }
+        st.markdown("#### 当前输入概览")
+        info_a, info_b = st.columns(2, gap="small")
+        info_a.caption("证据范围")
+        info_a.write(scope_labels.get(source, "结构化结果"))
+        info_b.caption("摘要规模")
+        info_b.write(f"{len(summary):,} 字符" if summary else "等待可用结果")
+        preview = summary[:1400].strip() if summary else "当前来源尚未生成可用摘要。请选择已有结果、完整Case，或上传结果文件。"
+        st.text_area("摘要预览（只读）", value=preview, height=150, disabled=True)
 
     with mode_col, st.container(border=True, key="llm_mode_card"):
         st.markdown("### 解读方式")
         mode = st.radio("输出风格", list(INTERPRETATION_MODES), key="llm_interpret_mode")
         question = st.text_area(
             "特别想让大模型回答什么？（可选）",
-            placeholder="例如：为什么AP不高但仍有价值？哪些结论适合在答辩中强调？",
+            placeholder="例如：请比较不同证据来源是否一致，并指出最值得进一步复核的部分。",
             max_chars=800,
             height=110,
             key="llm_interpret_question",
         )
         st.caption("解读模板会主动要求区分证据层级、报告限制，并避免因果、死亡率或自动运营等越界表述。")
+        st.markdown("#### 输出内容")
+        st.markdown("- **核心结论**：提炼当前结果最重要的信号与数字。\n- **证据与不确定性**：比较不同来源是否一致，并明确证据边界。\n- **下一步建议**：指出最值得补采、复核或继续验证的事项。")
 
     with st.expander("查看将发送给大模型的结果摘要", expanded=True):
         if summary:

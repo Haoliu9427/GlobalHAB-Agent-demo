@@ -104,10 +104,26 @@ def test_strict_equal_height_cards_and_compact_remote_service():
     assert "endpoint_col, model_col = st.columns([1.25, 1], gap='small')" in workbench
     assert "action_a, action_b, action_c = st.columns(3, gap='small')" in workbench
     assert "远程调用与隐私说明" in workbench
-    assert "height=132" in workbench
+    assert "height=108" in workbench
     assert "height=110" in llm
     assert '.st-key-obs_upload_card,.st-key-obs_task_card{min-height:520px!important;}' in css
     assert '.st-key-obs_service_card,.st-key-obs_models_card{min-height:690px!important;}' in css
     assert '.st-key-llm_source_card,.st-key-llm_mode_card{min-height:520px!important;}' in css
     assert '[data-testid="stColumn"]:has(.st-key-llm_source_card)' in css
     assert '[data-testid="stVerticalBlockBorderWrapper"]' in css
+
+
+def test_content_density_and_user_facing_llm_prompt_examples():
+    workbench = (ROOT / "src" / "globalhab_demo" / "real_training" / "user_workbench.py").read_text(encoding="utf-8")
+    llm = LLM.read_text(encoding="utf-8")
+    assert "当前输入概览" in llm
+    assert "摘要预览（只读）" in llm
+    assert "为什么AP不高但仍有价值" not in llm
+    assert "请比较不同证据来源是否一致，并指出最值得进一步复核的部分" in llm
+    assert "#### 输出内容" in llm
+    assert "#### 数据结构" in workbench
+    assert "#### 本次输出" in workbench
+    assert "#### 连接状态" in workbench
+    assert "#### 本次远程调用范围" in workbench
+    assert "#### 运行前检查" in workbench
+    assert "#### 分析记录" in workbench

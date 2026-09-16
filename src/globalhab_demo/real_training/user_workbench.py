@@ -11,14 +11,38 @@ def render():
         st.markdown('### 观测数据')
         st.caption('上传现场记录，建立本次分析的数据集。')
         upload=st.file_uploader('现场观测CSV',type=['csv'],key='real_training_upload')
-        st.download_button('下载字段模板',data='station_id,date,available_at,latitude,longitude,observed_event,value,source,temperature,salinity,dissolved_oxygen\n',file_name='field_observations_template.csv')
-        st.caption('必需字段：站点、日期、可用时间、经纬度、事件标签、观测值与来源。')
-        if upload:st.caption('当前文件：'+upload.name+' · '+str(round(upload.size/1024,1))+' KB')
+        prep_a, prep_b = st.columns([0.9, 1.1], gap='small')
+        with prep_a:
+            st.download_button('下载字段模板',data='station_id,date,available_at,latitude,longitude,observed_event,value,source,temperature,salinity,dissolved_oxygen\n',file_name='field_observations_template.csv',use_container_width=True)
+        with prep_b:
+            if upload:
+                st.success('文件已选择 · '+str(round(upload.size/1024,1))+' KB')
+            else:
+                st.info('等待上传CSV')
+        st.markdown('#### 数据结构')
+        field_a, field_b = st.columns(2, gap='small')
+        with field_a:
+            st.caption('定位与时间')
+            st.write('站点 · 日期 · 可用时间 · 经纬度')
+        with field_b:
+            st.caption('标签与观测')
+            st.write('事件标签 · value · 数据来源')
+        st.caption('温度、盐度、溶解氧等环境变量可作为可选协变量。上传后会先检查时间可用性、标签质量和历史留出条件。')
+        if upload:st.caption('当前文件：'+upload.name)
     with task_col, st.container(border=True,key='obs_task_card'):
         st.markdown('### 预测任务')
-        task=st.radio('分析任务',['历史预测验证','历史验证 + 最新时点未来预测'],key='user_task')
-        horizon=st.selectbox('预测时效（天）',[7,14,30],key='user_horizon')
-        description=st.text_area('物种、事件阈值及value的含义/单位',max_chars=500,height=132,key='user_description')
+        task_top, horizon_top = st.columns([1.55, 0.75], gap='small')
+        with task_top:
+            task=st.radio('分析任务',['历史预测验证','历史验证 + 最新时点未来预测'],key='user_task')
+        with horizon_top:
+            horizon=st.selectbox('预测时效（天）',[7,14,30],key='user_horizon')
+        description=st.text_area('物种、事件阈值及value的含义/单位',max_chars=500,height=108,key='user_description')
+        st.markdown('#### 本次输出')
+        if task=='历史预测验证':
+            st.markdown('- 同一历史留出集上的模型比较\n- AP、Brier、ECE与样本/事件支持\n- 训练范围与数据质量说明')
+        else:
+            st.markdown('- 历史验证指标与模型比较\n- 各站最新时点的未来风险概率\n- 超出训练范围特征与缺失比例提示')
+        st.caption(f'当前设置：{task} · {horizon}天。')
     st.caption('未知标签不作为阴性。未来预测以每站最新有标签观测为起点，并不自动等于今天；历史不足或无法留出时会说明原因。')
     data=upload.getvalue() if upload else None;m=None
     if data:
@@ -72,13 +96,23 @@ def render():
         if st.session_state.get('remote_model_list'):
             with st.expander('服务返回的模型ID',expanded=False):
                 st.write(st.session_state['remote_model_list'])
-        st.write('远程API：'+('配置已填写 · '+remote['model']+'（尚未验证连接）' if ready(remote) else '请填写API地址、模型名称和API Key，或使用已配置的服务器服务。'))
+        st.markdown('#### 连接状态')
+        if ready(remote):
+            st.success('连接参数已完整 · '+remote['model']+'。可先测试连接，也可仅使用本地模型继续分析。')
+        else:
+            missing_parts=[]
+            if not remote.get('base_url'):missing_parts.append('API地址')
+            if not remote.get('model'):missing_parts.append('模型名称')
+            if not remote.get('api_key'):missing_parts.append('API Key')
+            st.info('远程服务尚未启用'+('：缺少'+'、'.join(missing_parts) if missing_parts else '。'))
         consent=st.checkbox('允许本次使用远程服务发送上述数据',key='remote_consent')
+        st.markdown('#### 本次远程调用范围')
+        st.markdown('- 预测：仅发送特征名、历史数值与事件说明。\n- 解读：仅发送本次结构化结果摘要。\n- 默认不发送站点ID、未来标签或完整原始CSV。')
         with st.expander('远程调用与隐私说明',expanded=False):
             if mode=='自行填写' and provider=='DeepSeek':
                 st.caption('DeepSeek使用官方API基础地址；模型ID请以账户当前可用列表为准。')
             st.caption('凭证仅供当前会话使用，不保存到工程、结果包或服务器配置。API地址填写兼容接口基础地址，不含/chat/completions。')
-            st.caption('远程预测只发送特征名、历史数值和事件说明，不发送站点ID、未来标签或完整原始文件；结果解读只发送本次结构化摘要。调用可能产生API费用。')
+            st.caption('调用可能产生API费用；请仅发送你有权使用的数据。')
     with models_col, st.container(border=True,key='obs_models_card'):
         st.markdown('### 模型与运行')
         st.caption('选择参与本次分析的模型，使用同一组验证样本比较。')
@@ -103,6 +137,20 @@ def render():
         selected=st.multiselect('选择本次运行模型（可多选）',allowed,default=[n for n in ['Logistic','HistGradientBoosting'] if n in allowed],key='user_models')
         epochs=st.slider('时序模型训练轮数上限',5,50,20,key='user_epochs')
         if selected:st.caption('实际运行（含融合组件与季节基线）：'+', '.join(expand(['Seasonal Climatology']+selected)))
+        st.markdown('#### 运行前检查')
+        check_a, check_b = st.columns(2, gap='small')
+        with check_a:
+            st.caption('验证策略')
+            st.write('历史时间留出 · 同一测试样本比较')
+            st.caption('当前任务')
+            st.write(task)
+        with check_b:
+            st.caption('运行模型')
+            st.write(f'{len(selected)} 个用户选择 + 季节基线')
+            st.caption('预测时效 / 训练预算')
+            st.write(f'{horizon} 天 · 上限 {epochs} 轮')
+        st.markdown('#### 分析记录')
+        st.markdown('- 保存模型指标、验证样本与数据质量信息。\n- 如启用未来预测，同时记录训练范围外特征与缺失比例。\n- 所有输出与项目固定证据分开保存，可单独下载。')
         signature=hashlib.sha256((data or b'')+json.dumps([task,horizon,description,selected,epochs,remote.get('model'),remote.get('base_url'),hashlib.sha256(remote.get('api_key','').encode()).hexdigest(),mode],ensure_ascii=False).encode()).hexdigest()
         if st.button('开始分析',key='user_run',type='primary',use_container_width=True):
             st.session_state.pop('user_result',None)

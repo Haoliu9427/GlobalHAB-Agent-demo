@@ -139,3 +139,11 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - Increased the prediction-task description area slightly so the first Own Data pair uses the same visual rhythm.
 - The LLM question box now uses a fixed compact height; paired result-source and interpretation-mode cards share the same desktop height floor.
 - Mobile/tablet layouts below 900 px keep natural heights.
+
+## 2026-09-16 card content density and presentation refinement
+- Kept the paired-card equal-height layout while filling previously empty space with user-facing functions rather than decorative whitespace.
+- LLM result selection now shows evidence scope, summary size and a read-only current-summary preview inside the source card.
+- Replaced the internal-looking LLM question example with a general evidence-consistency and follow-up-review prompt suitable for end users.
+- Own-data observation cards now show upload readiness, field groups and preprocessing expectations; task cards show the outputs implied by the selected validation/forecast mode.
+- Remote-service cards now expose connection readiness and the exact remote data scope; model/run cards show validation strategy, selected model count, horizon/training budget and saved analysis records.
+- No model, Case, visual-routing, continuous-learning or remote-LLM logic was removed.

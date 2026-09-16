@@ -118,3 +118,10 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - Simplified the own-data workspace hero by removing the secondary implementation sentence.
 - Redesigned the left workspace navigation with a compact ocean-brand header, clearer section hierarchy, card-style workspace options, hover/selected states and a more consistent Case-panel appearance.
 - Added regression checks so tab labels, hero copy and workspace/sidebar styling do not revert.
+
+## 2026-09-16 LLM connection-state fix
+- Fixed a Streamlit state mismatch where a model name could be visible in the browser while the backend still treated `llm_api_model` as empty, leaving “测试连接” and “生成大模型解读” disabled.
+- DeepSeek now has backend-effective defaults (`https://api.deepseek.com`, `deepseek-flash`) rather than UI-only values.
+- After `/models` succeeds, the UI exposes an “实际调用模型” selector and uses that selected returned model for the actual request.
+- Added explicit connection readiness messaging and exact blockers for the generate button.
+- Added regression tests for provider defaults and discovered-model selection.

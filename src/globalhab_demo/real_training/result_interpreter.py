@@ -35,6 +35,37 @@ INTERPRETATION_MODES = {
     ),
 }
 
+
+
+PROVIDER_PRESETS = {
+    "DeepSeek": {"base_url": "https://api.deepseek.com", "model": "deepseek-flash"},
+    "Qwen": {"base_url": "", "model": ""},
+    "自定义兼容服务": {"base_url": "", "model": ""},
+}
+
+def provider_preset(provider: str) -> dict[str, str]:
+    return dict(PROVIDER_PRESETS.get(provider, PROVIDER_PRESETS["自定义兼容服务"]))
+
+def effective_remote_config(provider: str, endpoint: str, model_id: str, api_key: str, discovered_models: list[str] | None = None, discovered_choice: str = "") -> dict[str, str]:
+    """Build the actual remote config used by buttons and generation.
+
+    Provider defaults are real fallback values, not UI-only placeholders.  This
+    prevents a browser-restored text value from looking populated while the
+    Streamlit backend still sees an empty widget state.  If the service has
+    returned a model list, a valid discovered selection takes precedence.
+    """
+    preset = provider_preset(provider)
+    base_url = (endpoint or "").strip().rstrip("/") or preset["base_url"]
+    model = (model_id or "").strip() or preset["model"]
+    models = [str(x).strip() for x in (discovered_models or []) if str(x).strip()]
+    choice = (discovered_choice or "").strip()
+    if models:
+        if choice in models:
+            model = choice
+        elif model not in models:
+            model = models[0]
+    return {"base_url": base_url, "model": model, "api_key": (api_key or "").strip()}
+
 BUILTIN_SOURCES = [
     "项目核心发现（合成探索 + 负对照）",
     "模型Benchmark与结构模型审计",
@@ -382,13 +413,16 @@ def render(root: Path) -> None:
             st.session_state[key] = ""
         st.session_state.pop("llm_interpretation", None)
         st.session_state.pop("llm_model_list", None)
+        st.session_state.pop("llm_discovered_model", None)
 
     def change_provider() -> None:
         provider = st.session_state.get("llm_provider", "自定义兼容服务")
-        st.session_state["llm_api_url"] = "https://api.deepseek.com" if provider == "DeepSeek" else ""
-        st.session_state["llm_api_model"] = ""
+        preset = provider_preset(provider)
+        st.session_state["llm_api_url"] = preset["base_url"]
+        st.session_state["llm_api_model"] = preset["model"]
         st.session_state["llm_api_key"] = ""
         st.session_state.pop("llm_model_list", None)
+        st.session_state.pop("llm_discovered_model", None)
         st.session_state.pop("llm_interpretation", None)
 
     with st.container(border=True, key="llm_service_card"):
@@ -397,14 +431,35 @@ def render(root: Path) -> None:
         cfg_source = st.radio("服务配置来源", ["自行填写", "使用服务器配置"], horizontal=True, key="llm_remote_mode")
         if cfg_source == "自行填写":
             provider = st.selectbox("模型服务", ["自定义兼容服务", "DeepSeek", "Qwen"], key="llm_provider", on_change=change_provider)
+            # Apply provider defaults on the backend before creating the text widgets.
+            # This avoids a browser-restored value being visible while Streamlit state is empty.
+            preset = provider_preset(provider)
+            if preset["base_url"] and not str(st.session_state.get("llm_api_url", "")).strip():
+                st.session_state["llm_api_url"] = preset["base_url"]
+            if preset["model"] and not str(st.session_state.get("llm_api_model", "")).strip():
+                st.session_state["llm_api_model"] = preset["model"]
             c1, c2 = st.columns([1.35, 1])
             with c1:
                 endpoint = st.text_input("API地址", placeholder="https://服务域名/compatible-mode/v1", key="llm_api_url")
             with c2:
                 model_id = st.text_input("模型名称", placeholder="服务商提供的模型ID", key="llm_api_model")
             api_key = st.text_input("API Key", type="password", key="llm_api_key")
-            remote = {"base_url": endpoint.strip().rstrip("/"), "model": model_id.strip(), "api_key": api_key.strip()}
+            discovered = st.session_state.get("llm_model_list") or []
+            discovered_choice = ""
+            if discovered:
+                clean_models = [str(x).strip() for x in discovered if str(x).strip()]
+                current = (model_id or preset["model"]).strip()
+                default_index = clean_models.index(current) if current in clean_models else 0
+                discovered_choice = st.selectbox(
+                    "实际调用模型",
+                    clean_models,
+                    index=default_index,
+                    key="llm_discovered_model",
+                    help="读取到服务模型列表后，以这里选择的模型作为实际调用模型。这样可避免浏览器显示值与Streamlit后端状态不同步。",
+                )
+            remote = effective_remote_config(provider, endpoint, model_id, api_key, discovered, discovered_choice)
         else:
+            provider = "服务器配置"
             remote = settings()
             st.write("服务器配置：" + (remote.get("model") or "未配置"))
 
@@ -420,26 +475,48 @@ def render(root: Path) -> None:
             thinking_mode = {"稳定解读（推荐）": "stable", "低强度思考": "low", "高强度思考": "high"}[thinking_label]
             st.caption("DeepSeek默认采用稳定解读：只读取最终可见回答，不把reasoning_content当作结果。若思考模式未生成最终回答，系统会自动以稳定模式重试一次。")
 
+        missing_fields = []
+        if not remote.get("base_url"):
+            missing_fields.append("API地址")
+        if not remote.get("model"):
+            missing_fields.append("模型名称")
+        if not remote.get("api_key"):
+            missing_fields.append("API Key")
+        if missing_fields:
+            st.warning("连接配置未完成：缺少 " + "、".join(missing_fields) + "。")
+        else:
+            st.success("连接参数已完整 · 实际调用模型：" + str(remote.get("model")) + "。可测试连接或直接生成解读。")
+
         b1, b2, b3 = st.columns(3)
         if b1.button("读取可用模型", disabled=not remote.get("base_url") or not remote.get("api_key"), use_container_width=True):
             try:
                 st.session_state["llm_model_list"] = list_models(remote)
+                st.rerun()
             except ValueError as exc:
                 st.error(str(exc))
         if b2.button("测试连接", disabled=not ready(remote), use_container_width=True):
             try:
-                chat(remote, [{"role": "user", "content": "Reply OK."}], max_tokens=120, thinking_mode="stable")
-                st.success("服务可访问。")
+                text, _ = chat(remote, [{"role": "user", "content": "Reply exactly OK."}], max_tokens=120, thinking_mode="stable")
+                st.success("服务可访问 · " + str(remote.get("model")) + " 返回：" + text[:80])
             except ValueError as exc:
                 st.error(str(exc))
         b3.button("清除凭证与解读", on_click=clear_credentials, use_container_width=True)
         if st.session_state.get("llm_model_list"):
-            st.write("服务返回的模型ID：", st.session_state["llm_model_list"])
+            st.caption("服务返回模型：" + "、".join(map(str, st.session_state["llm_model_list"])))
         consent = st.checkbox("允许把上方结果摘要发送给远程大模型", key="llm_interpret_consent")
         st.caption("项目内置结果、最近一次自有数据和现场影像甄别只发送结构化摘要；现场照片本身不会发送，也不会发送完整原始CSV或API Key。若你主动上传结果文件，其摘要中显示的字段和前20行会随请求发送；请先移除不希望发送的敏感标识。调用可能产生服务商费用。")
 
     signature = hashlib.sha256((source + mode + question + summary + str(remote.get("base_url")) + str(remote.get("model")) + str(thinking_mode) + hashlib.sha256(str(remote.get("api_key", "")).encode("utf-8")).hexdigest()).encode("utf-8")).hexdigest()
-    if st.button("生成大模型解读", type="primary", disabled=not summary or not ready(remote) or not consent, use_container_width=True, key="llm_generate"):
+    generate_blockers = []
+    if not summary:
+        generate_blockers.append("当前结果来源没有可发送的摘要")
+    if not ready(remote):
+        generate_blockers.append("大模型连接参数未完整")
+    if not consent:
+        generate_blockers.append("尚未勾选远程发送授权")
+    if generate_blockers:
+        st.caption("生成按钮未启用：" + "；".join(generate_blockers) + "。")
+    if st.button("生成大模型解读", type="primary", disabled=bool(generate_blockers), use_container_width=True, key="llm_generate"):
         try:
             with st.spinner("大模型正在解读已计算结果……"):
                 output_budget = 3200 if thinking_mode == "stable" else (5200 if thinking_mode == "low" else 8000)

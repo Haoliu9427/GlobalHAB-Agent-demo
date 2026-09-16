@@ -50,3 +50,24 @@ def test_prompt_has_evidence_boundaries():
     assert "合成机制验证" in system
     assert "30秒口头讲法" in system
     assert "答辩讲解" in messages[1]["content"]
+
+
+def test_deepseek_effective_remote_uses_backend_defaults():
+    from globalhab_demo.real_training.result_interpreter import effective_remote_config
+    cfg = effective_remote_config("DeepSeek", "", "", "secret")
+    assert cfg["base_url"] == "https://api.deepseek.com"
+    assert cfg["model"] == "deepseek-flash"
+    assert cfg["api_key"] == "secret"
+
+
+def test_discovered_model_becomes_actual_model():
+    from globalhab_demo.real_training.result_interpreter import effective_remote_config
+    cfg = effective_remote_config(
+        "DeepSeek",
+        "https://api.deepseek.com",
+        "",
+        "secret",
+        ["deepseek-flash", "deepseek-v4-pro"],
+        "deepseek-v4-pro",
+    )
+    assert cfg["model"] == "deepseek-v4-pro"

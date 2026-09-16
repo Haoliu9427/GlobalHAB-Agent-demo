@@ -90,3 +90,14 @@ When the latest field-image screening used the adaptive visual router, the LLM s
 DeepSeek V4 Chat Completions当前默认开启思考模式。对于结果解读，页面默认选择“稳定解读（推荐）”，显式关闭思考，避免输出预算被推理内容占满而导致最终 `content` 为空。需要时可切换低/高强度思考；若思考模式只返回推理内容、最终回答为空或达到长度上限，程序会自动使用稳定模式重试一次。程序不会把 `reasoning_content` 显示成最终科研解读。
 
 兼容解析同时接受标准字符串 `choices[0].message.content` 与常见OpenAI兼容文本块数组；若服务返回的结构仍不兼容，会给出针对 `/chat/completions` 的明确诊断，而不是笼统提示“模型返回格式无效”。
+
+## DeepSeek 表单状态同步修复
+
+如果“读取可用模型”能够成功，但“测试连接”仍灰色，通常说明浏览器里可见的“模型名称”与 Streamlit 后端 session state 没有同步。当前版本不再把可见文本框作为唯一依据：
+
+- 选择 DeepSeek 后，后端会实际使用 `https://api.deepseek.com` 和 `deepseek-flash` 作为默认值；
+- 读取到服务返回的模型列表后，会出现“实际调用模型”下拉框，并以该选择作为真正请求模型；
+- 页面会明确显示“连接参数已完整”或缺少的字段；
+- “生成大模型解读”若仍不可用，会直接列出阻塞原因（结果摘要为空 / 连接参数不完整 / 未授权发送），不再只显示灰色按钮。
+
+因此，只要 API 地址、API Key 有效且服务返回至少一个模型，就可以在页面中明确选择实际调用模型并继续测试连接。

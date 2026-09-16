@@ -524,3 +524,36 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
 .st-key-llm_mode_card [data-testid="stCaptionContainer"]{
   line-height:1.42!important;
 }
+
+
+/* 2026-09-16 concise-card pass: preserve equal outer geometry, reduce permanent copy. */
+.compact-card-footer{
+  margin-top:auto;
+  padding-top:.65rem;
+  color:#7b9097;
+  font-size:.78rem;
+  line-height:1.45;
+  border-top:1px solid #edf2f2;
+}
+@media(min-width:901px){
+  [data-testid="stColumn"]:has(.st-key-obs_upload_card),
+  [data-testid="stColumn"]:has(.st-key-obs_task_card),
+  [data-testid="stColumn"]:has(.st-key-llm_source_card),
+  [data-testid="stColumn"]:has(.st-key-llm_mode_card){
+    padding:22px!important;
+  }
+  .st-key-obs_upload_card [data-testid="stVerticalBlock"],
+  .st-key-obs_task_card [data-testid="stVerticalBlock"],
+  .st-key-llm_source_card [data-testid="stVerticalBlock"],
+  .st-key-llm_mode_card [data-testid="stVerticalBlock"]{
+    min-height:100%!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+}
+.st-key-obs_upload_card [data-testid="stCaptionContainer"],
+.st-key-obs_task_card [data-testid="stCaptionContainer"],
+.st-key-llm_source_card [data-testid="stCaptionContainer"],
+.st-key-llm_mode_card [data-testid="stCaptionContainer"]{
+  line-height:1.45!important;
+}

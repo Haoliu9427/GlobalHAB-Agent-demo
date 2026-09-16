@@ -9,7 +9,6 @@ def render():
     data_col,task_col=st.columns([1,1],gap='large')
     with data_col, st.container(border=False,key='obs_upload_card'):
         st.markdown('### 观测数据')
-        st.caption('上传现场记录，建立本次分析的数据集。')
         upload=st.file_uploader('现场观测CSV',type=['csv'],key='real_training_upload')
         prep_a, prep_b = st.columns([1, 1], gap='small')
         with prep_a:
@@ -17,24 +16,10 @@ def render():
         with prep_b:
             status_text = ('已选择 · '+str(round(upload.size/1024,1))+' KB') if upload else '等待上传CSV'
             st.button(status_text, disabled=True, use_container_width=True, key='real_training_upload_status')
-        st.markdown('#### 必要信息')
-        field_a, field_b = st.columns(2, gap='small')
-        with field_a:
-            st.caption('定位与时间')
-            st.write('站点 · 日期 · 可用时间 · 经纬度')
-        with field_b:
-            st.caption('标签与观测')
-            st.write('事件标签 · value · 数据来源')
-        st.markdown('#### 自动检查')
-        check_a, check_b = st.columns(2, gap='small')
-        with check_a:
-            st.caption('时间')
-            st.write('历史跨度 · 留出窗口')
-        with check_b:
-            st.caption('质量')
-            st.write('未知标签 · 缺失值 · 必需字段')
-        st.caption('可选补充温度、盐度、溶解氧等环境变量。')
-        if upload:st.caption('当前文件：'+upload.name)
+        st.caption('必需：站点、日期、可用时间、经纬度、事件标签、value与来源；环境变量可选。')
+        with st.expander('字段与数据要求',expanded=False):
+            st.write('按行记录观测；未知标签可留空。上传后自动检查时间可用性、留出条件、缺失值和必需字段。')
+        st.markdown('<div class="compact-card-footer">上传后先完成数据检查，再进入统一验证与模型比较。</div>', unsafe_allow_html=True)
     with task_col, st.container(border=False,key='obs_task_card'):
         st.markdown('### 预测任务')
         task_top, horizon_top = st.columns([1.55, 0.75], gap='small')
@@ -43,24 +28,11 @@ def render():
         with horizon_top:
             horizon=st.selectbox('预测时效（天）',[7,14,30],key='user_horizon')
         description=st.text_area('物种、事件阈值及value的含义/单位',max_chars=500,height=108,key='user_description')
-        st.markdown('#### 本次输出')
-        out_a, out_b = st.columns(2, gap='small')
-        with out_a:
-            st.caption('模型与指标')
-            st.write('同一留出集比较 · AP / Brier / ECE')
-        with out_b:
-            st.caption('结果支持')
-            st.write('样本/事件数 · 数据质量' if task=='历史预测验证' else '未来风险 · 超范围/缺失提示')
-        st.markdown('#### 验证规则')
-        rule_a, rule_b = st.columns(2, gap='small')
-        with rule_a:
-            st.caption('时间留出')
-            st.write('历史在前 · 测试在后')
-        with rule_b:
-            st.caption('标签处理')
-            st.write('未知保留 · 不自动记阴性')
-        st.caption(f'当前设置：{task} · {horizon}天 · 结果独立保存。')
-    st.caption('未知标签保留为未知；历史不足或无法留出时会明确说明。')
+        st.caption('输出：同一留出集模型比较、AP / Brier / ECE、样本/事件支持与数据质量。')
+        with st.expander('本次分析说明',expanded=False):
+            st.write('历史按时间留出；未知标签保留为未知。选择未来预测时，从各站最新有标签观测起算，并记录超范围特征与缺失比例。')
+        st.markdown(f'<div class="compact-card-footer">当前：{task} · {horizon}天 · 结果独立保存。</div>', unsafe_allow_html=True)
+    st.caption('历史不足或无法形成时间留出时，系统会明确说明原因。')
     data=upload.getvalue() if upload else None;m=None
     if data:
         try:
@@ -83,7 +55,6 @@ def render():
     service_col,models_col=st.columns([1,1],gap='large')
     with service_col, st.container(border=True,key='obs_service_card'):
         st.markdown('### 远程大模型服务')
-        st.caption('连接DeepSeek、Qwen或其他兼容服务。仅运行本地模型时无需填写。')
         mode=st.radio('服务配置来源',['自行填写','使用服务器配置'],key='remote_mode',horizontal=True)
         if mode=='自行填写':
             provider=st.selectbox('模型服务',['自定义兼容服务','DeepSeek','Qwen'],key='remote_provider',on_change=change_provider)
@@ -113,7 +84,6 @@ def render():
         if st.session_state.get('remote_model_list'):
             with st.expander('服务返回的模型ID',expanded=False):
                 st.write(st.session_state['remote_model_list'])
-        st.markdown('#### 连接状态')
         if ready(remote):
             st.success('连接参数已完整 · '+remote['model']+'。可先测试连接，也可仅使用本地模型继续分析。')
         else:
@@ -123,8 +93,6 @@ def render():
             if not remote.get('api_key'):missing_parts.append('API Key')
             st.info('远程服务尚未启用'+('：缺少'+'、'.join(missing_parts) if missing_parts else '。'))
         consent=st.checkbox('允许本次使用远程服务发送上述数据',key='remote_consent')
-        st.markdown('#### 远程发送范围')
-        st.caption('仅发送预测所需特征/历史数值或结构化结果摘要；不发送完整原始CSV。')
         with st.expander('远程调用与隐私说明',expanded=False):
             if mode=='自行填写' and provider=='DeepSeek':
                 st.caption('DeepSeek使用官方API基础地址；模型ID请以账户当前可用列表为准。')
@@ -132,7 +100,6 @@ def render():
             st.caption('调用可能产生API费用；请仅发送你有权使用的数据。')
     with models_col, st.container(border=True,key='obs_models_card'):
         st.markdown('### 模型与运行')
-        st.caption('选择参与本次分析的模型，使用同一组验证样本比较。')
         records=[];allowed=[]
         for n in MODELS:
             reason='可选择（尚未针对本次数据运行）'
@@ -154,20 +121,8 @@ def render():
         selected=st.multiselect('选择本次运行模型（可多选）',allowed,default=[n for n in ['Logistic','HistGradientBoosting'] if n in allowed],key='user_models')
         epochs=st.slider('时序模型训练轮数上限',5,50,20,key='user_epochs')
         if selected:st.caption('实际运行（含融合组件与季节基线）：'+', '.join(expand(['Seasonal Climatology']+selected)))
-        st.markdown('#### 运行前检查')
-        check_a, check_b = st.columns(2, gap='small')
-        with check_a:
-            st.caption('验证策略')
-            st.write('历史时间留出 · 同一测试样本比较')
-            st.caption('当前任务')
-            st.write(task)
-        with check_b:
-            st.caption('运行模型')
-            st.write(f'{len(selected)} 个用户选择 + 季节基线')
-            st.caption('预测时效 / 训练预算')
-            st.write(f'{horizon} 天 · 上限 {epochs} 轮')
-        st.markdown('#### 分析记录')
-        st.caption('保存指标、验证样本和数据质量；未来预测另记录超范围特征与缺失比例。')
+        st.caption(f'验证：时间留出 · {len(selected)}个选择模型 + 季节基线 · {horizon}天 · 上限{epochs}轮。')
+        st.markdown('<div class="compact-card-footer">运行后保存指标、验证样本、预测结果与数据质量记录。</div>', unsafe_allow_html=True)
         signature=hashlib.sha256((data or b'')+json.dumps([task,horizon,description,selected,epochs,remote.get('model'),remote.get('base_url'),hashlib.sha256(remote.get('api_key','').encode()).hexdigest(),mode],ensure_ascii=False).encode()).hexdigest()
         if st.button('开始分析',key='user_run',type='primary',use_container_width=True):
             st.session_state.pop('user_result',None)

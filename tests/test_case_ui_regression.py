@@ -114,17 +114,17 @@ def test_strict_equal_height_cards_and_compact_remote_service():
 def test_content_density_and_user_facing_llm_prompt_examples():
     workbench = (ROOT / "src" / "globalhab_demo" / "real_training" / "user_workbench.py").read_text(encoding="utf-8")
     llm = LLM.read_text(encoding="utf-8")
-    assert "#### 当前输入" in llm
-    assert "摘要预览（只读）" in llm
     assert "为什么AP不高但仍有价值" not in llm
-    assert "请比较不同证据来源是否一致，并指出最值得进一步复核的部分" in llm
-    assert "#### 输出结构" in llm
-    assert "#### 必要信息" in workbench
-    assert "#### 本次输出" in workbench
-    assert "#### 连接状态" in workbench
-    assert "#### 远程发送范围" in workbench
-    assert "#### 运行前检查" in workbench
-    assert "#### 分析记录" in workbench
+    assert "请指出最值得进一步复核的证据" in llm
+    assert "摘要预览" in llm
+    assert "下载摘要" in llm
+    assert "compact-card-footer" in llm
+    assert "字段与数据要求" in workbench
+    assert "本次分析说明" in workbench
+    assert "远程调用与隐私说明" in workbench
+    # Old verbose permanent headings should remain removed from the main card surface.
+    for text in ["#### 当前输入", "#### 输出结构", "#### 必要信息", "#### 本次输出", "#### 连接状态", "#### 远程发送范围", "#### 运行前检查", "#### 分析记录"]:
+        assert text not in llm + workbench
 
 
 def test_final_pair_balance_and_matched_upload_actions():
@@ -133,10 +133,10 @@ def test_final_pair_balance_and_matched_upload_actions():
     css = (ROOT / "assets" / "interface.css").read_text(encoding="utf-8")
     assert "prep_a, prep_b = st.columns([1, 1], gap='small')" in workbench
     assert "real_training_upload_status" in workbench
-    assert "#### 自动检查" in workbench
-    assert "#### 验证规则" in workbench
-    assert "#### 发送设置" in llm
-    assert "45,000 字符" in llm
+    assert "字段与数据要求" in workbench
+    assert "本次分析说明" in workbench
+    assert "原始文件默认不发送" in llm
+    assert "45,000字符" in llm
     assert 'grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;' in css
 
 
@@ -148,11 +148,8 @@ def test_parent_owned_equal_height_cards_and_content_fill():
     assert "st.container(border=False,key='obs_task_card')" in workbench
     assert 'st.container(border=False, key="llm_source_card")' in llm
     assert 'st.container(border=False, key="llm_mode_card")' in llm
-    assert "#### 推荐数据组织" not in workbench
-    assert "#### 结果记录" not in workbench
-    assert "可解读重点" in llm
-    assert "下载当前结构化摘要" in llm
-    assert "#### 发送设置" in llm
+    assert "compact-card-footer" in workbench
+    assert "compact-card-footer" in llm
     assert '[data-testid="stColumn"]:has(.st-key-obs_upload_card)' in css
     assert '[data-testid="stColumn"]:has(.st-key-llm_source_card)' in css
     assert 'compact balanced cards' in css
@@ -163,14 +160,17 @@ def test_compact_balanced_copy_and_no_oversized_final_floor():
     workbench = (ROOT / "src" / "globalhab_demo" / "real_training" / "user_workbench.py").read_text(encoding="utf-8")
     llm = LLM.read_text(encoding="utf-8")
     css = (ROOT / "assets" / "interface.css").read_text(encoding="utf-8")
-    assert "#### 必要信息" in workbench
-    assert "#### 自动检查" in workbench
-    assert "#### 验证规则" in workbench
-    assert "#### 推荐数据组织" not in workbench
-    assert "#### 结果记录" not in workbench
-    assert "#### 当前输入" in llm
-    assert "#### 发送设置" in llm
-    assert "#### 输出结构" in llm
-    assert "#### 适用场景" not in llm
+    # Main cards stay concise; detailed guidance moves into collapsed expanders.
+    assert "字段与数据要求" in workbench
+    assert "本次分析说明" in workbench
+    assert "查看完整结果摘要" in llm
+    assert 'expanded=False' in llm
+    assert "#### 当前输入" not in llm
+    assert "#### 发送设置" not in llm
+    assert "#### 输出结构" not in llm
+    assert "#### 必要信息" not in workbench
+    assert "#### 自动检查" not in workbench
+    assert "#### 验证规则" not in workbench
     assert "compact balanced cards" in css
     assert "min-height:0!important;" in css
+    assert ".compact-card-footer" in css

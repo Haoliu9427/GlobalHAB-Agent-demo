@@ -408,65 +408,43 @@ def render(root: Path) -> None:
                     st.error("结果文件解析失败：" + str(exc))
             else:
                 summary = ""
-        st.caption("当前输入只使用结构化结果摘要；原始文件不会默认发送给远程大模型。")
         scope_labels = {
-            "项目核心发现（合成探索 + 负对照）": "合成机制验证 · 负对照 · Agent探索结果",
-            "模型Benchmark与结构模型审计": "统一测试集模型比较 · 复杂度审计",
-            "挪威长期前向验证": "真实长期监测 · 前向留出验证",
-            "南澳真实事件回放": "真实qPCR观测 · 事件回放",
-            "真实观测训练与验证": "真实观测训练 · 严格测试集",
-            "中国近海跨年检验": "中国近海观测 · 跨年检验",
-            "生物响应沙盘": "情景输入 · 相对响应与稳健性",
-            "当前完整Case（推荐）": "研究候选 · 现场视觉 · 环境元数据 · 实验室证据",
-            "最近一次现场影像甄别": "视觉筛查 · 不确定性 · 现场元数据",
-            "最近一次自有数据分析": "用户数据 · 模型比较 · 可选未来预测",
-            "上传结果文件": "用户提供的结构化结果文件",
+            "项目核心发现（合成探索 + 负对照）": "合成机制验证 · 负对照 · Agent探索",
+            "模型Benchmark与结构模型审计": "模型比较 · 结构审计",
+            "挪威长期前向验证": "长期监测 · 前向验证",
+            "南澳真实事件回放": "qPCR观测 · 事件回放",
+            "真实观测训练与验证": "真实训练 · 严格测试",
+            "中国近海跨年检验": "中国近海 · 跨年检验",
+            "生物响应沙盘": "情景输入 · 相对响应",
+            "当前完整Case（推荐）": "研究候选 · 现场 · 实验室证据",
+            "最近一次现场影像甄别": "视觉筛查 · 现场元数据",
+            "最近一次自有数据分析": "用户数据 · 模型比较",
+            "上传结果文件": "用户结果文件",
         }
-        explainable_items = {
-            "项目核心发现（合成探索 + 负对照）": ["候选路径与响应时滞", "负对照与机制约束", "Agent有限预算探索结果"],
-            "模型Benchmark与结构模型审计": ["模型性能差异", "复杂模型与简单基线关系", "适用条件与结构限制"],
-            "挪威长期前向验证": ["前向留出表现", "Top-k监测覆盖", "真实监测中的泛化边界"],
-            "南澳真实事件回放": ["qPCR事件时间线", "回放证据一致性", "可确认与不可确认部分"],
-            "真实观测训练与验证": ["训练/测试性能", "样本与事件支持", "模型适用范围"],
-            "中国近海跨年检验": ["跨年迁移表现", "海域差异", "复核优先级"],
-            "生物响应沙盘": ["相对响应方向", "情景稳健性", "管理准备优先级"],
-            "当前完整Case（推荐）": ["研究风险候选", "现场视觉与环境证据", "实验室/专家确认与证据冲突"],
-            "最近一次现场影像甄别": ["视觉异常类别", "模型不确定性与DEFER", "现场元数据与复核建议"],
-            "最近一次自有数据分析": ["模型比较", "历史验证", "可选未来预测与数据质量"],
-            "上传结果文件": ["文件中的核心结果", "关键数字与证据边界", "需要进一步复核的部分"],
-        }
-        st.markdown("#### 当前输入")
-        info_a, info_b = st.columns(2, gap="small")
-        info_a.caption("证据范围")
-        info_a.write(scope_labels.get(source, "结构化结果"))
-        info_b.caption("摘要规模")
-        info_b.write(f"{len(summary):,} 字符" if summary else "等待可用结果")
-        preview = summary[:1000].strip() if summary else "当前来源尚未生成可用摘要。请选择已有结果、完整Case，或上传结果文件。"
-        st.text_area("摘要预览（只读）", value=preview, height=105, disabled=True)
-        st.caption("可解读重点")
-        st.write(" · ".join(explainable_items.get(source, ["核心结果", "关键数字", "证据边界"])))
-        if summary:
-            st.download_button(
-                "下载当前结构化摘要",
-                data=summary,
-                file_name="globalhab_result_summary.txt",
-                mime="text/plain",
-                use_container_width=True,
-                key="llm_summary_download",
-            )
-        st.markdown("#### 发送设置")
-        send_a, send_b = st.columns(2, gap="small")
-        send_a.caption("原始文件")
-        send_a.write("默认不发送")
-        send_b.caption("远程上限")
-        send_b.write("45,000 字符")
-        st.caption("调用远程模型前仍需在下方明确授权。")
+        scope = scope_labels.get(source, "结构化结果")
+        st.caption(f"{scope} · {len(summary):,}字符" if summary else f"{scope} · 等待结果")
+        preview = summary[:700].strip() if summary else "当前来源尚未生成可用摘要。"
+        st.text_area("摘要预览", value=preview, height=90, disabled=True, label_visibility="collapsed")
+        action_a, action_b = st.columns(2, gap="small")
+        with action_a:
+            if summary:
+                st.download_button(
+                    "下载摘要",
+                    data=summary,
+                    file_name="globalhab_result_summary.txt",
+                    mime="text/plain",
+                    use_container_width=True,
+                    key="llm_summary_download",
+                )
+            else:
+                st.button("下载摘要", disabled=True, use_container_width=True, key="llm_summary_download_disabled")
+        with action_b:
+            st.button("原始文件默认不发送", disabled=True, use_container_width=True, key="llm_source_privacy_status")
+        st.markdown('<div class="compact-card-footer">远程发送前仍需明确授权；摘要上限45,000字符。</div>', unsafe_allow_html=True)
 
     with mode_col, st.container(border=False, key="llm_mode_card"):
         st.markdown("### 解读方式")
         mode = st.radio("输出风格", list(INTERPRETATION_MODES), key="llm_interpret_mode")
-
-        st.markdown("#### 解读设置")
         set_a, set_b = st.columns(2, gap="small")
         with set_a:
             output_length = st.selectbox(
@@ -480,34 +458,25 @@ def render(root: Path) -> None:
                 "关键数字核对",
                 value=True,
                 key="llm_number_checklist",
-                help="在解读结尾列出关键数字及其含义，便于复核。",
+                help="在结果末尾列出关键数字及含义。",
             )
         focus_items = st.multiselect(
             "重点关注",
             ["核心信号", "证据一致性", "不确定性", "下一步复核"],
             default=["核心信号", "证据一致性", "不确定性", "下一步复核"],
             key="llm_focus_items",
-            help="这些选项会写入大模型的解读要求。",
         )
         question = st.text_area(
-            "特别想让大模型回答什么？（可选）",
-            placeholder="例如：请比较不同证据来源是否一致，并指出最值得进一步复核的部分。",
+            "补充问题（可选）",
+            placeholder="例如：请指出最值得进一步复核的证据。",
             max_chars=800,
             height=100,
             key="llm_interpret_question",
         )
-        st.caption("解读会区分证据层级、不确定性与报告边界。")
-        st.markdown("#### 输出结构")
-        out_a, out_b = st.columns(2, gap="small")
-        with out_a:
-            st.caption("结论与数字")
-            st.write("核心信号 · 关键指标")
-        with out_b:
-            st.caption("证据与建议")
-            st.write("一致性 · 不确定性 · 下一步")
-        st.caption(f"当前：{mode} · {output_length} · 重点 {len(focus_items)} 项。")
+        st.caption("输出：核心结论 · 证据边界 · 下一步建议。")
+        st.markdown(f'<div class="compact-card-footer">当前：{mode} · {output_length} · 重点{len(focus_items)}项。</div>', unsafe_allow_html=True)
 
-    with st.expander("查看将发送给大模型的结果摘要", expanded=True):
+    with st.expander("查看完整结果摘要", expanded=False):
         if summary:
             st.text(summary[:50000])
             st.caption(f"摘要字符数：{len(summary):,}。大模型最多接收前45,000字符。")

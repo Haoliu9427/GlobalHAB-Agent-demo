@@ -56,119 +56,116 @@ def render():
         st.session_state.pop('remote_action_notice',None)
     service_col,models_col=st.columns([1,1],gap='large')
     with service_col, st.container(border=False,key='obs_service_card'):
-        st.markdown('### 远程大模型服务')
-
         # Top layer: service configuration.
-        mode=st.radio('服务配置来源',['自行填写','使用服务器配置'],key='remote_mode',horizontal=True)
-        if mode=='自行填写':
-            provider=st.selectbox('模型服务',['自定义兼容服务','DeepSeek','Qwen'],key='remote_provider',on_change=change_provider)
-            presets={
-                'DeepSeek':{'base_url':'https://api.deepseek.com','model':'deepseek-flash'},
-                'Qwen':{'base_url':'https://dashscope.aliyuncs.com/compatible-mode/v1','model':'qwen-plus'},
-            }
-            preset=presets.get(provider,{'base_url':'','model':''})
-            if preset['base_url'] and not str(st.session_state.get('user_api_url','')).strip():
-                st.session_state['user_api_url']=preset['base_url']
-            if preset['model'] and not str(st.session_state.get('user_api_model','')).strip():
-                st.session_state['user_api_model']=preset['model']
-            endpoint_col, model_col = st.columns([1.25, 1], gap='small')
-            with endpoint_col:
-                endpoint=st.text_input('API地址',placeholder='https://服务域名/compatible-mode/v1',key='user_api_url')
-            with model_col:
-                model_id=st.text_input('模型名称',placeholder='填写服务商提供的模型ID',key='user_api_model')
-            key=st.text_input('API Key',type='password',key='user_api_key')
-            effective_url=(endpoint.strip() or preset['base_url']).rstrip('/')
-            effective_model=model_id.strip() or preset['model']
-            remote={'base_url':effective_url,'model':effective_model,'api_key':key.strip()}
-        else:
-            provider='服务器配置'
-            presets={}
-            remote=settings()
+        with st.container(border=False,key='obs_service_top_zone'):
+            st.markdown('### 远程大模型服务')
+            mode=st.radio('服务配置来源',['自行填写','使用服务器配置'],key='remote_mode',horizontal=True)
+            if mode=='自行填写':
+                provider=st.selectbox('模型服务',['自定义兼容服务','DeepSeek','Qwen'],key='remote_provider',on_change=change_provider)
+                presets={
+                    'DeepSeek':{'base_url':'https://api.deepseek.com','model':'deepseek-flash'},
+                    'Qwen':{'base_url':'https://dashscope.aliyuncs.com/compatible-mode/v1','model':'qwen-plus'},
+                }
+                preset=presets.get(provider,{'base_url':'','model':''})
+                if preset['base_url'] and not str(st.session_state.get('user_api_url','')).strip():
+                    st.session_state['user_api_url']=preset['base_url']
+                if preset['model'] and not str(st.session_state.get('user_api_model','')).strip():
+                    st.session_state['user_api_model']=preset['model']
+                endpoint_col, model_col = st.columns([1.25, 1], gap='small')
+                with endpoint_col:
+                    endpoint=st.text_input('API地址',placeholder='https://服务域名/compatible-mode/v1',key='user_api_url')
+                with model_col:
+                    model_id=st.text_input('模型名称',placeholder='填写服务商提供的模型ID',key='user_api_model')
+                key=st.text_input('API Key',type='password',key='user_api_key')
+                effective_url=(endpoint.strip() or preset['base_url']).rstrip('/')
+                effective_model=model_id.strip() or preset['model']
+                remote={'base_url':effective_url,'model':effective_model,'api_key':key.strip()}
+            else:
+                provider='服务器配置'
+                presets={}
+                remote=settings()
 
-        if not str(remote.get('model','')).strip():
-            discovered=[str(x).strip() for x in (st.session_state.get('remote_model_list') or []) if str(x).strip()]
-            fallback_model=(discovered[0] if discovered else '')
-            if not fallback_model and mode=='自行填写':
-                fallback_model=presets.get(provider,{}).get('model','')
-            remote={**remote,'model':fallback_model}
+            if not str(remote.get('model','')).strip():
+                discovered=[str(x).strip() for x in (st.session_state.get('remote_model_list') or []) if str(x).strip()]
+                fallback_model=(discovered[0] if discovered else '')
+                if not fallback_model and mode=='自行填写':
+                    fallback_model=presets.get(provider,{}).get('model','')
+                remote={**remote,'model':fallback_model}
 
-        remote_sig=hashlib.sha256(json.dumps({
-            'base_url':remote.get('base_url',''),
-            'model':remote.get('model',''),
-            'api_key_hash':hashlib.sha256(remote.get('api_key','').encode()).hexdigest(),
-        },sort_keys=True).encode()).hexdigest()
-        action_a, action_b, action_c = st.columns(3, gap='small')
-        with action_a:
-            st.button('清除凭证',on_click=clear_key,use_container_width=True)
-        with action_b:
-            if st.button('读取模型',disabled=not remote.get('base_url') or not remote.get('api_key'),use_container_width=True):
-                try:
-                    from .remote_qwen import list_models
-                    models=list_models(remote)
-                    st.session_state['remote_model_list']=models
-                    st.session_state['remote_action_notice']={
-                        'signature':remote_sig,'kind':'info','text':'已读取可用模型 · '+str(len(models))+' 个'
-                    }
-                except ValueError as exc:
-                    st.session_state['remote_action_notice']={
-                        'signature':remote_sig,'kind':'error','text':'读取模型失败 · '+str(exc)
-                    }
-        with action_c:
-            if st.button('测试连接',use_container_width=True):
-                try:
-                    test_remote=dict(remote)
-                    if not str(test_remote.get('base_url','')).strip():
-                        raise ValueError('请先填写API地址。')
-                    if not str(test_remote.get('api_key','')).strip():
-                        raise ValueError('请先填写API Key。')
-                    if not str(test_remote.get('model','')).strip():
-                        discovered=[str(x).strip() for x in (st.session_state.get('remote_model_list') or []) if str(x).strip()]
-                        if discovered:
-                            test_remote['model']=discovered[0]
-                        elif mode=='自行填写':
-                            test_remote['model']=presets.get(provider,{}).get('model','')
-                    if not str(test_remote.get('model','')).strip():
-                        raise ValueError('请先填写模型名称，或点击“读取模型”后选择可用模型。')
-                    chat(test_remote,[{'role':'user','content':'Reply OK.'}])
-                    provider_label=(provider if mode=='自行填写' else '服务器配置')
-                    st.session_state['remote_action_notice']={
-                        'signature':remote_sig,'kind':'success',
-                        'text':'连接成功 · '+provider_label+' · '+str(test_remote.get('model',''))
-                    }
-                except ValueError as exc:
-                    st.session_state['remote_action_notice']={
-                        'signature':remote_sig,'kind':'error','text':'连接失败 · '+str(exc)
-                    }
+            remote_sig=hashlib.sha256(json.dumps({
+                'base_url':remote.get('base_url',''),
+                'model':remote.get('model',''),
+                'api_key_hash':hashlib.sha256(remote.get('api_key','').encode()).hexdigest(),
+            },sort_keys=True).encode()).hexdigest()
+            action_a, action_b, action_c = st.columns(3, gap='small')
+            with action_a:
+                st.button('清除凭证',on_click=clear_key,use_container_width=True)
+            with action_b:
+                if st.button('读取模型',disabled=not remote.get('base_url') or not remote.get('api_key'),use_container_width=True):
+                    try:
+                        from .remote_qwen import list_models
+                        models=list_models(remote)
+                        st.session_state['remote_model_list']=models
+                        st.session_state['remote_action_notice']={
+                            'signature':remote_sig,'kind':'info','text':'已读取可用模型 · '+str(len(models))+' 个'
+                        }
+                    except ValueError as exc:
+                        st.session_state['remote_action_notice']={
+                            'signature':remote_sig,'kind':'error','text':'读取模型失败 · '+str(exc)
+                        }
+            with action_c:
+                if st.button('测试连接',use_container_width=True):
+                    try:
+                        test_remote=dict(remote)
+                        if not str(test_remote.get('base_url','')).strip():
+                            raise ValueError('请先填写API地址。')
+                        if not str(test_remote.get('api_key','')).strip():
+                            raise ValueError('请先填写API Key。')
+                        if not str(test_remote.get('model','')).strip():
+                            discovered=[str(x).strip() for x in (st.session_state.get('remote_model_list') or []) if str(x).strip()]
+                            if discovered:
+                                test_remote['model']=discovered[0]
+                            elif mode=='自行填写':
+                                test_remote['model']=presets.get(provider,{}).get('model','')
+                        if not str(test_remote.get('model','')).strip():
+                            raise ValueError('请先填写模型名称，或点击“读取模型”后选择可用模型。')
+                        chat(test_remote,[{'role':'user','content':'Reply OK.'}])
+                        provider_label=(provider if mode=='自行填写' else '服务器配置')
+                        st.session_state['remote_action_notice']={
+                            'signature':remote_sig,'kind':'success',
+                            'text':'连接成功 · '+provider_label+' · '+str(test_remote.get('model',''))
+                        }
+                    except ValueError as exc:
+                        st.session_state['remote_action_notice']={
+                            'signature':remote_sig,'kind':'error','text':'连接失败 · '+str(exc)
+                        }
 
         # Middle layer: compact status summary.
-        notice=st.session_state.get('remote_action_notice')
-        notice_current=bool(notice and notice.get('signature')==remote_sig)
-        if notice_current and notice.get('kind') in {'error','info'}:
-            kind=notice.get('kind','info')
-            text=html.escape(str(notice.get('text','')))
-            st.markdown(f'<div class="remote-status-strip {kind}"><span class="remote-status-dot"></span>{text}</div>',unsafe_allow_html=True)
-        if notice_current and notice.get('kind')=='success':
-            connection_label='已连接'
-            connection_class='success'
-        elif ready(remote):
-            connection_label='参数已就绪'
-            connection_class='ready'
-        else:
-            connection_label='待配置'
-            connection_class='muted'
-        current_model=html.escape(str(remote.get('model') or '—'))
-        st.markdown(
-            '<div class="pair-status-grid">'
-            f'<div class="pair-status-cell"><span>连接状态</span><strong class="{connection_class}">{connection_label}</strong></div>'
-            f'<div class="pair-status-cell"><span>当前模型</span><strong>{current_model}</strong></div>'
-            '</div>',unsafe_allow_html=True)
-        if st.session_state.get('remote_model_list'):
-            with st.expander('服务返回的模型ID',expanded=False):
-                st.write(st.session_state['remote_model_list'])
-
-        # A single flexible region keeps the bottom action layer anchored without
-        # scattering large gaps between every control group.
-        st.markdown('<div class="pair-card-spacer"></div>', unsafe_allow_html=True)
+        with st.container(border=False,key='obs_service_middle_zone'):
+            notice=st.session_state.get('remote_action_notice')
+            notice_current=bool(notice and notice.get('signature')==remote_sig)
+            if notice_current and notice.get('kind') in {'error','info'}:
+                kind=notice.get('kind','info')
+                text=html.escape(str(notice.get('text','')))
+                st.markdown(f'<div class="remote-status-strip {kind}"><span class="remote-status-dot"></span>{text}</div>',unsafe_allow_html=True)
+            if notice_current and notice.get('kind')=='success':
+                connection_label='已连接'
+                connection_class='success'
+            elif ready(remote):
+                connection_label='参数已就绪'
+                connection_class='ready'
+            else:
+                connection_label='待配置'
+                connection_class='muted'
+            current_model=html.escape(str(remote.get('model') or '—'))
+            st.markdown(
+                '<div class="pair-status-grid">'
+                f'<div class="pair-status-cell"><span>连接状态</span><strong class="{connection_class}">{connection_label}</strong></div>'
+                f'<div class="pair-status-cell"><span>当前模型</span><strong>{current_model}</strong></div>'
+                '</div>',unsafe_allow_html=True)
+            if st.session_state.get('remote_model_list'):
+                with st.expander('服务返回的模型ID',expanded=False):
+                    st.write(st.session_state['remote_model_list'])
 
         # Bottom layer: final authorization / privacy action.
         with st.container(border=False,key='obs_service_bottom_zone'):

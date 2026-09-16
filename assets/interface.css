@@ -975,3 +975,31 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
   }
   .pair-status-grid{grid-template-columns:1fr 1fr;}
 }
+
+/* 2026-09-17 compact three-layer distribution for remote-service card.
+   Keep the paired cards equal-height, but distribute the spare room between
+   the three semantic layers instead of leaving one large empty middle block. */
+@media(min-width:901px){
+  .st-key-obs_service_card > [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"]{
+    display:flex!important;
+    flex-direction:column!important;
+    justify-content:space-between!important;
+    gap:0!important;
+  }
+  .st-key-obs_service_top_zone,
+  .st-key-obs_service_middle_zone,
+  .st-key-obs_service_bottom_zone{
+    flex:0 0 auto!important;
+    margin-top:0!important;
+    margin-bottom:0!important;
+  }
+  .st-key-obs_service_top_zone [data-testid="stVerticalBlock"],
+  .st-key-obs_service_middle_zone [data-testid="stVerticalBlock"],
+  .st-key-obs_service_bottom_zone [data-testid="stVerticalBlock"]{
+    height:auto!important;
+    min-height:0!important;
+  }
+  .st-key-obs_service_bottom_zone{
+    margin-top:0!important;
+  }
+}

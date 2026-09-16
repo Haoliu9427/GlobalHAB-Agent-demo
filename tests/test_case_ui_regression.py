@@ -48,3 +48,30 @@ def test_batch_review_and_case_lifecycle_ui_present():
     assert "取消复核" in app and "归档" in app
     assert "登记并处理下一个" in field
     assert "待复核任务队列" in field
+
+
+def test_visual_workspace_tabs_and_learning_cards_are_consistent():
+    field = FIELD.read_text(encoding="utf-8")
+    learning = (ROOT / "src" / "globalhab_demo" / "visual_learning.py").read_text(encoding="utf-8")
+    css = (ROOT / "assets" / "interface.css").read_text(encoding="utf-8")
+    assert '"现场影像甄别"' in field and '"我的影像数据"' in field and '"模型训练与版本"' in field
+    assert '① 现场影像甄别' not in field
+    assert '② 我的影像数据' not in field
+    assert '③ 模型训练与版本' not in field
+    assert '_render_learning_kpis' in learning
+    assert 'vision_library_summary' in learning
+    assert 'vision_training_summary' in learning
+    assert 'vision_library_recent_card' in learning
+    assert 'vision_training_candidate_card' in learning
+    assert '.st-key-vision_workspace_tabs' in css
+
+
+def test_own_data_hero_and_sidebar_polish_regression():
+    app = APP.read_text(encoding="utf-8")
+    css = (ROOT / "assets" / "interface.css").read_text(encoding="utf-8")
+    assert '同一套数据完成质量检查、模型比较、时间留出与可选未来预测；所有结果与项目固定证据分开保存。' not in app
+    assert 'sidebar-brand-card' in app
+    assert 'sidebar-section-title' in app
+    assert 'label_visibility="collapsed"' in app
+    assert '.sidebar-brand-card' in css
+    assert '.st-key-workspace_nav [role="radiogroup"]' in css

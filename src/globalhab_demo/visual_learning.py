@@ -20,6 +20,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any, Iterable
 import hashlib
+import html
 import json
 import math
 import shutil
@@ -855,6 +856,23 @@ def _fmt_metric(x: Any) -> str:
         return "NA"
 
 
+def _render_learning_kpis(items: list[tuple[str, str, str]], *, key: str, columns: int = 4) -> None:
+    """Render visual-learning summaries with the same project KPI cards as screening."""
+    import streamlit as st
+
+    cards = "".join(
+        '<div class="kpi">'
+        f'<div class="kpi-label">{html.escape(str(label))}</div>'
+        f'<div class="kpi-value">{html.escape(str(value))}</div>'
+        f'<div class="kpi-note">{html.escape(str(note))}</div>'
+        '</div>'
+        for label, value, note in items
+    )
+    grid_class = " kpi-3" if columns == 3 else " kpi-4" if columns == 4 else ""
+    with st.container(key=key):
+        st.markdown(f'<div class="kpi-grid{grid_class}">{cards}</div>', unsafe_allow_html=True)
+
+
 def render_library_tab(root: Any | None = None) -> None:
     """Render the persistent/user-exportable photo library subpage."""
     import streamlit as st
@@ -864,15 +882,16 @@ def render_library_tab(root: Any | None = None) -> None:
     summary = library_summary(r)
     st.markdown("### 我的影像数据")
     st.caption("把现场照片、视觉标签和实验室/专家证据保存为训练资产。模型自己的预测不会自动变成训练标签。")
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("影像总数", summary["n_images"])
-    m2.metric("进入训练集", summary["n_training"])
-    m3.metric("有效视觉类别", summary["n_classes"])
-    m4.metric("高信息量待确认", summary["n_active_learning"])
+    _render_learning_kpis([
+        ("影像总数", str(summary["n_images"]), "已保存的现场/导入影像"),
+        ("进入训练集", str(summary["n_training"]), "已确认并纳入后续训练"),
+        ("有效视觉类别", str(summary["n_classes"]), "当前训练资产覆盖的类别"),
+        ("高信息量待确认", str(summary["n_active_learning"]), "优先建议人工复核的样本"),
+    ], key="vision_library_summary", columns=4)
 
     result = st.session_state.get("field_visual_result")
     raw = st.session_state.get("field_visual_image_bytes")
-    with st.container(border=True):
+    with st.container(border=True, key="vision_library_recent_card"):
         st.markdown("#### 保存最近一次甄别照片")
         if result and raw:
             default_label = result.get("effective_visual_category", "不确定")
@@ -902,7 +921,7 @@ def render_library_tab(root: Any | None = None) -> None:
         else:
             st.info("先在“现场影像甄别”子页完成一次拍照/上传与甄别，再把照片保存到训练库。")
 
-    with st.container(border=True):
+    with st.container(border=True, key="vision_library_batch_card"):
         st.markdown("#### 批量补充已标注照片")
         files = st.file_uploader(
             "上传多张JPG / JPEG / PNG",
@@ -1015,12 +1034,13 @@ def render_training_tab(root: Any | None = None) -> None:
     st.markdown("### 模型训练与版本")
     st.caption("公共基线 → 选择训练数据 → 训练轻量头 → 自动留出验证 → 与公共基线比较 → 决定是否注册为当前模型。")
 
-    a1, a2, a3 = st.columns(3)
-    a1.metric("当前模型", active.get("active_version", "public-baseline-v1"))
-    a2.metric("可训练照片", summary["n_training"])
-    a3.metric("有效类别", summary["n_classes"])
+    _render_learning_kpis([
+        ("当前模型", str(active.get("active_version", "public-baseline-v1")), "现场甄别当前调用的视觉版本"),
+        ("可训练照片", str(summary["n_training"]), "已确认且允许进入训练的样本"),
+        ("有效类别", str(summary["n_classes"]), "当前可用于监督训练的类别"),
+    ], key="vision_training_summary", columns=3)
 
-    with st.container(border=True):
+    with st.container(border=True, key="vision_training_baseline_card"):
         st.markdown("#### 公共视觉基线")
         st.write("默认基线使用公共预训练视觉编码器（可获取时）+ 内置水体现象原型 + 透明颜色/纹理 + 现场元数据。它用于视觉筛查，不声称已经完成全球海洋HAB监督验证。")
         source_rows = public_source_catalog(r)
@@ -1029,7 +1049,7 @@ def render_training_tab(root: Any | None = None) -> None:
         st.caption("工程同时提供公开数据获取/适配脚本；大体量公共照片不直接塞进代码仓库，只保存来源清单、适配器/轻量头、模型卡和哈希，便于复现和控制仓库体积。")
 
     train_df = eligible_training_records(r)
-    with st.container(border=True):
+    with st.container(border=True, key="vision_training_data_card"):
         st.markdown("#### 训练数据检查")
         if train_df.empty:
             st.warning("当前没有被标记为“进入训练”的已标注照片。请先到“我的影像数据”选择训练样本。")
@@ -1038,7 +1058,7 @@ def render_training_tab(root: Any | None = None) -> None:
             st.dataframe(counts, use_container_width=True, hide_index=True)
             st.caption(f"训练照片 {len(train_df)} 张；高证据等级 {summary['n_high_evidence']} 张。标签为“不确定”的照片不会进入监督训练。")
 
-    with st.container(border=True):
+    with st.container(border=True, key="vision_training_candidate_card"):
         st.markdown("#### 训练候选版本")
         selected = st.multiselect(
             "选择视觉分支",

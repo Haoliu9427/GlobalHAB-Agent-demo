@@ -783,11 +783,12 @@ def render(root: Any = None) -> None:
     st.info(
         "科学边界：照片用于水色、浑浊、泡沫/漂浮物等视觉现象筛查与复核优先级，不替代显微镜、qPCR、毒素检测或具体藻种鉴定。"
     )
-    tab_screen, tab_data, tab_model = st.tabs([
-        "① 现场影像甄别",
-        "② 我的影像数据",
-        "③ 模型训练与版本",
-    ])
+    with st.container(key="vision_workspace_tabs"):
+        tab_screen, tab_data, tab_model = st.tabs([
+            "现场影像甄别",
+            "我的影像数据",
+            "模型训练与版本",
+        ])
     with tab_screen:
         _render_screening_tab(root_path)
     with tab_data:

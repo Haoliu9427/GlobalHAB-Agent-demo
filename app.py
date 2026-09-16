@@ -528,16 +528,25 @@ def real_qpcr_map(frame: pd.DataFrame) -> go.Figure:
     return style_map(fig, global_view=False)
 
 
-#st.sidebar.caption("GlobalHAB-Agent · Ocean OSM 2026.09.16")
-st.sidebar.markdown('<div class="ocean-brand">GlobalHAB-Agent</div>', unsafe_allow_html=True)
+st.sidebar.markdown(
+    """
+    <div class="sidebar-brand-card">
+      <div class="ocean-brand">GlobalHAB-Agent</div>
+      <div class="sidebar-brand-sub">Marine HAB Intelligence</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 pending_workspace = st.session_state.pop("_workspace_jump", None)
 if pending_workspace in {"研究与验证", "自有数据分析", "现场影像甄别", "大模型结果解读"}:
     st.session_state["workspace_mode"] = pending_workspace
 with st.sidebar.container(key="workspace_nav"):
+    st.markdown('<div class="sidebar-section-title">工作区</div>', unsafe_allow_html=True)
     workspace_mode = st.radio(
         "工作区",
         ["研究与验证", "自有数据分析", "现场影像甄别", "大模型结果解读"],
         key="workspace_mode",
+        label_visibility="collapsed",
     )
 
 case_list = list_cases(ROOT)
@@ -642,7 +651,6 @@ if workspace_mode == "自有数据分析":
           <div class="eyebrow" style="color:#b5d9dc">OWN DATA WORKBENCH</div>
           <h1>自有数据分析</h1>
           <p class="tagline">上传现场观测，比较模型、验证历史结果并形成可下载的独立分析记录</p>
-          <p class="value">同一套数据完成质量检查、模型比较、时间留出与可选未来预测；所有结果与项目固定证据分开保存。</p>
         </div>
         """,
         unsafe_allow_html=True,

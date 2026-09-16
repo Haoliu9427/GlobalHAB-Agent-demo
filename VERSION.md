@@ -110,3 +110,11 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - Increased interpretation output budgets and added provider-specific diagnostics instead of the generic “模型返回格式无效” message.
 - Remote probability scoring continues to require a valid probability JSON and now uses the stable DeepSeek path.
 
+
+## 2026-09-16 workspace visual consistency polish
+- Removed numeric prefixes from the three field-vision subpages; navigation now reads `现场影像甄别 / 我的影像数据 / 模型训练与版本`.
+- Replaced native Streamlit metric blocks in the visual library and model-version subpages with the project KPI card system, including wrapped long model-version names.
+- Added keyed, ocean-palette cards for visual-library save/batch import and model baseline/data-check/training sections.
+- Simplified the own-data workspace hero by removing the secondary implementation sentence.
+- Redesigned the left workspace navigation with a compact ocean-brand header, clearer section hierarchy, card-style workspace options, hover/selected states and a more consistent Case-panel appearance.
+- Added regression checks so tab labels, hero copy and workspace/sidebar styling do not revert.

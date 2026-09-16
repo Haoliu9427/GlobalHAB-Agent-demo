@@ -152,3 +152,62 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
  .kpi-grid.kpi-4{grid-template-columns:1fr;}
  .st-key-field_task_from_research,.st-key-vision_case_context{padding:16px!important;}
 }
+
+/* 2026-09-16 workspace navigation and visual-learning consistency polish. */
+[data-testid="stSidebar"] [data-testid="stSidebarContent"]{padding-top:1rem;}
+.sidebar-brand-card{
+ background:linear-gradient(145deg,#173f52 0%,#21586a 100%);
+ border:1px solid #2b6572;border-radius:16px;padding:15px 14px 13px;margin:0 0 14px;
+ box-shadow:0 8px 20px rgba(23,63,82,.10);
+}
+.sidebar-brand-card .ocean-brand{color:#fff;font-size:1rem;margin:0 0 5px;font-weight:750;}
+.sidebar-brand-card .ocean-brand::before{filter:brightness(0) invert(1);opacity:.92;}
+.sidebar-brand-sub{color:#d7e8e9;font-size:.72rem;font-weight:650;letter-spacing:.05em;margin-left:40px;}
+.sidebar-brand-meta{color:#a9c7cc;font-size:.68rem;margin:6px 0 0 40px;}
+.sidebar-section-title{font-size:.76rem;font-weight:750;color:#5b737b;letter-spacing:.08em;text-transform:uppercase;margin:3px 0 8px;}
+.st-key-workspace_nav{margin-bottom:10px;}
+.st-key-workspace_nav [role="radiogroup"]{display:flex;flex-direction:column;gap:7px;}
+.st-key-workspace_nav [data-baseweb="radio"],
+.st-key-workspace_nav [role="radiogroup"] > label{
+ background:#f9fbfa;border:1px solid #d7e3e3;border-radius:12px;padding:10px 11px!important;margin:0!important;
+ min-height:44px;transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .15s ease;
+}
+.st-key-workspace_nav [data-baseweb="radio"]:hover,
+.st-key-workspace_nav [role="radiogroup"] > label:hover{
+ border-color:#9bbabd;background:#f2f8f7;box-shadow:0 3px 10px rgba(23,63,82,.05);transform:translateY(-1px);
+}
+.st-key-workspace_nav [data-baseweb="radio"]:has(input:checked),
+.st-key-workspace_nav [role="radiogroup"] > label:has(input:checked){
+ background:#dfeeed;border-color:#71a5a8;box-shadow:inset 3px 0 0 #286b79,0 3px 10px rgba(23,63,82,.05);
+}
+.st-key-workspace_nav [data-baseweb="radio"] p,
+.st-key-workspace_nav [role="radiogroup"] > label p{font-weight:650;color:#254b57;font-size:.88rem;}
+[data-testid="stSidebar"] [data-testid="stExpander"]{border-radius:14px;border-color:#d5e2e3;background:#f9fbfa;box-shadow:0 3px 10px rgba(23,63,82,.035);}
+
+/* Field-vision subnavigation: concise titles, same visual language as research tabs. */
+.st-key-vision_workspace_tabs [role="tablist"]{background:#e8eff1!important;border:1px solid #d9e5e6;padding:7px!important;border-radius:13px!important;gap:6px!important;}
+.st-key-vision_workspace_tabs button[role="tab"]{font-weight:650;color:#49656e!important;}
+.st-key-vision_workspace_tabs button[role="tab"][aria-selected="true"]{color:#18556a!important;background:#fff!important;box-shadow:0 2px 8px rgba(23,63,82,.07)!important;}
+
+/* Continuous-learning visual Agent: use the same KPI and card system as screening. */
+.st-key-vision_library_summary .kpi-grid,.st-key-vision_training_summary .kpi-grid{margin:.35rem 0 1rem;}
+.st-key-vision_library_summary .kpi,.st-key-vision_training_summary .kpi{min-height:118px;}
+.st-key-vision_library_summary .kpi-value,.st-key-vision_training_summary .kpi-value{
+ white-space:normal;overflow-wrap:anywhere;word-break:break-word;font-size:1.35rem;line-height:1.2;
+}
+.st-key-vision_training_summary .kpi:first-child .kpi-value{font-size:1.12rem;}
+.st-key-vision_library_recent_card,.st-key-vision_library_batch_card,
+.st-key-vision_training_baseline_card,.st-key-vision_training_data_card,.st-key-vision_training_candidate_card{
+ background:#fff!important;border:1px solid #d5e2e5!important;border-radius:16px!important;
+ padding:22px!important;box-shadow:0 5px 18px rgba(24,63,80,.045);margin:8px 0 14px!important;
+}
+.st-key-vision_library_recent_card,.st-key-vision_training_baseline_card{border-top:4px solid #286b79!important;}
+.st-key-vision_library_batch_card,.st-key-vision_training_data_card{border-top:4px solid #657f9b!important;}
+.st-key-vision_training_candidate_card{border-top:4px solid #91b4ae!important;}
+.st-key-vision_library_recent_card h4,.st-key-vision_library_batch_card h4,
+.st-key-vision_training_baseline_card h4,.st-key-vision_training_data_card h4,.st-key-vision_training_candidate_card h4{color:#183e50!important;}
+@media(max-width:700px){
+ .sidebar-brand-card{padding:13px 12px;}
+ .st-key-vision_library_recent_card,.st-key-vision_library_batch_card,
+ .st-key-vision_training_baseline_card,.st-key-vision_training_data_card,.st-key-vision_training_candidate_card{padding:16px!important;}
+}

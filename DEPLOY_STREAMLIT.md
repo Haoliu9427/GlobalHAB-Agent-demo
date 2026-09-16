@@ -14,3 +14,8 @@
 如果GitHub没有变化，请检查上传目录/分支是否正确；若GitHub已有上述代码而页面版本未变化，请检查Streamlit绑定的仓库、分支和入口。勿把真实密钥提交到GitHub。
 
 本版界面样式文件assets/interface.css必须与app.py一并上传。字体优先微软雅黑；设备未安装时使用系统中文后备字体，不包含字体授权文件。
+
+
+## Optional adaptive vision dependencies
+
+The default Streamlit deployment remains lightweight and does not require PyTorch. The field visual workspace will safely use the transparent heuristic baseline when optional assets are absent. To activate DINOv2 / ConvNeXt / EfficientNet routing, install `requirements-vision.txt` and provide local backbone assets plus project-trained `.npz` heads as documented in `VISION_ROUTER_GUIDE.md`. Do not enable automatic weight downloads in a frozen competition deployment unless the environment and third-party licenses are explicitly controlled.

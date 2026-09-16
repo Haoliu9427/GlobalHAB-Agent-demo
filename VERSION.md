@@ -44,3 +44,13 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - Outputs a follow-up screening priority (`low / moderate / high / defer`) rather than an HAB probability.
 - Stores the structured result in-session and can hand it to the LLM interpretation workspace; raw photos are not sent to the remote LLM by default.
 - Added `VisualScreeningBackend` as a replaceable interface for a future calibrated project-specific vision model.
+
+
+## Adaptive visual routing
+
+- Upgraded the field visual workspace with quality-first adaptive routing.
+- Added optional DINOv2, ConvNeXt-Tiny and EfficientNet-B0 frozen feature extractors.
+- Added safe NumPy linear heads that fuse image embeddings with 12 field-metadata features.
+- Added entropy, top-1/top-2 margin, multi-branch disagreement and OOD-aware DEFER.
+- Deep branches activate only when both encoder assets and project-trained heads are available; otherwise the workspace falls back to the transparent heuristic baseline.
+- Added `requirements-vision.txt`, training manifest template, lightweight-head training script and `VISION_ROUTER_GUIDE.md`.

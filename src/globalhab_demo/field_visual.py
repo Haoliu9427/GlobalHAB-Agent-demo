@@ -15,6 +15,7 @@ from dataclasses import asdict, dataclass
 from datetime import date, time
 from io import BytesIO
 import json
+from pathlib import Path
 from typing import Any, Protocol
 
 import numpy as np
@@ -286,9 +287,27 @@ def make_result(
     image: Image.Image,
     metadata: dict[str, Any],
     backend: VisualScreeningBackend = DEFAULT_BACKEND,
+    root: Any | None = None,
+    requested_mode: str = "自适应路由",
 ) -> dict[str, Any]:
     quality, features = backend.analyse(image)
     context_flags, n_flags = _context_flags(metadata)
+
+    from globalhab_demo.adaptive_visual import run_adaptive_route
+    adaptive = run_adaptive_route(
+        image=image,
+        metadata=metadata,
+        quality=quality,
+        visual=features,
+        root=root,
+        requested_mode=requested_mode,
+    )
+
+    effective_category = features.category
+    effective_score = features.visual_anomaly_score
+    if adaptive.get("active") and adaptive.get("ensemble"):
+        effective_category = adaptive["ensemble"].get("predicted_class", effective_category)
+        effective_score = float(adaptive["ensemble"].get("visual_anomaly_score", effective_score))
 
     if not metadata.get("sea_surface_confirmed", True):
         priority = "DEFER / 需重拍"
@@ -296,8 +315,12 @@ def make_result(
     elif not quality.suitable:
         priority = "DEFER / 需重拍"
         reason = "图像质量不足以支持稳定的水色/表层特征甄别。"
+    elif adaptive.get("active") and (adaptive.get("uncertainty") or {}).get("defer"):
+        priority = "DEFER / 需人工复核"
+        reasons = (adaptive.get("uncertainty") or {}).get("reasons") or ["深度视觉分支不确定性较高"]
+        reason = "；".join(reasons) + "。不强制给出高/中/低判断。"
     else:
-        score = features.visual_anomaly_score
+        score = effective_score
         if score >= 0.58 or (score >= 0.42 and n_flags >= 2):
             priority = "高"
         elif score >= 0.28 or n_flags >= 2:
@@ -311,17 +334,27 @@ def make_result(
         "对可能产毒类群，毒素检测必须与视觉筛查分开完成。",
         "记录温度、盐度、溶解氧并保留同位置/相邻位置的重复照片。",
     ]
-    if features.category in {"红棕色水体异常", "高浑浊/泥沙样"}:
+    if effective_category in {"红棕色水体异常", "高浑浊/泥沙样"}:
         follow_up.append("优先补充浊度/悬浮颗粒或河口径流信息，以排除泥沙混淆。")
-    if features.category == "表层浮沫/漂浮物样" or quality.glare_fraction > 0.08:
+    if effective_category == "表层浮沫/漂浮物样" or quality.glare_fraction > 0.08:
         follow_up.append("换一个避开太阳反光的角度复拍，以区分泡沫、浪花和表层聚集。")
 
+    if adaptive.get("active"):
+        branch_names = [b.get("display_name", b.get("name", "")) for b in adaptive.get("branches", [])]
+        backend_name = "自适应视觉路由 · " + " + ".join(x for x in branch_names if x)
+    else:
+        backend_name = f"{backend.name}（自适应深度分支未激活）" if requested_mode != "安全规则基线" else backend.name
+
     return {
-        "schema": "globalhab-field-visual-screening-v1",
-        "backend": backend.name,
+        "schema": "globalhab-field-visual-screening-v2",
+        "backend": backend_name,
+        "baseline_backend": backend.name,
         "scientific_role": "现场影像辅助甄别；不是藻种/毒素确诊器",
         "quality": asdict(quality),
         "visual": asdict(features),
+        "adaptive_visual": adaptive,
+        "effective_visual_category": effective_category,
+        "effective_visual_anomaly_score": float(effective_score),
         "field_metadata": metadata,
         "field_context_flags": context_flags,
         "screening_priority": priority,
@@ -329,16 +362,17 @@ def make_result(
         "recommended_follow_up": follow_up,
         "allowed_claims": [
             "可描述照片中的水色、浑浊、亮白表层和其他视觉异常线索。",
+            "若已配置经过项目标注数据训练/校准的视觉头，可报告视觉类别模型的不确定性与分支一致性。",
             "可将视觉异常作为是否值得进一步采样复核的低成本现场证据。",
         ],
         "prohibited_claims": [
             "不能仅凭普通海面照片确诊具体藻种。",
             "不能仅凭普通海面照片判断是否产毒或毒素浓度。",
-            "不能把本页复核优先级解释为HAB发生概率、监管阈值或业务预警。",
+            "不能把视觉类别概率或本页复核优先级解释为HAB发生概率、监管阈值或业务预警。",
             "不能用视觉阴性排除肉眼不可见但具有生态风险的HAB。",
+            "不能把未配置训练头的DINOv2/ConvNeXt/EfficientNet通用特征伪装成已经验证的HAB分类结果。",
         ],
     }
-
 
 def result_summary(result: dict[str, Any] | None) -> str:
     if not result:
@@ -346,22 +380,34 @@ def result_summary(result: dict[str, Any] | None) -> str:
     q = result.get("quality", {})
     v = result.get("visual", {})
     m = result.get("field_metadata", {})
+    adaptive = result.get("adaptive_visual") or {}
+    effective_category = result.get("effective_visual_category", v.get("category", "NA"))
+    effective_score = result.get("effective_visual_anomaly_score", v.get("visual_anomaly_score", 0))
     lines = [
         "## 最近一次现场影像甄别",
         f"- 方法：{result.get('backend','NA')}。",
         f"- 科学角色：{result.get('scientific_role','NA')}。",
-        f"- 主要视觉类型：{v.get('category','NA')}；视觉异常分数={v.get('visual_anomaly_score',0):.3f}（启发式特征强度，不是HAB概率）。",
+        f"- 最终视觉类型：{effective_category}；视觉异常分数={float(effective_score):.3f}（用于现场复核，不是HAB概率）。",
+        f"- 透明规则基线类型：{v.get('category','NA')}；基线异常特征强度={v.get('visual_anomaly_score',0):.3f}。",
         f"- 复核优先级：{result.get('screening_priority','NA')}。",
         f"- 图像质量分数={q.get('quality_score',0):.3f}；适合甄别={q.get('suitable',False)}；尺寸={q.get('width','NA')}×{q.get('height','NA')}。",
         f"- 现场位置/海域：{m.get('location_text') or '未填写'}；拍摄日期={m.get('capture_date') or '未填写'}；水色={m.get('water_color') or '未填写'}。",
         f"- 现场辅助线索：{'; '.join(result.get('field_context_flags') or ['无明确辅助线索'])}。",
         f"- 主要混淆因素：{'; '.join(v.get('possible_confounders') or [])}。",
         f"- 建议复核：{'; '.join(result.get('recommended_follow_up') or [])}",
-        "## 证据边界",
     ]
+    if adaptive:
+        route = adaptive.get("route") or {}
+        selected = route.get("selected") or []
+        lines.append(f"- 自适应路由：{route.get('route_family','NA')}；选择分支={', '.join(selected) if selected else '无，回退规则基线'}；原因={route.get('reason','NA')}。")
+        if adaptive.get("active") and adaptive.get("uncertainty"):
+            u = adaptive["uncertainty"]
+            lines.append(f"- 不确定性：entropy={u.get('entropy',0):.3f}；margin={u.get('margin',0):.3f}；disagreement={u.get('disagreement',0):.3f}；OOD={u.get('ood_flag',False)}；DEFER={u.get('defer',False)}。")
+        elif adaptive.get("fallback_reason"):
+            lines.append(f"- 深度视觉状态：{adaptive.get('fallback_reason')}。")
+    lines.append("## 证据边界")
     lines.extend("- " + x for x in result.get("prohibited_claims", []))
     return "\n".join(lines)
-
 
 def _parse_optional_float(text: str, label: str) -> float | None:
     text = (text or "").strip()
@@ -374,8 +420,11 @@ def _parse_optional_float(text: str, label: str) -> float | None:
 
 
 def render(root: Any = None) -> None:
-    """Render the Streamlit workspace. ``root`` is accepted for UI symmetry."""
+    """Render the Streamlit workspace with adaptive routing when assets exist."""
     import streamlit as st
+    from globalhab_demo.adaptive_visual import compact_status_rows
+
+    root_path = Path(root) if root is not None else Path(__file__).resolve().parents[2]
 
     st.markdown(
         """
@@ -383,7 +432,7 @@ def render(root: Any = None) -> None:
           <div class="eyebrow" style="color:#b5d9dc">FIELD VISUAL SCREENING</div>
           <h1>现场影像甄别</h1>
           <p class="tagline">手机拍摄海面照片，先做低成本视觉初筛，再决定是否值得进一步采样复核</p>
-          <p class="value">默认使用透明的颜色/纹理启发式基线，不冒充已经训练好的藻华分类器；输出只表示视觉异常与复核优先级，不能替代藻种、毒素或实验室鉴定。</p>
+          <p class="value">质量门控 → 自适应路由 → DINOv2 / ConvNeXt / EfficientNet特征 → 轻量分类头 → 现场元数据融合 → 不确定性 / DEFER。未配置训练头时自动回退透明规则基线，不伪装成已验证的藻华分类器。</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -402,6 +451,12 @@ def render(root: Any = None) -> None:
             image_file = st.camera_input("对准海面拍摄", key="vision_camera")
         else:
             image_file = st.file_uploader("上传JPG / JPEG / PNG", type=["jpg", "jpeg", "png"], key="vision_upload")
+        vision_mode = st.selectbox(
+            "视觉推理模式",
+            ["自适应路由（推荐）", "多模型一致性", "EfficientNet", "ConvNeXt", "DINOv2", "安全规则基线"],
+            key="vision_inference_mode",
+            help="只有本地编码器与项目标注数据训练得到的轻量分类头同时可用时，深度视觉分支才会参与结果。",
+        )
         sea_surface = st.checkbox("照片主体是海面/水体，而不是天空、岸边或人物", value=True, key="vision_surface_confirm")
         st.caption("建议避开逆光，尽量让海面占画面大部分；同一点位最好从不同角度拍2–3张。图像只在当前会话中分析，不默认上传到远程大模型。")
 
@@ -423,6 +478,10 @@ def render(root: Any = None) -> None:
             do = st.text_input("溶解氧 mg/L", key="vision_do")
             chla = st.text_input("Chl-a（请同时在备注中写单位）", key="vision_chla")
             notes = st.text_area("现场备注", max_chars=1000, key="vision_notes")
+
+    with st.expander("自适应视觉路由与深度模型状态", expanded=False):
+        st.dataframe(compact_status_rows(root_path), use_container_width=True, hide_index=True)
+        st.caption("默认部署不下载外部权重。DINOv2 / ConvNeXt / EfficientNet只有在‘编码器 + 项目标注数据训练头’均可用时才参与结果；可选安装见 requirements-vision.txt 与 VISION_ROUTER_GUIDE.md。")
 
     run = st.button("开始现场影像甄别", type="primary", use_container_width=True, key="vision_run")
     if run:
@@ -448,7 +507,7 @@ def render(root: Any = None) -> None:
                     "chlorophyll_a": _parse_optional_float(chla, "Chl-a"),
                     "notes": notes.strip(),
                 }
-                result = make_result(image, metadata)
+                result = make_result(image, metadata, root=root_path, requested_mode=vision_mode)
                 st.session_state["field_visual_result"] = result
                 st.session_state["field_visual_image_bytes"] = raw
             except ValueError as exc:
@@ -475,12 +534,14 @@ def render(root: Any = None) -> None:
             st.success("未发现明显的图像质量限制。")
 
     with result_col, st.container(border=True, key="vision_result_card"):
+        effective_category = result.get("effective_visual_category", v["category"])
+        effective_score = float(result.get("effective_visual_anomaly_score", v["visual_anomaly_score"]))
         k1, k2, k3 = st.columns(3)
-        k1.metric("主要视觉类型", v["category"])
+        k1.metric("主要视觉类型", effective_category)
         k2.metric("复核优先级", result["screening_priority"])
         k3.metric("图像质量", f"{q['quality_score']:.0%}")
         st.caption(result["priority_reason"])
-        st.progress(min(1.0, float(v["visual_anomaly_score"])), text=f"视觉异常特征强度 {v['visual_anomaly_score']:.0%}（不是HAB概率）")
+        st.progress(min(1.0, effective_score), text=f"视觉异常特征强度 {effective_score:.0%}（不是HAB概率）")
         st.markdown("**视觉特征摘要**")
         st.write(" · ".join(v["feature_notes"]))
         st.markdown("**可能混淆因素**")
@@ -491,7 +552,36 @@ def render(root: Any = None) -> None:
             for x in result["field_context_flags"]:
                 st.write("- " + x)
 
-    st.markdown("### 04 · 下一步复核")
+    adaptive = result.get("adaptive_visual") or {}
+    st.markdown("### 04 · 自适应路由与不确定性")
+    with st.container(border=True, key="vision_adaptive_card"):
+        route = adaptive.get("route") or {}
+        a1, a2, a3 = st.columns(3)
+        a1.metric("路由类型", route.get("route_family", "规则基线"))
+        a2.metric("已激活分支", str(len(adaptive.get("branches") or [])))
+        a3.metric("深度视觉状态", "已激活" if adaptive.get("active") else "安全回退")
+        st.write("**路由理由：** " + str(route.get("reason", adaptive.get("fallback_reason", "NA"))))
+        if adaptive.get("active"):
+            rows = []
+            for b in adaptive.get("branches", []):
+                rows.append({
+                    "分支": b.get("display_name"),
+                    "视觉类别": b.get("predicted_class"),
+                    "类别置信度": round(float(b.get("confidence", 0)), 3),
+                    "entropy": round(float(b.get("entropy", 0)), 3),
+                    "margin": round(float(b.get("margin", 0)), 3),
+                    "OOD": bool(b.get("ood_flag", False)),
+                })
+            st.dataframe(rows, use_container_width=True, hide_index=True)
+            u = adaptive.get("uncertainty") or {}
+            st.caption(f"融合不确定性：entropy={u.get('entropy',0):.3f} · margin={u.get('margin',0):.3f} · disagreement={u.get('disagreement',0):.3f} · OOD={u.get('ood_flag',False)}。类别置信度不是HAB发生概率。")
+            if u.get("defer"):
+                st.warning("不确定性门控触发 DEFER：" + "；".join(u.get("reasons") or []))
+        else:
+            st.info(adaptive.get("fallback_reason") or "当前未启用深度视觉分支，使用透明规则基线。")
+            st.caption("系统刻意要求‘编码器 + 项目标注数据训练头’同时存在才允许深度分支影响结果，避免把通用视觉特征伪装成HAB分类器。")
+
+    st.markdown("### 05 · 下一步复核")
     follow_col, boundary_col = st.columns(2, gap="large")
     with follow_col, st.container(border=True, key="vision_follow_card"):
         st.markdown("#### 推荐补充证据")

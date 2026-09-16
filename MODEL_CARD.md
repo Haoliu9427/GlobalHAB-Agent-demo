@@ -73,3 +73,8 @@
 ## Field visual screening
 
 The default field-photo component is a transparent heuristic baseline based on image quality and broad colour/texture cues. It is included to demonstrate the observation-to-follow-up workflow and has not been trained or calibrated as a HAB species/toxin classifier. Its low/moderate/high output is a follow-up priority, not a HAB probability. Species identity, toxicity and regulatory decisions require independent evidence.
+
+
+## 现场影像自适应视觉路由
+
+现场影像模块采用两级发布策略：基础包始终可运行透明的颜色/纹理筛查；可选的AVSR仅在本地视觉编码器与项目标注数据训练头同时存在时启用。支持 EfficientNet-B0、ConvNeXt-Tiny 和 DINOv2 冻结特征，轻量分类头融合12维现场元数据，并以预测熵、margin、跨分支 disagreement 和训练分布距离进行不确定性检查。任何质量失败、分支冲突或OOD都允许输出 `DEFER`。该模块只描述视觉现象和复核优先级，不做藻种、毒素或业务HAB概率确诊。

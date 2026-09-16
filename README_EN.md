@@ -217,3 +217,8 @@ Code is released under the MIT License. Third-party datasets retain their origin
 ## Field Visual Screening workspace
 
 The Streamlit sidebar now includes a fourth top-level workspace, **Field Visual Screening**. Users can capture a sea-surface photo with the browser camera or upload JPG/PNG, run local image-quality checks, and obtain a bounded visual-anomaly / follow-up-priority result. The default backend is an explicit heuristic colour/texture baseline, not a trained HAB species or toxin classifier. Results can be handed to the LLM interpretation workspace as structured text; raw photos are not sent to the remote LLM by default. See `FIELD_VISUAL_SCREENING_GUIDE.md`.
+
+
+## Adaptive Visual Screening Router
+
+The field-image workspace now supports an offline-safe adaptive routing framework for EfficientNet-B0, ConvNeXt-Tiny and DINOv2. Deep branches are activated only when a compatible local encoder and a project-trained NumPy linear head are both present. The head fuses frozen image embeddings with field metadata, while entropy, top-1/top-2 margin, branch disagreement and OOD checks can trigger DEFER. Without calibrated assets, the app transparently falls back to the interpretable colour/texture baseline. See `VISION_ROUTER_GUIDE.md`.

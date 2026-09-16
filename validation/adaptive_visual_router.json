@@ -1,0 +1,42 @@
+{
+  "status": "pass",
+  "assertions": {
+    "schema_v2": true,
+    "router_present": true,
+    "metadata_vector_12": true,
+    "route_reason_present": true,
+    "safe_without_assets": true,
+    "scientific_boundary": true
+  },
+  "backbone_status": {
+    "efficientnet": {
+      "encoder": false,
+      "head": false,
+      "ready": false
+    },
+    "convnext": {
+      "encoder": false,
+      "head": false,
+      "ready": false
+    },
+    "dinov2": {
+      "encoder": false,
+      "head": false,
+      "ready": false
+    }
+  },
+  "route": {
+    "requested_mode": "自适应路由",
+    "route_family": "colour_route",
+    "preferred": [
+      "efficientnet",
+      "dinov2",
+      "convnext"
+    ],
+    "selected": [],
+    "fallback_to_heuristic": true,
+    "reason": "颜色异常较明确，优先轻量EfficientNet；若证据边界接近则用DINOv2复核。 当前包未配置可用深度分支，安全回退到透明规则基线。"
+  },
+  "active": false,
+  "priority": "高"
+}

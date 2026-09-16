@@ -1,0 +1,3 @@
+image_path,label,site_id,capture_date,location_text,water_color,odor,surface_signs,recent_heat,mass_mortality,water_temp_c,salinity,dissolved_oxygen_mg_l,chlorophyll_a
+/path/to/photo_001.jpg,绿色水体异常,SITE001,2026-07-01,示例海域,绿色,无明显异味,泡沫,是,未见明显异常,29.1,32.4,5.8,12.3
+/path/to/photo_002.jpg,正常/未见明显异常,SITE002,2026-07-03,示例海域,常规蓝/蓝绿,无明显异味,,否,未见明显异常,26.5,33.0,6.7,2.1

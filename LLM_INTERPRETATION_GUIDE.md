@@ -74,3 +74,8 @@ API Key 只保存在当前 Streamlit 会话内存，不写入工程文件、日�
 ## 现场影像甄别结果
 
 “大模型结果解读”可以读取当前会话最近一次“现场影像甄别”结果。发送给远程模型的是结构化文字摘要，包括图像质量、视觉异常类型、复核优先级、现场元数据、混淆因素和科学边界；**原始照片不会随结果解读请求发送**。视觉筛查等级不是HAB概率，也不能被大模型改写为藻种或毒素确诊。
+
+
+## Adaptive visual result summaries
+
+When the latest field-image screening used the adaptive visual router, the LLM summary also receives the selected route, whether deep branches were actually activated, entropy, top-1/top-2 margin, branch disagreement and OOD/DEFER state. Raw photos are still not sent automatically. The interpretation prompt continues to prohibit rewriting visual-category confidence as HAB occurrence probability, species identification or toxin confirmation.

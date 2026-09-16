@@ -1,0 +1,5 @@
+# Optional deep-vision dependencies. The base app does not require these packages.
+torch>=2.4,<3
+torchvision>=0.19,<1
+transformers>=4.46,<5
+safetensors>=0.4,<1

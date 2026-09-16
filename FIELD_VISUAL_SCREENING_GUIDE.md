@@ -134,3 +134,20 @@ pytest -q tests/test_field_visual.py
 python scripts/verify_release.py
 python scripts/verify_package.py
 ```
+
+
+## 10. 自适应视觉路由升级
+
+决赛增强版在透明规则基线之上加入 `Adaptive Visual Screening Router (AVSR)`：
+
+```text
+质量门控 → 自适应路由 → DINOv2 / ConvNeXt / EfficientNet特征
+         → 轻量分类头 + 现场元数据 → uncertainty / OOD → DEFER或复核优先级
+```
+
+- 颜色异常明确时优先 EfficientNet；
+- 浮沫、浑浊或复杂表层纹理优先 ConvNeXt；
+- 场景模糊或接近决策边界时优先 DINOv2，并可增加第二分支做一致性复核；
+- 图像质量不合格时在模型之前直接 `DEFER / 需重拍`。
+
+发布包不会附带伪造的视觉训练头。只有本地编码器与使用真实标注照片训练/校准的 `.npz` 轻量头同时存在时，深度分支才会参与最终结果。否则页面明确显示“安全回退”，继续使用规则基线。训练接口、资产路径和不确定性定义见 `VISION_ROUTER_GUIDE.md`。

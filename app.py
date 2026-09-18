@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF2-20260918"
+BUILD_ID = "HF2-IMPORTFIX-20260918"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -203,12 +203,19 @@ st.markdown(
 )
 
 from globalhab_demo.map_style import style_map, draw_map
-from globalhab_demo.ui_system import install_plotly_theme, render_top_navigation, render_workspace_header
+# Refresh UI code after Streamlit Cloud pulls a new deployment.
+# Controls belong to this script run, not a shared module-global container.
+import globalhab_demo.ui_system as _ui_system
+_ui_system = importlib.reload(_ui_system)
+install_plotly_theme = _ui_system.install_plotly_theme
+render_top_navigation = _ui_system.render_top_navigation
+render_workspace_header = _ui_system.render_workspace_header
 
 install_plotly_theme()
 st.markdown("<style>" + (ROOT / "assets" / "interface.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
 st.markdown("<style>" + (ROOT / "assets" / "blue_theme.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
 st.markdown("<style>" + (ROOT / "assets" / "high_fidelity.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
+st.markdown("<style>" + (ROOT / "assets" / "reference_refinement.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
 
 
 @st.cache_data(show_spinner=False)
@@ -535,17 +542,10 @@ def real_qpcr_map(frame: pd.DataFrame) -> go.Figure:
 
 WORKSPACES = ["项目总览", "研究与验证", "自有数据分析", "现场影像甄别", "大模型结果解读"]
 workspace_mode = render_top_navigation(WORKSPACES)
+with st.container(key="top_controls"):
+    control_panel = st.popover("⚙", help="地图、Case与运行参数")
 
-st.sidebar.markdown(
-    """
-    <div class="sidebar-control-head" data-build="HF2-20260918">
-      <b>运行控制</b>
-      <span>地图、Case 与当前工作区参数 · HF2</span>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-with st.sidebar.expander("地图显示", expanded=False):
+with control_panel, st.expander("地图显示", expanded=False):
     map_backend_label = st.radio(
         "底图方式",
         ["OpenStreetMap", "内置矢量底图"],
@@ -554,10 +554,23 @@ with st.sidebar.expander("地图显示", expanded=False):
     st.session_state["map_backend"] = "geo" if map_backend_label.startswith("内置") else "osm"
 
 case_list = list_cases(ROOT)
+if st.query_params.get("cases") == "1":
+    st.session_state["show_case_index"] = True
+    del st.query_params["cases"]
+if st.session_state.get("show_case_index"):
+    with st.expander("全部 Case", expanded=True):
+        if case_list:
+            st.dataframe(pd.DataFrame([{"Case": c.get("case_id", c.get("id", "")), "状态": c.get("status", ""), "创建时间": c.get("created_at", "")} for c in case_list]), hide_index=True, use_container_width=True)
+        else:
+            st.info("暂无 Case。可在风险研判中创建现场复核任务。")
+        if st.button("收起 Case 列表", key="close_case_index"):
+            st.session_state["show_case_index"] = False
+            st.rerun()
+
 active_case_id = st.session_state.get("active_case_id")
 if case_list:
     counts = case_status_counts(ROOT)
-    with st.sidebar.expander("Case / 现场任务", expanded=bool(active_case_id)):
+    with control_panel, st.expander("Case / 现场任务", expanded=bool(active_case_id)):
         st.caption(
             f"待复核 {counts.get('pending_review',0)} · 处理中 {counts.get('in_progress',0)} · "
             f"视觉DEFER {counts.get('visual_defer',0)} · 已确认 {counts.get('confirmed',0)}"
@@ -655,7 +668,7 @@ if workspace_mode == "项目总览":
 if workspace_mode == "自有数据分析":
     render_workspace_header(
         "自有数据分析",
-        "上传现场观测，独立完成数据检查、模型比较、时间留出验证与结果留档",
+        "上传观测 · 选择模型 · 查看预测",
         kicker="Own observations",
     )
     from globalhab_demo.real_training.own_observations import render as render_own_observations
@@ -671,11 +684,11 @@ if workspace_mode == "大模型结果解读":
     st.stop()
 
 render_workspace_header(
-    "研究与验证",
-    "选择一项任务，完成风险研判、事件回放或证据复核。",
+    "跨区域有害藻华风险研判",
+    "选择研究任务，查看地图、实验与验证结果",
     kicker="Research & validation",
 )
-with st.sidebar:
+with control_panel:
     st.markdown("## 运行设置")
     days = st.number_input(
         "数据序列长度（天）", min_value=365, max_value=900, value=720, step=1,
@@ -706,11 +719,11 @@ if run_clicked or "exploration" not in st.session_state:
                 int(days), int(seed), budget, holdout_region, test_fraction
             )
     except ValueError as exc:
-        st.sidebar.error(
+        st.error(
             "当前参数组合无法形成同时含事件与非事件的阻断测试窗。"
             "请调整序列长度、随机种子、留出区域或前向测试比例后重算。"
         )
-        st.sidebar.caption(f"计算信息：{exc}")
+        st.caption(f"计算信息：{exc}")
         if "exploration" not in st.session_state:
             with st.spinner("正在载入稳定默认试跑……"):
                 st.session_state["exploration"] = cached_exploration(
@@ -726,7 +739,7 @@ if run_clicked or "exploration" not in st.session_state:
 
 active_config = st.session_state.get("exploration_config", requested_config)
 if active_config != requested_config:
-    st.sidebar.warning("设置已经改变。当前页面仍显示上一轮结果，请点击“应用设置并重新计算”。")
+    st.warning("设置已经改变。当前页面仍显示上一轮结果，请点击“应用设置并重新计算”。")
 
 result = st.session_state["exploration"]
 frame = result["frame"]
@@ -837,41 +850,37 @@ else:
     }
 
 active_holdout = REGION_LABELS[active_config["holdout_region"]]
-control_passed = recovered and bool(
-    card["minimum_references"]["negative_controls_lower_than_candidate"]
-)
-kpi_grid([
-    ("当前线索", f"沿流关联 · {int(best['lag_days'])}天", "合成验证"),
-    ("排序表现", f"AP {float(best['pr_auc']):.3f}", "前向留出"),
-    ("反证检查", "通过" if control_passed else "待确认", "负对照"),
-    ("留出海区", active_holdout.replace("（合成数据）", ""), f"{active_config['test_fraction']:.0%} 测试"),
-])
-
-with st.container(key="research_modules"):
-    tab_start, tab_alert, tab_real, tab_bio, tab_methods, tab_agent, tab_evidence, tab_training = st.tabs([
-        "开始", "风险研判", "事件回放", "响应沙盘",
-        "科学解释", "探索验证", "证据复核", "模型训练",
+with st.expander("当前探索结果与运行设置", expanded=False):
+    st.caption(
+        f"当前结果：{active_config['days']}天序列 · {active_config['budget']}次实验 · "
+        f"完全留出 {active_holdout} · 前向测试 {active_config['test_fraction']:.0%} · "
+        f"随机种子 {active_config['seed']}"
+    )
+    control_passed = recovered and bool(
+        card["minimum_references"]["negative_controls_lower_than_candidate"]
+    )
+    kpi_grid([
+        ("当前合成结果", f"沿流关联 · {int(best['lag_days'])}天",
+         "完整留区与前向阻断；仅用于合成验证"),
+        ("负对照", "通过" if control_passed else "待确认",
+         "反向路径与时间置换均低于候选" if control_passed else "未满足预设反证条件"),
+        ("Average Precision", f"{float(best['pr_auc']):.3f}", "当前设置下的合成留出排序"),
+    ])
+    kpi_grid([
+        ("Brier Skill", f"{float(best['brier_skill']):.3f}", "相对气候概率基准"),
+        ("高风险区事件覆盖", f"{float(best['recall_at_top20']):.1%}", "最高20%容量内覆盖的事件比例"),
+        ("校准误差 ECE", f"{float(best['ece']):.3f}", "越接近0表示概率越稳定"),
     ])
 
-with tab_start:
-    st.markdown(
-        """
-        <div class="research-start">
-          <div class="research-start-head">
-            <div><b>选择下一步</b><span>从上方标签进入对应任务</span></div>
-            <em>当前配置已就绪</em>
-          </div>
-          <div class="research-start-grid">
-            <div><i>01</i><b>研判风险</b><span>生成 7 / 14 / 30 天情景排序</span></div>
-            <div><i>02</i><b>回放事件</b><span>检查南澳、挪威与 Florida 证据</span></div>
-            <div><i>03</i><b>解释机制</b><span>查看时滞、输运与空间效应</span></div>
-            <div><i>04</i><b>复核证据</b><span>下载数据、方法与审计材料</span></div>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    st.caption(
+        "情景输入即时更新；合成探索设置需点击“应用设置并重新计算”。"
     )
-    st.info("情景参数会即时更新；只有合成探索设置需要在侧栏重新计算。", icon="ℹ️")
+
+with st.container(key="research_modules"):
+    tab_alert, tab_real, tab_bio, tab_methods, tab_agent, tab_evidence, tab_training = st.tabs([
+        "风险研判", "真实事件回放", "生物响应沙盘",
+        "科学解释", "探索与验证", "数据来源与复核", "真实数据训练与验证",
+    ], default=st.session_state.get("research_section", "风险研判"))
 
 with tab_training:
     from globalhab_demo.real_training.ui import render as render_real_training
@@ -2182,13 +2191,14 @@ with tab_bio:
     st.warning(
         "本模块输出相对压力与情景对照，不计算死亡率、生物量损失或毒素浓度；现场措施需结合实测DO、鱼群状态、设备能力和管理要求。"
     )
-    st.caption(
-        "架构参考：[Føre等，Computers and Electronics in Agriculture（2024）]"
-        "(https://doi.org/10.1016/j.compag.2024.108676)与"
-        "[Lima等，Open Research Europe（2023）]"
-        "(https://open-research-europe.ec.europa.eu/articles/2-16)。"
-        "文献用于支持“环境—生物状态—运营对照”的结构设计，不构成当前参数的鱼种标定。"
-    )
+    with st.expander("方法与统计口径", expanded=False):
+        st.caption(
+            "架构参考：[Føre等，Computers and Electronics in Agriculture（2024）]"
+            "(https://doi.org/10.1016/j.compag.2024.108676)与"
+            "[Lima等，Open Research Europe（2023）]"
+            "(https://open-research-europe.ec.europa.eu/articles/2-16)。"
+            "文献用于支持“环境—生物状态—运营对照”的结构设计，不构成当前参数的鱼种标定。"
+        )
 
 with tab_methods:
     st.markdown("### 冲击—输运—响应关系")

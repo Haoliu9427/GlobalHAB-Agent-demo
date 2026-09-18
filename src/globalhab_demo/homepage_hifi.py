@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 import html
+from urllib.parse import quote
 import json
 from pathlib import Path
 from typing import Any
@@ -109,12 +110,11 @@ def _svg_icon(kind: str) -> str:
 
 def _kpi_card(icon: str, label: str, value: str, note: str, accent: str = "blue") -> str:
     return (
-        f'<div class="hf-kpi-card hf-accent-{accent}" role="group" '
-        f'aria-label="{html.escape(label)}：{html.escape(value)}">'
-        f'<div class="hf-kpi-icon" aria-hidden="true">{_svg_icon(icon)}</div>'
+        f'<div class="hf-kpi-card hf-accent-{accent}">' 
+        f'<div class="hf-kpi-icon">{_svg_icon(icon)}</div>'
         f'<div class="hf-kpi-copy"><span>{html.escape(label)}</span>'
         f'<b title="{html.escape(value)}">{html.escape(value)}</b>'
-        f'<small>{note}</small></div><div class="hf-kpi-arrow" aria-hidden="true">›</div></div>'
+        f'<small>{note}</small></div><div class="hf-kpi-arrow">›</div></div>'
     )
 
 
@@ -144,9 +144,9 @@ def _case_donut_html(counts: dict[str, int], total: int) -> str:
     )
     return f'''
     <div class="hf-card hf-case-panel">
-      <div class="hf-card-title-row"><div class="hf-card-title">Case 状态</div><div class="hf-card-action">查看全部 →</div></div>
+      <div class="hf-card-title-row"><div class="hf-card-title">Case 状态</div><a class="hf-card-action" href="?workspace=研究与验证&section=风险研判&cases=1" target="_self">查看全部 →</a></div>
       <div class="hf-case-body">
-        <div class="hf-donut" style="background:{donut}" role="img" aria-label="Case 总数 {total}"><div><b>{total}</b><span>Case 总数</span></div></div>
+        <div class="hf-donut" style="background:{donut}"><div><b>{total}</b><span>Case 总数</span></div></div>
         <div class="hf-case-legend">{legend}</div>
       </div>
     </div>'''
@@ -163,7 +163,7 @@ def _research_flow_html() -> str:
     nodes: list[str] = []
     for idx, (icon, title, line1, line2, accent) in enumerate(steps, 1):
         nodes.append(
-            f'<div class="hf-research-node hf-node-{accent}"><div class="hf-research-icon" aria-hidden="true">{_svg_icon(icon)}</div>'
+            f'<div class="hf-research-node hf-node-{accent}"><div class="hf-research-icon">{_svg_icon(icon)}</div>'
             f'<div class="hf-research-title"><em>{idx}.</em> {title}</div>'
             f'<div class="hf-research-meta">{line1}<br>{line2}</div></div>'
         )
@@ -187,8 +187,8 @@ def _workspace_flow_html(own_runs: int, library_count: int) -> str:
     nodes: list[str] = []
     for idx, (icon, title, sub, accent) in enumerate(items):
         nodes.append(
-            f'<div class="hf-workspace-node hf-workspace-{accent}"><div class="hf-workspace-icon" aria-hidden="true">{_svg_icon(icon)}</div>'
-            f'<div><b>{title}</b><span>{sub}</span></div></div>'
+            f'<a href="?workspace={quote(title)}" target="_self" class="hf-workspace-node hf-workspace-{accent}"><div class="hf-workspace-icon">{_svg_icon(icon)}</div>'
+            f'<div><b>{title}</b><span>{sub}</span></div></a>'
         )
         if idx < len(items) - 1:
             nodes.append('<div class="hf-workspace-arrow">→</div>')
@@ -211,7 +211,8 @@ def _hero_and_upper_html(
 ) -> str:
     route = str(best.get("route") or "—")
     lag = best.get("lag_days")
-    candidate = f"{route}_{int(lag):02d}d" if lag is not None and str(lag).isdigit() else route
+    route_label = {"downstream":"沿流传播", "local":"局地变化", "upstream":"逆流对照"}.get(route, "传播候选")
+    candidate = f"{route_label} · {int(lag)}天" if lag is not None and str(lag).isdigit() else route_label
     cut_date = html.escape(str(best.get("cut_date") or "—"))
     ap = _safe_float(norway_card.get("model_average_precision"), np.nan)
     ap_text = f"{ap:.3f}" if np.isfinite(ap) else "—"
@@ -230,7 +231,7 @@ def _hero_and_upper_html(
     <div class="hf-home-root">
       <section class="hf-home-hero">
         <div class="hf-home-title-wrap"><h1>项目总览</h1><p>多源观测 · 科学推理 · 证据落地 · 迁移验证</p></div>
-        <div class="hf-home-banner" role="img" aria-label="海洋与岛屿全景"{banner_style}></div>
+        <div class="hf-home-banner"{banner_style}></div>
       </section>
       <div class="hf-kpi-grid">{kpis}</div>
       <div class="hf-upper-grid">{_research_flow_html()}{_case_donut_html(case_counts, case_total)}</div>
@@ -280,7 +281,7 @@ def _agent_trace_figure(root: Path) -> go.Figure:
         )
     fig.update_xaxes(title="试验步", dtick=1)
     fig.update_yaxes(title="Average Precision (AP)", rangemode="tozero")
-    return _base_layout(fig, height=238)
+    return _base_layout(fig, height=230, showlegend=False)
 
 
 def _sa_site_heatmap(root: Path) -> go.Figure:
@@ -288,7 +289,7 @@ def _sa_site_heatmap(root: Path) -> go.Figure:
     fig = go.Figure()
     if raw.empty or not {"sample_date", "location", "k_cristata_cells_l"}.issubset(raw.columns):
         fig.add_annotation(text="暂无南澳回放数据", x=.5, y=.5, showarrow=False)
-        return _base_layout(fig, height=238, showlegend=False)
+        return _base_layout(fig, height=230, showlegend=False)
     raw = raw.copy()
     raw["sample_date"] = pd.to_datetime(raw["sample_date"], errors="coerce")
     raw["k_cristata_cells_l"] = pd.to_numeric(raw["k_cristata_cells_l"], errors="coerce").fillna(0).clip(lower=0)
@@ -297,8 +298,8 @@ def _sa_site_heatmap(root: Path) -> go.Figure:
     score["rank"] = score["samples"] * 2 + np.log10(score["peak"] + 1)
     sites = score.sort_values("rank", ascending=False).head(10).index.tolist()
     sub = raw[raw["location"].isin(sites) & raw["sample_date"].notna()].copy()
-    sub["month_day"] = sub["sample_date"].dt.strftime("%m-%d")
-    pivot = sub.pivot_table(index="location", columns="month_day", values="k_cristata_cells_l", aggfunc="max", fill_value=0)
+    sub["month_day"] = sub["sample_date"].dt.strftime("%Y-%m-%d")
+    pivot = sub.pivot_table(index="location", columns="month_day", values="k_cristata_cells_l", aggfunc="max")
     if pivot.shape[1] > 18:
         keep = np.linspace(0, pivot.shape[1]-1, 18).round().astype(int)
         pivot = pivot.iloc[:, np.unique(keep)]
@@ -312,16 +313,16 @@ def _sa_site_heatmap(root: Path) -> go.Figure:
             v = raw_vals[i, j]
             text[i, j] = "—" if v <= 0 else (f"{v/1e6:.1f}M" if v >= 1e6 else f"{v/1e3:.0f}k" if v >= 1e3 else f"{v:.0f}")
     fig.add_trace(go.Heatmap(
-        z=z, x=pivot.columns.tolist(), y=pivot.index.tolist(), customdata=raw_vals, text=text,
+        z=z.tolist(), x=pivot.columns.tolist(), y=[f"S{i+1}" for i in range(len(pivot))], customdata=[[[str(site), None if not np.isfinite(v) else float(v)] for v in row] for site,row in zip(pivot.index,raw_vals)], text=text.tolist(),
         colorscale=[[0,"#e9f7f4"],[.32,"#bee4d5"],[.58,"#f4dd99"],[.8,"#ef9b61"],[1,"#dc5b43"]],
         zmin=0, zmax=max(7.2, float(np.nanmax(z)) if z.size else 7.2),
         colorbar=dict(title="cells/L", thickness=10, len=.84, x=1.02, tickvals=[2,3,4,5,6,7], ticktext=["10²","10³","10⁴","10⁵","10⁶","10⁷"]),
-        hovertemplate="%{y}<br>%{x}<br>K. cristata %{customdata:,.0f} cells/L<extra></extra>",
+        hovertemplate="%{customdata[0]}<br>%{x}<br>K. cristata %{customdata[1]:,.0f} cells/L<extra></extra>", hoverongaps=False,
         xgap=1, ygap=1,
     ))
-    fig.update_xaxes(title="日期（2025）", tickangle=0, showgrid=False)
+    fig.update_xaxes(title="采样日期", type="category", tickangle=0, showgrid=False, tickvals=pivot.columns.tolist()[::3], ticktext=[d[5:] for d in pivot.columns.tolist()[::3]])
     fig.update_yaxes(title=None, autorange="reversed", showgrid=False, tickfont=dict(size=9, color="#6c8193"))
-    return _base_layout(fig, height=238, showlegend=False)
+    return _base_layout(fig, height=230, showlegend=False)
 
 
 def _evidence_matrix(root: Path) -> go.Figure:
@@ -331,11 +332,8 @@ def _evidence_matrix(root: Path) -> go.Figure:
     norway = _read_json(root / "outputs" / "norway_forward_benchmark_card.json")
     discovery = _read_json(root / "outputs" / "discovery_card.json")
 
-    # Keep the matrix visually aligned with the six-row evidence panel in the
-    # approved composition while sourcing every non-empty cell from a real
-    # project output.  Empty cells remain explicit rather than being imputed.
-    rows = ["温度 / MHW", "营养盐", "洋流输运", "生物响应", "现场影像", "外部验证"]
-    cols = ["时滞迁移<br>(ΔT)", "空间迁移<br>(ΔS)", "跨区验证<br>(ΔR)", "事件回放<br>(ΔE)"]
+    rows = ["温度 / MHW", "营养盐", "洋流输运", "南澳真实事件", "挪威外部验证"]
+    cols = ["时滞证据", "空间溢出", "真实事件", "跨区域前向"]
     display = np.zeros((len(rows), len(cols)), dtype=float)
     text = np.full((len(rows), len(cols)), "—", dtype=object)
     hover = np.full((len(rows), len(cols)), "未在当前输出中形成独立指标", dtype=object)
@@ -363,28 +361,22 @@ def _evidence_matrix(root: Path) -> go.Figure:
         q = species[species["species"].astype(str).str.contains("cristata", case=False, na=False)]
         if not q.empty:
             share = float(q.iloc[0]["detection_share"]); peak = float(q.iloc[0]["peak_cells_l"])
-            display[3,3] = min(1, share)
-            text[3,3] = f"检出 {share:.0%}"
-            hover[3,3] = f"K. cristata 峰值 {peak:,.0f} cells/L；检出样本占比 {share:.1%}"
-
-    visual_records = _visual_library_count(root)
-    if visual_records > 0:
-        display[4,3] = min(1, np.log10(visual_records + 1) / 2)
-        text[4,3] = f"影像 {visual_records}"
-        hover[4,3] = f"现场影像库已登记 {visual_records} 条记录"
+            display[3,2] = min(1, share)
+            text[3,2] = f"检出 {share:.0%}"
+            hover[3,2] = f"K. cristata 峰值 {peak:,.0f} cells/L；检出样本占比 {share:.1%}"
 
     ap = _safe_float(norway.get("model_average_precision"), np.nan)
     recall = _safe_float(norway.get("top10_recall"), np.nan)
     if np.isfinite(ap):
-        display[5,2] = min(1, ap / .23)
-        text[5,2] = f"AP {ap:.3f}"
-        hover[5,2] = f"挪威长期前向验证；Top10 recall {recall:.1%}" if np.isfinite(recall) else "挪威长期前向验证"
+        display[4,3] = min(1, ap / .23)
+        text[4,3] = f"AP {ap:.3f}"
+        hover[4,3] = f"挪威长期前向验证；Top10 recall {recall:.1%}" if np.isfinite(recall) else "挪威长期前向验证"
 
     best_ap = _safe_float((discovery.get("best_candidate") or {}).get("pr_auc"), np.nan)
     if np.isfinite(best_ap):
-        display[0,2] = min(1, best_ap / .70)
-        text[0,2] = f"候选 AP {best_ap:.3f}"
-        hover[0,2] = "合成留出区域前向检验的最佳候选；用于方法恢复，不替代真实外部验证"
+        display[0,3] = min(1, best_ap / .70)
+        text[0,3] = f"候选 AP {best_ap:.3f}"
+        hover[0,3] = "合成留出区域前向检验的最佳候选；用于方法恢复，不替代真实外部验证"
 
     # Blue shade shows within-cell evidence strength only; annotations retain native units.
     fig = go.Figure(go.Heatmap(
@@ -396,7 +388,7 @@ def _evidence_matrix(root: Path) -> go.Figure:
     ))
     fig.update_xaxes(side="top", showgrid=False, tickfont=dict(size=9))
     fig.update_yaxes(autorange="reversed", showgrid=False, tickfont=dict(size=9))
-    return _base_layout(fig, height=238, showlegend=False)
+    return _base_layout(fig, height=230, showlegend=False)
 
 
 def _norway_heatmap(root: Path) -> go.Figure:
@@ -464,21 +456,16 @@ def _norway_panel_html(root: Path) -> str:
     <div class="hf-card hf-norway-card">
       <div class="hf-card-title">挪威前向验证</div>
       <div class="hf-norway-content">
-        <div class="hf-norway-matrix">
-          <div class="hf-norway-table" style="--hf-folds:{max(1, len(columns))}">
-            <div class="hf-norway-corner"></div>{head}
-            {''.join(body)}
-          </div>
-          <div class="hf-norway-scale" aria-label="AP 色阶从 0 到 {vmax:.2f}">
-            <span>AP 值</span><i></i><div><b>{vmax:.2f}</b><b>{vmax / 2:.2f}</b><b>0</b></div>
-          </div>
+        <div class="hf-norway-table">
+          <div class="hf-norway-corner"></div>{head}
+          {''.join(body)}
         </div>
-        <div class="hf-bottom-message"><div class="hf-world-watermark"></div><div>跨越海域的知识迁移<br><b>服务于更安全的海洋</b></div></div>
+        <div class="hf-bottom-message"><img class="hf-world-watermark" alt="世界海陆轮廓" src="{_asset_data_uri(root / "assets" / "world_outline.svg")}"><div>跨越海域的知识迁移<br><b>服务于更安全的海洋</b></div></div>
       </div>
     </div>'''
 
-def _panel_header(title: str, action: str = "") -> None:
-    action_html = f'<span>{html.escape(action)}</span>' if action else ""
+def _panel_header(title: str, action: str = "", section: str = "") -> None:
+    action_html = f'<a href="?workspace={quote("研究与验证")}&section={quote(section)}" target="_self">查看详情 →</a>' if section else (f'<span>{html.escape(action)}</span>' if action else "")
     st.markdown(f'<div class="hf-viz-title"><b>{html.escape(title)}</b>{action_html}</div>', unsafe_allow_html=True)
 
 
@@ -493,7 +480,7 @@ def render(root: Any) -> None:
         [data-testid="stSidebarCollapsedControl"] {display:none !important;}
         [data-testid="stAppViewContainer"] > .main {margin-left:0 !important;}
         </style>
-        <div id="globalhab-build-hf2" data-build="HF2-20260918"></div>
+        <div id="globalhab-build-hf2" data-build="HF2-IMPORTFIX-20260918"></div>
         """,
         unsafe_allow_html=True,
     )
@@ -510,18 +497,18 @@ def render(root: Any) -> None:
         unsafe_allow_html=True,
     )
 
-    c1, c2, c3 = st.columns([1.0, 1.07, 1.17], gap="small")
+    c1, c2, c3 = st.columns([1.0, 1.07, 1.17], gap="medium")
     with c1:
         with st.container(key="hf_agent_panel"):
-            _panel_header("Agent 探索轨迹", "查看详情 →")
+            _panel_header("Agent 探索轨迹", section="探索与验证")
             st.plotly_chart(_agent_trace_figure(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_agent_chart")
     with c2:
         with st.container(key="hf_sa_panel"):
-            _panel_header("南澳真实事件回放", "查看详情 →")
+            _panel_header("南澳真实事件回放", section="真实事件回放")
             st.plotly_chart(_sa_site_heatmap(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_sa_chart")
     with c3:
         with st.container(key="hf_evidence_panel"):
-            _panel_header("环境因子与迁移验证")
+            _panel_header("环境因子与迁移验证", section="科学解释")
             st.plotly_chart(_evidence_matrix(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_evidence_chart")
 
     st.markdown(_norway_panel_html(root), unsafe_allow_html=True)

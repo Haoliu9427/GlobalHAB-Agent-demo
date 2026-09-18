@@ -1,0 +1,19 @@
+{
+  "build": "HF2-REFERENCE2-20260918",
+  "browser": "Chromium headless",
+  "desktop_viewport": [
+    1448,
+    1086
+  ],
+  "header_bounds": {
+    "x": 0,
+    "width": 1448,
+    "height": 64
+  },
+  "all_workspaces_app_test_exceptions": 0,
+  "agent_detail_tab_selected": true,
+  "replay_detail_tab_selected": true,
+  "other_workspace_browser_exceptions": 0,
+  "scientific_data_retrained": false,
+  "note": "Case all link opens risk workspace and Case list. Remote API calls not executed."
+}

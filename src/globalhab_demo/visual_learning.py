@@ -376,9 +376,7 @@ def export_library_zip(root: Any | None = None) -> bytes:
     with zipfile.ZipFile(bio, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         zf.write(p["records"], arcname="records.csv")
         for img in sorted(p["images"].glob("*")):
-            # Deployment packages keep the otherwise-empty image directory
-            # with a dotfile.  Only real user images belong in an export.
-            if img.is_file() and not img.name.startswith("."):
+            if img.is_file():
                 zf.write(img, arcname=f"images/{img.name}")
         zf.writestr("README.txt", "GlobalHAB-Agent field visual library export. Keep records.csv with images/.\n")
     return bio.getvalue()

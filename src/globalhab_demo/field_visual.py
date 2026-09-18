@@ -466,11 +466,11 @@ def _render_screening_tab(root: Any = None) -> None:
     if batch_notice:
         st.success(batch_notice)
 
-    st.markdown("### 上传海面影像")
-    st.caption("拍照或上传图片，补充现场信息后开始甄别。")
+    st.markdown("### 现场影像甄别")
+    st.caption("拍照 → 自适应路由 → 视觉筛查 → 不确定性门控 / DEFER → 现场复核。")
     task_queue = queue_cases(root_path)
     if task_queue:
-        with st.expander(f"待复核任务（{len(task_queue)}）", expanded=False):
+        with st.expander(f"待复核任务队列 · {len(task_queue)} 个", expanded=False):
             queue_rows = []
             for case in task_queue[:20]:
                 research = case.get("research") or {}
@@ -496,19 +496,18 @@ def _render_screening_tab(root: Any = None) -> None:
         with st.container(border=True, key="vision_case_context"):
             risk = research.get("risk_score")
             _render_context_kpis([
-                ("当前 Case", str(active_case.get("case_id")), "同一证据链"),
-                ("候选海区", str(research.get("candidate_region", "NA")), "研究任务带入"),
-                ("Route / Lag", f"{research.get('route','NA')} / {research.get('lag_days','NA')}d", "方向与时滞"),
-                ("风险指数", f"{float(risk):.1f}/100" if isinstance(risk, (int,float)) else str(risk or "NA"), "复核排序依据"),
+                ("当前Case", str(active_case.get("case_id")), "研究、现场、实验室和解释共享同一Case"),
+                ("研究候选区", str(research.get("candidate_region", "NA")), "从研究与验证工作区自动带入"),
+                ("Route / Lag", f"{research.get('route','NA')} / {research.get('lag_days','NA')}d", "研究候选的方向与时滞"),
+                ("研究风险指数", f"{float(risk):.1f}/100" if isinstance(risk, (int,float)) else str(risk or "NA"), "仅用于安排现场复核优先级"),
             ])
-            with st.expander("证据登记说明", expanded=False):
-                st.caption("视觉、现场与实验室证据会登记到同一 Case，不会覆盖研究模型结果。")
+            st.caption("已读取研究与验证生成的现场复核任务。本页新增的视觉、现场与实验室证据会按证据层级登记到同一Case，不会覆盖研究模型结果。")
     else:
-        st.info("未关联研究 Case；本次仍可独立完成影像筛查。")
+        st.caption("可直接上传影像；关联研究任务请先在风险研判中创建 Case。")
 
     input_col, meta_col = st.columns([1, 1], gap="large")
     with input_col, st.container(border=True, key="vision_input_card"):
-        st.markdown("#### 1 · 选择影像")
+        st.markdown("### 拍照或上传")
         source_mode = st.radio("图像来源", ["现场拍照", "上传图片"], horizontal=True, key="vision_source_mode")
         image_file = None
         if source_mode == "现场拍照":
@@ -519,40 +518,40 @@ def _render_screening_tab(root: Any = None) -> None:
             image_file = st.camera_input("对准海面拍摄", key="vision_camera")
         else:
             image_file = st.file_uploader("上传JPG / JPEG / PNG", type=["jpg", "jpeg", "png"], key="vision_upload")
-        sea_surface = st.checkbox("照片主体是海面或水体", value=True, key="vision_surface_confirm")
-        with st.expander("影像与模型设置", expanded=False):
-            vision_mode = st.selectbox(
-                "视觉推理模式",
-                ["自适应路由（推荐）", "多模型一致性", "EfficientNet", "ConvNeXt", "DINOv2", "安全规则基线"],
-                key="vision_inference_mode",
-                help="若所选深度分支无法执行，自适应模式会返回 DEFER。",
-            )
-            st.caption("避开逆光并让海面占画面大部分；同一点位可拍 2–3 张。照片不会默认发送给远程大模型。")
+        vision_mode = st.selectbox(
+            "视觉推理模式",
+            ["自适应路由（推荐）", "多模型一致性", "EfficientNet", "ConvNeXt", "DINOv2", "安全规则基线"],
+            key="vision_inference_mode",
+            help="自适应模式会按水色、纹理和不确定性选择深度视觉分支；若当前运行环境无法真正执行所选分支，则返回DEFER。",
+        )
+        sea_surface = st.checkbox("照片主体是海面/水体，而不是天空、岸边或人物", value=True, key="vision_surface_confirm")
+        st.caption("建议避开逆光，尽量让海面占画面大部分；同一点位最好从不同角度拍2–3张。图像只在当前会话中分析，不默认上传到远程大模型。")
 
     with meta_col, st.container(border=True, key="vision_meta_card"):
-        st.markdown("#### 2 · 现场信息")
+        st.markdown("### 现场信息")
         c1, c2 = st.columns(2)
         capture_date = c1.date_input("拍摄日期", value=date.today(), key="vision_date")
         capture_time = c2.time_input("拍摄时间", value=None, key="vision_time")
         default_location = str(((active_case or {}).get("research") or {}).get("candidate_region") or "")
         location_text = st.text_input("海域 / 位置（可写站点名或大致海域）", value=default_location, placeholder="例如：南海某近岸养殖区", key="vision_location")
-        with st.expander("补充现场观察与测量", expanded=False):
-            water_color = st.selectbox("现场肉眼水色", ["不确定", "常规蓝/蓝绿", "绿色", "黄绿色", "红棕色", "褐色", "乳白色"], key="vision_water_color")
-            odor = st.selectbox("异味", ["未观察", "无明显异味", "有明显异味", "不确定"], key="vision_odor")
-            surface_signs = st.multiselect("表面现象", ["泡沫", "浮膜", "漂浮物", "鱼贝聚集", "无明显表面现象", "不确定"], key="vision_surface_signs")
-            recent_heat = st.radio("近期是否明显高温", ["未知", "否", "是"], horizontal=True, key="vision_recent_heat")
-            mass_mortality = st.radio("鱼贝异常/死亡", ["未观察", "未见明显异常", "观察到", "不确定"], horizontal=True, key="vision_mortality")
+        water_color = st.selectbox("现场肉眼水色", ["不确定", "常规蓝/蓝绿", "绿色", "黄绿色", "红棕色", "褐色", "乳白色"], key="vision_water_color")
+        odor = st.selectbox("异味", ["未观察", "无明显异味", "有明显异味", "不确定"], key="vision_odor")
+        surface_signs = st.multiselect("表面现象", ["泡沫", "浮膜", "漂浮物", "鱼贝聚集", "无明显表面现象", "不确定"], key="vision_surface_signs")
+        recent_heat = st.radio("近期是否明显高温", ["未知", "否", "是"], horizontal=True, key="vision_recent_heat")
+        mass_mortality = st.radio("鱼贝异常/死亡", ["未观察", "未见明显异常", "观察到", "不确定"], horizontal=True, key="vision_mortality")
+
+        with st.expander("可选仪器/现场测量", expanded=False):
             t = st.text_input("水温 °C", key="vision_temp")
             sal = st.text_input("盐度", key="vision_salinity")
             do = st.text_input("溶解氧 mg/L", key="vision_do")
             chla = st.text_input("Chl-a（请同时在备注中写单位）", key="vision_chla")
             notes = st.text_area("现场备注", max_chars=1000, key="vision_notes")
 
-    with st.expander("模型状态", expanded=False):
+    with st.expander("高级视觉模型信息", expanded=False):
         st.dataframe(compact_status_rows(root_path), use_container_width=True, hide_index=True)
         st.caption("默认允许在首次使用时获取并缓存公共预训练视觉编码器；已有本地权重时优先使用本地文件。项目训练头存在时优先使用，否则使用内置视觉现象原型头。原型头用于现场视觉筛查，不代表经过真实HAB照片校准的藻华分类器。")
 
-    run = st.button("开始甄别", type="primary", use_container_width=True, key="vision_run")
+    run = st.button("开始现场影像甄别", type="primary", use_container_width=True, key="vision_run")
     if run:
         if image_file is None:
             st.error("请先拍照或上传一张海面图片。")
@@ -586,7 +585,7 @@ def _render_screening_tab(root: Any = None) -> None:
 
     result = st.session_state.get("field_visual_result")
     if not result:
-        st.caption("完成后将显示视觉类型、图像质量、复核优先级与后续建议。")
+        st.caption("完成一次甄别后，本页会显示图像质量、主要视觉异常、混淆因素、现场复核优先级和后续采样建议。")
         return
 
     q = result["quality"]
@@ -613,66 +612,66 @@ def _render_screening_tab(root: Any = None) -> None:
         k3.metric("图像质量", f"{q['quality_score']:.0%}")
         st.caption(result["priority_reason"])
         st.progress(min(1.0, effective_score), text=f"视觉异常特征强度 {effective_score:.0%}（不是HAB概率）")
-        with st.expander("特征、混淆因素与现场线索", expanded=False):
-            st.markdown("**视觉特征摘要**")
-            st.write(" · ".join(v["feature_notes"]))
-            st.markdown("**可能混淆因素**")
-            for x in v["possible_confounders"]:
+        st.markdown("**视觉特征摘要**")
+        st.write(" · ".join(v["feature_notes"]))
+        st.markdown("**可能混淆因素**")
+        for x in v["possible_confounders"]:
+            st.write("- " + x)
+        if result["field_context_flags"]:
+            st.markdown("**现场辅助线索**")
+            for x in result["field_context_flags"]:
                 st.write("- " + x)
-            if result["field_context_flags"]:
-                st.markdown("**现场辅助线索**")
-                for x in result["field_context_flags"]:
-                    st.write("- " + x)
 
     adaptive = result.get("adaptive_visual") or {}
-    with st.expander("模型路由与不确定性", expanded=False):
-        with st.container(border=True, key="vision_adaptive_card"):
-            route = adaptive.get("route") or {}
-            a1, a2, a3 = st.columns(3)
-            a1.metric("路由类型", route.get("route_family", "规则基线"))
-            a2.metric("激活分支", str(len(adaptive.get("branches") or [])))
-            a3.metric("深度视觉", "已执行" if adaptive.get("active") else "DEFER")
-            st.write("**路由理由：** " + str(route.get("reason", adaptive.get("fallback_reason", "NA"))))
-            if adaptive.get("active"):
-                rows = []
-                for b in adaptive.get("branches", []):
-                    rows.append({
-                        "分支": b.get("display_name"),
-                        "视觉类别": b.get("predicted_class"),
-                        "筛查头": b.get("head_kind", "NA"),
-                        "融合置信度": round(float(b.get("confidence", 0)), 3),
-                        "entropy": round(float(b.get("entropy", 0)), 3),
-                        "margin": round(float(b.get("margin", 0)), 3),
-                        "OOD": bool(b.get("ood_flag", False)),
-                    })
-                st.dataframe(rows, use_container_width=True, hide_index=True)
-                u = adaptive.get("uncertainty") or {}
-                st.caption(f"融合不确定性：entropy={u.get('entropy',0):.3f} · margin={u.get('margin',0):.3f} · disagreement={u.get('disagreement',0):.3f} · OOD={u.get('ood_flag',False)}。融合置信度是视觉现象筛查分数，不是HAB发生概率。")
-                if u.get("defer"):
-                    st.warning("不确定性门控触发 DEFER：" + "；".join(u.get("reasons") or []))
-            else:
-                st.warning(adaptive.get("fallback_reason") or "当前没有深度视觉分支成功执行，因此自适应模式返回DEFER。")
-                if adaptive.get("branch_errors"):
-                    st.markdown("**视觉引擎诊断**")
+    st.markdown("### 04 · 自适应路由与不确定性")
+    with st.container(border=True, key="vision_adaptive_card"):
+        route = adaptive.get("route") or {}
+        a1, a2, a3 = st.columns(3)
+        a1.metric("路由类型", route.get("route_family", "规则基线"))
+        a2.metric("已激活分支", str(len(adaptive.get("branches") or [])))
+        a3.metric("深度视觉状态", "已执行" if adaptive.get("active") else "DEFER")
+        st.write("**路由理由：** " + str(route.get("reason", adaptive.get("fallback_reason", "NA"))))
+        if adaptive.get("active"):
+            rows = []
+            for b in adaptive.get("branches", []):
+                rows.append({
+                    "分支": b.get("display_name"),
+                    "视觉类别": b.get("predicted_class"),
+                    "筛查头": b.get("head_kind", "NA"),
+                    "融合置信度": round(float(b.get("confidence", 0)), 3),
+                    "entropy": round(float(b.get("entropy", 0)), 3),
+                    "margin": round(float(b.get("margin", 0)), 3),
+                    "OOD": bool(b.get("ood_flag", False)),
+                })
+            st.dataframe(rows, use_container_width=True, hide_index=True)
+            u = adaptive.get("uncertainty") or {}
+            st.caption(f"融合不确定性：entropy={u.get('entropy',0):.3f} · margin={u.get('margin',0):.3f} · disagreement={u.get('disagreement',0):.3f} · OOD={u.get('ood_flag',False)}。融合置信度是视觉现象筛查分数，不是HAB发生概率。")
+            if u.get("defer"):
+                st.warning("不确定性门控触发 DEFER：" + "；".join(u.get("reasons") or []))
+        else:
+            st.warning(adaptive.get("fallback_reason") or "当前没有深度视觉分支成功执行，因此自适应模式返回DEFER。")
+            if adaptive.get("branch_errors"):
+                with st.expander("查看视觉引擎诊断", expanded=False):
                     for err in adaptive.get("branch_errors"):
                         st.code(err)
-                st.caption("规则基线只提供颜色与纹理线索，不替代深度模型结果。")
+            st.caption("透明规则基线仍会显示颜色/纹理辅助线索，但不会在自适应模式中冒充深度模型的最终结果。")
 
-    with st.expander("复核建议与结论边界", expanded=False):
-        follow_col, boundary_col = st.columns(2, gap="large")
-        with follow_col, st.container(border=True, key="vision_follow_card"):
-            st.markdown("#### 推荐补充证据")
-            for x in result["recommended_follow_up"]:
-                st.write("- " + x)
-        with boundary_col, st.container(border=True, key="vision_boundary_card"):
-            st.markdown("#### 不能据此声称")
-            for x in result["prohibited_claims"]:
-                st.write("- " + x)
+    st.markdown("### 05 · 下一步复核")
+    follow_col, boundary_col = st.columns(2, gap="large")
+    with follow_col, st.container(border=True, key="vision_follow_card"):
+        st.markdown("#### 推荐补充证据")
+        for x in result["recommended_follow_up"]:
+            st.write("- " + x)
+    with boundary_col, st.container(border=True, key="vision_boundary_card"):
+        st.markdown("#### 本页不能据此声称")
+        for x in result["prohibited_claims"]:
+            st.write("- " + x)
 
-    st.markdown("### 登记证据")
+    st.markdown("### 06 · Case联动与确认")
     if active_case:
         with st.container(border=True, key="vision_case_actions"):
-            st.caption("视觉筛查登记为 B 级现场证据，不会自动改变研究结论。")
+            st.markdown("#### 登记现场视觉证据")
+            st.caption("视觉筛查登记为B级现场证据，不会把研究候选自动改成真实HAB事件。照片可同时保存到“我的影像数据”，但默认不进入监督训练。")
             def _register_current_visual() -> None:
                 metadata = result.get("field_metadata") or {}
                 raw_now = st.session_state.get("field_visual_image_bytes")
@@ -710,42 +709,41 @@ def _render_screening_tab(root: Any = None) -> None:
                         st.success("当前Case已保存；任务队列中没有其他待复核Case。")
                 except Exception as exc:
                     st.error(str(exc))
-            with st.expander("专业确认与其他操作", expanded=False):
-                if st.button("返回研究与验证查看证据链", use_container_width=True, key="vision_back_research"):
-                    st.session_state["_workspace_jump"] = "研究与验证"
-                    st.rerun()
+            if st.button("返回研究与验证查看证据链", use_container_width=True, key="vision_back_research"):
+                st.session_state["_workspace_jump"] = "研究与验证"
+                st.rerun()
 
-                st.markdown("#### 专业 / 实验室确认")
-                l1, l2 = st.columns(2)
-                method = l1.selectbox("确认方式", LAB_METHODS, key="vision_lab_method")
-                confirmed_label = l2.selectbox("确认后的视觉现象标签", list(VISUAL_CLASSES), key="vision_lab_label")
-                conclusion = st.text_input("确认结论", placeholder="例如：qPCR检出目标藻；显微镜未见目标藻；毒素未检出", key="vision_lab_conclusion")
-                value_text = st.text_input("检测值/方法信息（可选）", placeholder="例如：Ct=24；细胞丰度=...；毒素=...", key="vision_lab_value")
-                lab_notes = st.text_area("确认备注（可选）", max_chars=1000, key="vision_lab_notes")
-                add_train = st.checkbox("将该确认照片写入视觉训练库并进入后续训练", value=True, key="vision_lab_to_train")
-                if st.button("登记确认并更新证据链", use_container_width=True, key="vision_register_lab"):
-                    if not conclusion.strip():
-                        st.warning("请填写确认结论。")
-                    else:
-                        try:
-                            raw_now = st.session_state.get("field_visual_image_bytes")
-                            metadata = result.get("field_metadata") or {}
-                            sample_id = None
-                            if raw_now:
-                                from globalhab_demo.visual_learning import save_image_sample
-                                sample_id, _ = save_image_sample(
-                                    raw_now, st.session_state.get("field_visual_image_name"), metadata,
-                                    label=confirmed_label, evidence_level=method,
-                                    include_in_training=bool(add_train and confirmed_label != "不确定"),
-                                    root=root_path, screening_result=result, source=f"Case确认·{method}",
-                                )
-                            register_lab_evidence(
-                                active_case_id, method, conclusion, confirmed_label, value_text, lab_notes,
-                                sample_id=sample_id, root=root_path,
+            st.markdown("#### 专业 / 实验室确认")
+            l1, l2 = st.columns(2)
+            method = l1.selectbox("确认方式", LAB_METHODS, key="vision_lab_method")
+            confirmed_label = l2.selectbox("确认后的视觉现象标签", list(VISUAL_CLASSES), key="vision_lab_label")
+            conclusion = st.text_input("确认结论", placeholder="例如：qPCR检出目标藻；显微镜未见目标藻；毒素未检出", key="vision_lab_conclusion")
+            value_text = st.text_input("检测值/方法信息（可选）", placeholder="例如：Ct=24；细胞丰度=...；毒素=...", key="vision_lab_value")
+            lab_notes = st.text_area("确认备注（可选）", max_chars=1000, key="vision_lab_notes")
+            add_train = st.checkbox("将该确认照片写入视觉训练库并进入后续训练", value=True, key="vision_lab_to_train")
+            if st.button("登记确认并更新证据链", use_container_width=True, key="vision_register_lab"):
+                if not conclusion.strip():
+                    st.warning("请填写确认结论。")
+                else:
+                    try:
+                        raw_now = st.session_state.get("field_visual_image_bytes")
+                        metadata = result.get("field_metadata") or {}
+                        sample_id = None
+                        if raw_now:
+                            from globalhab_demo.visual_learning import save_image_sample
+                            sample_id, _ = save_image_sample(
+                                raw_now, st.session_state.get("field_visual_image_name"), metadata,
+                                label=confirmed_label, evidence_level=method,
+                                include_in_training=bool(add_train and confirmed_label != "不确定"),
+                                root=root_path, screening_result=result, source=f"Case确认·{method}",
                             )
-                            st.success("确认结果已进入研究证据链；如勾选训练，照片已进入视觉训练库。")
-                        except Exception as exc:
-                            st.error(str(exc))
+                        register_lab_evidence(
+                            active_case_id, method, conclusion, confirmed_label, value_text, lab_notes,
+                            sample_id=sample_id, root=root_path,
+                        )
+                        st.success("确认结果已进入研究证据链；如勾选训练，照片已进入视觉训练库。")
+                    except Exception as exc:
+                        st.error(str(exc))
     else:
         st.caption("未激活研究Case，因此本次甄别只保留在当前会话/影像库中。")
 
@@ -762,8 +760,7 @@ def _render_screening_tab(root: Any = None) -> None:
         st.session_state["_llm_source_jump"] = "当前完整Case（推荐）" if active_case else "最近一次现场影像甄别"
         st.rerun()
 
-    with st.expander("隐私说明", expanded=False):
-        st.caption("照片不会因点击“大模型综合解读”而发送给远程服务；默认只发送结构化 Case 摘要，并仍需在大模型工作区授权。")
+    st.caption("隐私说明：照片本身不会因为点击“大模型综合解读”而发送给远程服务；默认仅发送结构化Case摘要，并且仍需在大模型工作区显式勾选授权。")
 
 
 def render(root: Any = None) -> None:
@@ -780,14 +777,14 @@ def render(root: Any = None) -> None:
     from globalhab_demo.ui_system import render_workspace_header
     render_workspace_header(
         "现场影像甄别",
-        "上传影像，完成筛查并登记复核证据",
+        "上传影像 · 筛查复核 · 保存证据",
         kicker="Field evidence",
     )
     with st.container(key="vision_workspace_tabs"):
         tab_screen, tab_data, tab_model = st.tabs([
-            "影像甄别",
-            "影像数据",
-            "模型版本",
+            "现场影像甄别",
+            "我的影像数据",
+            "模型训练与版本",
         ])
     with tab_screen:
         _render_screening_tab(root_path)

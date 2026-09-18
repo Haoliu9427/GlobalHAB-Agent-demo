@@ -6,6 +6,7 @@ from .user_engine import build,run
 
 def render():
     import streamlit as st
+    st.caption('从上传数据开始；如需调用大模型，再展开远程服务设置。')
     data_col,task_col=st.columns([1,1],gap='large')
     with data_col, st.container(border=False,key='obs_upload_card'):
         st.markdown('### 观测数据')
@@ -28,7 +29,7 @@ def render():
         with horizon_top:
             horizon=st.selectbox('预测时效（天）',[7,14,30],key='user_horizon')
         description=st.text_area('物种、事件阈值及value的含义/单位',max_chars=500,height=108,key='user_description')
-        st.caption('输出：同一留出集模型比较、AP / Brier / ECE、样本/事件支持与数据质量。')
+        st.caption('比较模型表现，并导出预测结果。')
         with st.expander('本次分析说明',expanded=False):
             st.write('历史按时间留出；未知标签保留为未知。选择未来预测时，从各站最新有标签观测起算，并记录超范围特征与缺失比例。')
         st.markdown(f'<div class="compact-card-footer">当前：{task} · {horizon}天 · 结果独立保存。</div>', unsafe_allow_html=True)
@@ -55,7 +56,7 @@ def render():
         st.session_state.pop('qwen_explanation',None)
         st.session_state.pop('remote_action_notice',None)
     service_col,models_col=st.columns([1,1],gap='large')
-    with service_col, st.container(border=False,key='obs_service_card'):
+    with service_col, st.expander('远程大模型服务 · Qwen / DeepSeek / 自定义', expanded=False):
         # Top layer: service configuration.
         with st.container(border=False,key='obs_service_top_zone'):
             st.markdown('### 远程大模型服务')

@@ -211,3 +211,18 @@ a.hf-workspace-node{text-decoration:none!important;transition:background .15s,bo
 @media(max-width:800px){.hf-viz-title b{font-size:14px!important;}}
 .st-key-hf_agent_panel,.st-key-hf_sa_panel,.st-key-hf_evidence_panel{height:380px!important;min-height:380px!important;flex-shrink:0!important;}
 .st-key-llm_source_card [data-testid="stVerticalBlock"],.st-key-llm_mode_card [data-testid="stVerticalBlock"]{gap:12px!important;}
+
+/* Dense figure cards, shared bottom edge; chart area owns the available height. */
+.st-key-hf_agent_panel,.st-key-hf_sa_panel,.st-key-hf_evidence_panel{
+height:330px!important;min-height:330px!important;padding:12px 14px 4px!important;
+}
+.hf-research-wheel text{font-weight:500!important;font-size:14px!important}
+.hf-research-wheel .wheel-center-title{font-weight:700!important;font-size:18px!important}
+.hf-research-wheel .wheel-center-sub{font-size:10px!important}
+.st-key-hf_evidence_panel [data-baseweb="tab-list"]{gap:18px!important}
+.st-key-hf_evidence_panel [data-baseweb="tab"]{height:32px!important;padding:0!important}
+.st-key-hf_evidence_panel [data-baseweb="tab-panel"]{padding-top:0!important;padding-bottom:0!important;}
+.st-key-hf_evidence_panel [data-testid="stTabs"]{gap:0!important;}
+.st-key-hf_evidence_panel [data-testid="stVerticalBlock"]{gap:0!important;}
+
+.st-key-hf_agent_panel,.st-key-hf_sa_panel,.st-key-hf_evidence_panel{height:356px!important;min-height:356px!important;}

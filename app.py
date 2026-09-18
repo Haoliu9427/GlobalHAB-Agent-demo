@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF2-MULTIMODAL-20260918"
+BUILD_ID = "HF2-VISUAL-REFINED-20260918"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -1996,78 +1996,24 @@ with tab_bio:
             bio_plot_data = bio_trajectories[
                 bio_trajectories["intervention"].isin(selected_interventions)
             ]
-            trajectory_chart = px.line(
-                bio_plot_data,
-                x="hour",
-                y="relative_physiological_pressure",
-                color="intervention",
-                title="不同干预情景下的相对生理压力轨迹",
-                labels={
-                    "hour": "模拟时间（小时）",
-                    "relative_physiological_pressure": "相对生理压力指数（0–100）",
-                    "intervention": "干预情景",
-                },
-            )
-            trajectory_chart.update_layout(
-                height=440, margin={"l": 5, "r": 5, "t": 55, "b": 5},
-                legend={"orientation": "h", "y": -0.20},
-                hovermode="x unified",
-            )
-            trajectory_chart.update_yaxes(range=[0, 100])
+            from globalhab_demo.research_figures import pressure_timeline, pressure_comparison
+            trajectory_chart = pressure_timeline(bio_plot_data)
             research_plot(trajectory_chart, width="stretch", config={"displayModeBar": False})
 
             bc1, bc2 = st.columns([1.25, 1.0], gap="large")
             with bc1:
-                error_plus = (
-                    bio_summary["peak_pressure_upper"] - bio_summary["peak_pressure_index"]
-                )
-                error_minus = (
-                    bio_summary["peak_pressure_index"] - bio_summary["peak_pressure_lower"]
-                )
-                pressure_bar = go.Figure(go.Bar(
-                    x=bio_summary["intervention"],
-                    y=bio_summary["peak_pressure_index"],
-                    marker_color=["#2cb7b1", "#4d9ce0", "#d08a32", "#4d9ce0", "#6f93aa"],
-                    error_y={
-                        "type": "data", "array": error_plus, "arrayminus": error_minus,
-                        "visible": True, "color": "#3f5860",
-                    },
-                    customdata=bio_summary[[
-                        "mean_feeding_opportunity_pct", "minimum_effective_do_mg_l",
-                        "pressure_load_reduction_vs_baseline_pct",
-                    ]],
-                    hovertemplate=(
-                        "<b>%{x}</b><br>峰值压力：%{y:.1f}/100"
-                        "<br>摄食机会：%{customdata[0]:.1f}%"
-                        "<br>最低有效DO：%{customdata[1]:.2f} mg L⁻¹"
-                        "<br>累计压力变化：%{customdata[2]:.1f}%<extra></extra>"
-                    ),
-                ))
-                pressure_bar.update_layout(
-                    title="峰值压力与±15%参数敏感性包络", height=390,
-                    margin={"l": 5, "r": 5, "t": 55, "b": 95},
-                    xaxis={"tickangle": -18}, yaxis={"title": "相对压力指数", "range": [0, 100]},
-                )
+                pressure_bar = pressure_comparison(bio_summary)
                 research_plot(pressure_bar, width="stretch", config={"displayModeBar": False})
             with bc2:
-                tradeoff_chart = px.scatter(
-                    bio_summary,
-                    x="mean_feeding_opportunity_pct",
-                    y="pressure_load_reduction_vs_baseline_pct",
-                    color="intervention",
-                    size=(20 - bio_summary["response_readiness_hours"]).clip(lower=2),
-                    title="压力缓解—摄食机会权衡",
-                    labels={
-                        "mean_feeding_opportunity_pct": "摄食机会保留（%）",
-                        "pressure_load_reduction_vs_baseline_pct": "累计压力降低（%）",
-                        "intervention": "干预情景",
-                    },
-                    hover_data={"response_readiness_hours": True},
-                )
-                tradeoff_chart.update_layout(
-                    height=390, margin={"l": 5, "r": 5, "t": 55, "b": 5},
-                    showlegend=False,
-                )
+                tradeoff_chart = go.Figure(go.Bar(
+                    x=bio_summary['mean_feeding_opportunity_pct'],y=bio_summary['intervention'],
+                    orientation='h',marker_color='#559ea8',
+                    text=bio_summary['mean_feeding_opportunity_pct'],texttemplate='%{x:.1f}%',textposition='outside',cliponaxis=False,
+                    customdata=bio_summary[['pressure_load_reduction_vs_baseline_pct','response_readiness_hours']],
+                    hovertemplate='%{y}<br>摄食机会 %{x:.1f}%<br>累计压力降低 %{customdata[0]:.1f}%<br>准备时间 %{customdata[1]}小时<extra></extra>'))
+                from globalhab_demo.research_figures import finish
+                tradeoff_chart=finish(tradeoff_chart,350)
+                tradeoff_chart.update_layout(title='摄食机会保留',xaxis=dict(range=[0,115],title='模型中的相对摄食机会（%）'),yaxis_autorange='reversed',showlegend=False,bargap=.48)
                 research_plot(tradeoff_chart, width="stretch", config={"displayModeBar": False})
 
         with st.container(border=True, key="research_section_tab_bio_2"):
@@ -2460,13 +2406,8 @@ with tab_agent:
                     "ece": best["ece"],
                 }]),
             ], ignore_index=True)
-            fig = px.scatter(
-                comparison, x="pr_auc", y="方法", color="方法", text="pr_auc",
-                title="同一留出集：候选与基线", labels={"pr_auc":"AP · 越高越好", "方法":""},
-                color_discrete_sequence=["#8cbddc", "#c7a76c", "#1c78c0"],
-            )
-            fig.update_traces(marker=dict(size=15), texttemplate="%{x:.3f}", textposition="top center",cliponaxis=False)
-            fig.update_layout(showlegend=False, height=350, margin={"l": 5, "r": 5, "t": 55, "b": 10})
+            from globalhab_demo.research_figures import baseline_comparison
+            fig = baseline_comparison(comparison)
             research_plot(fig, width="stretch", config={"displayModeBar": False})
         with c2:
             st.markdown("#### 随机探索参照")
@@ -2543,9 +2484,8 @@ with tab_agent:
 
     with st.container(border=True, key="research_section_tab_agent_2"):
         st.markdown("#### 完整探索轨迹")
-        trace_fig=px.line(log,x="step",y="pr_auc",markers=True,labels={"step":"实验步","pr_auc":"AP · 越高越好"},color_discrete_sequence=["#15899c"])
-        trace_fig.update_traces(connectgaps=False,marker=dict(size=9),hovertemplate="第%{x}步<br>AP %{y:.3f}<extra></extra>")
-        trace_fig.update_layout(height=300,margin=dict(l=12,r=16,t=20,b=20),showlegend=False)
+        from globalhab_demo.research_figures import exploration_trace
+        trace_fig = exploration_trace(log)
         research_plot(trace_fig,width="stretch",config={"displayModeBar":False})
         display = log[[
             "step", "hypothesis", "action_id", "status", "pr_auc", "pr_auc_gain",
@@ -2563,7 +2503,8 @@ with tab_agent:
     with st.container(border=True, key="research_section_tab_agent_3"):
         st.markdown("#### 留出海区风险序列")
         plot = predictions.set_index("date")[["risk_probability", "hab_event", "top20_alert"]]
-        st.line_chart(plot, height=320)
+        from globalhab_demo.research_figures import risk_series
+        research_plot(risk_series(predictions),width='stretch',config={'displayModeBar':False})
         st.caption("Top20%报警是固定容量排名，不使用留出标签选择阈值。")
 
     with st.container(border=True, key="research_section_tab_agent_4"):

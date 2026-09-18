@@ -145,7 +145,7 @@ st.markdown(
     .signal {background:linear-gradient(105deg,#eaf8f4,#f4fbfd);
         border:1px solid #bfe1d8; border-radius:12px; padding:.82rem 1rem;
         color:#123f45; margin-bottom:.5rem;}
-    .case-card {background:#f7f9fc; border-left:4px solid #6a4c93;
+    .case-card {background:#f7f9fc; border-left:4px solid #4d9ce0;
         padding:.9rem 1.05rem; border-radius:10px; margin:.5rem 0;}
     .formula {background:#082f3a; color:#e8fbf7; padding:.8rem 1rem;
         border-radius:10px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
@@ -172,7 +172,7 @@ st.markdown(
     .risk-bridge {background:linear-gradient(120deg,#f7fbfa,#eef7f6); border:1px solid #c7dfdb;
         border-radius:18px; padding:1rem 1.05rem .9rem; margin:.7rem 0 1rem;
         box-shadow:0 8px 24px rgba(18,74,75,.06);}
-    .risk-bridge-title {font-size:1.05rem; color:#073f48; font-weight:780; margin-bottom:.18rem;}
+    .risk-bridge-title {font-size:1.05rem; color:#173f52; font-weight:780; margin-bottom:.18rem;}
     .risk-bridge-subtitle {font-size:.81rem; color:#647b81; line-height:1.55; margin-bottom:.78rem;}
     .risk-chain {display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:.58rem;}
     .risk-step {background:white; border:1px solid #d5e5e2; border-radius:13px; padding:.72rem .76rem;
@@ -181,7 +181,7 @@ st.markdown(
         color:#66a8a4; font-size:1.35rem; font-weight:800; z-index:2;}
     .risk-step-title {font-size:.86rem; color:#0c5058; font-weight:750; margin:.23rem 0 .28rem;}
     .risk-step-value {font-size:.76rem; color:#405d63; line-height:1.46; overflow-wrap:anywhere;}
-    .action-strip {background:#073f48; color:#edf9f7; border-radius:12px; padding:.76rem .9rem;
+    .action-strip {background:#173f52; color:#edf9f7; border-radius:12px; padding:.76rem .9rem;
         margin:.75rem 0 .2rem; line-height:1.55; font-size:.82rem;}
     .action-strip b {color:white;}
     .footer-boundary {color:#7b898e; font-size:.76rem; line-height:1.65; text-align:center;
@@ -202,8 +202,11 @@ st.markdown(
 )
 
 from globalhab_demo.map_style import style_map, draw_map
+from globalhab_demo.ui_system import install_plotly_theme, render_top_navigation, render_workspace_header
 
+install_plotly_theme()
 st.markdown("<style>" + (ROOT / "assets" / "interface.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
+st.markdown("<style>" + (ROOT / "assets" / "blue_theme.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
 
 
 @st.cache_data(show_spinner=False)
@@ -336,8 +339,8 @@ def risk_translation_panel(summary: dict[str, object], evidence: pd.DataFrame) -
 
 def global_case_map(frame: pd.DataFrame) -> go.Figure:
     status_color = {
-        "完整观测回放": "#0b7c78",
-        "研究证据接口": "#6a4c93",
+        "完整观测回放": "#2cb7b1",
+        "研究证据接口": "#4d9ce0",
         "全球背景证据": "#d08a32",
     }
     fig = go.Figure()
@@ -402,9 +405,9 @@ def bloom_map(frame: pd.DataFrame) -> go.Figure:
     fig.update_geos(
         projection_type="equirectangular", showframe=False, lonaxis_range=[-180, 180],
         showland=True, landcolor="#e9eeeb",
-        showocean=True, oceancolor="#dff1f4",
+        showocean=True, oceancolor="#e8f5fd",
         showcountries=True, countrycolor="#ffffff",
-        showcoastlines=True, coastlinecolor="#78939b",
+        showcoastlines=True, coastlinecolor="#6f93aa",
         lataxis_range=[-58, 78],
     )
     fig.update_layout(
@@ -417,9 +420,9 @@ def bloom_map(frame: pd.DataFrame) -> go.Figure:
 def production_region_map(frame: pd.DataFrame, selected_region: str) -> go.Figure:
     """Map global production settings without conflating capture and cage systems."""
     palette = {
-        "海水网箱养殖": "#0b7c78",
+        "海水网箱养殖": "#2cb7b1",
         "捕捞渔业背景": "#d08a32",
-        "捕捞与贝类养殖背景": "#6a4c93",
+        "捕捞与贝类养殖背景": "#4d9ce0",
     }
     fig = go.Figure()
     for production_type, subset in frame.groupby("production_type", sort=False):
@@ -484,7 +487,7 @@ def aquaculture_map(frame: pd.DataFrame) -> go.Figure:
         showland=True, landcolor="#ecefea",
         showocean=True, oceancolor="#e0f1f4",
         showcountries=True, countrycolor="#ffffff",
-        showcoastlines=True, coastlinecolor="#78939b",
+        showcoastlines=True, coastlinecolor="#6f93aa",
         lataxis_range=[-58, 78],
     )
     fig.update_layout(
@@ -517,7 +520,7 @@ def real_qpcr_map(frame: pd.DataFrame) -> go.Figure:
     ))
     fig.update_geos(
         projection_type="mercator", showland=True, landcolor="#ede9dd",
-        showocean=True, oceancolor="#dff1f4", showcoastlines=True,
+        showocean=True, oceancolor="#e8f5fd", showcoastlines=True,
         coastlinecolor="#617d83", lonaxis_range=[135.3, 139.3],
         lataxis_range=[-36.0, -33.4], fitbounds=False,
     )
@@ -528,26 +531,18 @@ def real_qpcr_map(frame: pd.DataFrame) -> go.Figure:
     return style_map(fig, global_view=False)
 
 
+WORKSPACES = ["项目总览", "研究与验证", "自有数据分析", "现场影像甄别", "大模型结果解读"]
+workspace_mode = render_top_navigation(WORKSPACES)
+
 st.sidebar.markdown(
     """
-    <div class="sidebar-brand-card">
-      <div class="ocean-brand">GlobalHAB-Agent</div>
-      <div class="sidebar-brand-sub">HAB research and validation system</div>
+    <div class="sidebar-control-head">
+      <b>运行控制</b>
+      <span>地图、Case 与当前工作区参数</span>
     </div>
     """,
     unsafe_allow_html=True,
 )
-pending_workspace = st.session_state.pop("_workspace_jump", None)
-if pending_workspace in {"项目总览", "研究与验证", "自有数据分析", "现场影像甄别", "大模型结果解读"}:
-    st.session_state["workspace_mode"] = pending_workspace
-with st.sidebar.container(key="workspace_nav"):
-    st.markdown('<div class="sidebar-section-title">工作区</div>', unsafe_allow_html=True)
-    workspace_mode = st.radio(
-        "工作区",
-        ["项目总览", "研究与验证", "自有数据分析", "现场影像甄别", "大模型结果解读"],
-        key="workspace_mode",
-        label_visibility="collapsed",
-    )
 with st.sidebar.expander("地图显示", expanded=False):
     map_backend_label = st.radio(
         "底图方式",
@@ -656,15 +651,10 @@ if workspace_mode == "项目总览":
     render_homepage(ROOT)
     st.stop()
 if workspace_mode == "自有数据分析":
-    st.markdown(
-        """
-        <div class="hero">
-          <div class="eyebrow" style="color:#b5d9dc">自有数据</div>
-          <h1>自有数据分析</h1>
-          <p class="tagline">上传现场观测，独立完成数据检查、模型比较与结果留档</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    render_workspace_header(
+        "自有数据分析",
+        "上传现场观测，独立完成数据检查、模型比较、时间留出验证与结果留档",
+        kicker="Own observations",
     )
     from globalhab_demo.real_training.own_observations import render as render_own_observations
     render_own_observations()
@@ -678,16 +668,10 @@ if workspace_mode == "大模型结果解读":
     render_result_interpreter(ROOT)
     st.stop()
 
-st.markdown(
-    """
-    <div class="hero">
-      <div class="eyebrow" style="color:#a7eee2">研究与验证</div>
-      <h1>跨区域有害藻华风险研判</h1>
-      <p class="tagline">从异常识别、时滞与空间效应检验，到真实事件回放和前向验证</p>
-      <p class="value">该工作区保留完整的实验设置、对照与适用边界；其他工作区通过Case和登记结果与这里联动。</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
+render_workspace_header(
+    "跨区域有害藻华风险研判",
+    "从异常识别、时滞与空间效应检验，到真实事件回放、前向验证与Case证据闭环",
+    kicker="Research & validation",
 )
 with st.sidebar:
     st.markdown("## 运行设置")
@@ -1308,7 +1292,7 @@ with tab_real:
                 annual, x="year", y="event_observations",
                 title="研究定义事件的年度观测数",
                 labels={"year": "年份", "event_observations": "事件观测数"},
-                color_discrete_sequence=["#0b7c78"],
+                color_discrete_sequence=["#2cb7b1"],
             )
             annual_chart.update_layout(height=370, margin={"l": 5, "r": 5, "t": 50, "b": 5})
             st.plotly_chart(annual_chart, width="stretch", config={"displayModeBar": False})
@@ -1318,7 +1302,7 @@ with tab_real:
                 top_stations, x="event_observations", y="region", orientation="h",
                 title="需要优先关注的监测区域",
                 labels={"event_observations": "事件观测数", "region": "区域"},
-                color="event_share", color_continuous_scale=["#d9efeb", "#0b7c78"],
+                color="event_share", color_continuous_scale=["#d9efeb", "#2cb7b1"],
             )
             station_chart.update_layout(
                 height=370, margin={"l": 5, "r": 5, "t": 50, "b": 5},
@@ -1386,7 +1370,7 @@ with tab_real:
                 fold_chart_data, x="test_window", y="average_precision", color="method",
                 barmode="group", title="四个前向时间窗的Average Precision",
                 labels={"test_window": "测试年份", "average_precision": "Average Precision（AP）", "method": "方法"},
-                color_discrete_map={"训练期内层选择模型": "#0b7c78",
+                color_discrete_map={"训练期内层选择模型": "#2cb7b1",
                                     "固定参考模型": "#d9a441", "季节基线": "#b8c8cc"},
                 hover_data={"test_events": True},
             )
@@ -1999,7 +1983,7 @@ with tab_bio:
         pressure_bar = go.Figure(go.Bar(
             x=bio_summary["intervention"],
             y=bio_summary["peak_pressure_index"],
-            marker_color=["#0b7c78", "#267c9c", "#d08a32", "#6a4c93", "#78939b"],
+            marker_color=["#2cb7b1", "#4d9ce0", "#d08a32", "#4d9ce0", "#6f93aa"],
             error_y={
                 "type": "data", "array": error_plus, "arrayminus": error_minus,
                 "visible": True, "color": "#3f5860",
@@ -2318,9 +2302,9 @@ with tab_methods:
     te_chart = px.line(
         te_long, x="lag_days", y="information_bits", color="direction", markers=True,
         labels={"lag_days": "时滞（天）", "information_bits": "条件传递熵（bit）", "direction": "路径"},
-        color_discrete_sequence=["#0d7f79", "#b8865b"],
+        color_discrete_sequence=["#1c78c0", "#b8865b"],
     )
-    te_chart.add_vline(x=14, line_dash="dot", line_color="#6a4c93")
+    te_chart.add_vline(x=14, line_dash="dot", line_color="#4d9ce0")
     te_chart.update_layout(height=350, margin={"l": 5, "r": 5, "t": 20, "b": 5})
     st.plotly_chart(te_chart, width="stretch", config={"displayModeBar": False})
     st.caption(f"当前峰值时滞：{peak_lag}天。14天为合成生成器预设真值，仅用于事后核验。")
@@ -2360,7 +2344,7 @@ with tab_methods:
     effect_chart = px.bar(
         effect_plot, x="变量", y="effect_per_1sd", color="影响", barmode="group",
         labels={"effect_per_1sd": "合成HAB概率变化 / 1 SD"},
-        color_discrete_sequence=["#357e8a", "#e39b47", "#6a4c93"],
+        color_discrete_sequence=["#2c83bc", "#e39b47", "#4d9ce0"],
     )
     effect_chart.update_layout(height=390, margin={"l": 5, "r": 5, "t": 20, "b": 5})
     st.plotly_chart(effect_chart, width="stretch", config={"displayModeBar": False})
@@ -2415,7 +2399,7 @@ with tab_agent:
             comparison, x="方法", y="pr_auc", color="方法",
             title="阻断验证Average Precision（AP）：Agent候选 vs 平凡解",
             text_auto=".3f",
-            color_discrete_sequence=["#8aa6a3", "#c7a76c", "#0d7f79"],
+            color_discrete_sequence=["#8cbddc", "#c7a76c", "#1c78c0"],
         )
         fig.update_layout(showlegend=False, height=350, margin={"l": 5, "r": 5, "t": 55, "b": 10})
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})

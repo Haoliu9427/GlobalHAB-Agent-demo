@@ -347,15 +347,11 @@ def render(root: Path) -> None:
     import streamlit as st
 
     root = Path(root)
-    st.markdown(
-        """
-        <div class="hero">
-          <div class="eyebrow" style="color:#b5d9dc">结果解读</div>
-          <h1>大模型结果解读</h1>
-          <p class="tagline">读取已登记的研究结果、用户数据、现场影像或完整Case，形成结构化说明；不重新计算科学指标</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    from globalhab_demo.ui_system import render_workspace_header
+    render_workspace_header(
+        "大模型结果解读",
+        "读取已登记的研究结果、用户数据、现场影像或完整Case，形成结构化说明；不重新计算科学指标",
+        kicker="Result interpretation",
     )
 
     source_col, mode_col = st.columns([1, 1], gap="large")

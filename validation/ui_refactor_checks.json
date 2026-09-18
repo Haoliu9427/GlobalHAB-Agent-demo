@@ -1,0 +1,16 @@
+{
+  "date": "2026-09-18",
+  "scope": "reference-image blue UI refactor",
+  "status": "code-level checks passed",
+  "checks": {
+    "python_compileall": "pass",
+    "homepage_plotly_serialization": "pass",
+    "ui_regression_tests": "16 passed",
+    "release_smoke_fast_case_manager_result_interpreter": "8 passed",
+    "verify_release": "pass",
+    "full_scientific_smoke": "not completed in this environment; timed out at 120 seconds",
+    "streamlit_browser_regression": "not run because Streamlit 1.62.0 is not installed in this execution environment"
+  },
+  "scientific_logic_changed": false,
+  "notes": "Homepage quantitative panels now read existing outputs only. The South Australia heatmap no longer expands aggregate data into synthetic station rows."
+}

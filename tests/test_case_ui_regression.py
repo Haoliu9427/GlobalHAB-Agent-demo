@@ -34,8 +34,9 @@ def test_case_context_cards_use_project_kpi_style():
 def test_workspace_hero_copy_regression():
     app = APP.read_text(encoding="utf-8")
     llm = LLM.read_text(encoding="utf-8")
-    assert "OWN DATA WORKBENCH" in app
-    assert "<h1>自有数据分析</h1>" in app
+    assert "render_workspace_header" in app
+    assert '"自有数据分析"' in app
+    assert "render_workspace_header" in llm
     assert "让大模型解释已经计算完成的科学结果，而不是替代模型计算" not in llm
 
 
@@ -68,13 +69,13 @@ def test_visual_workspace_tabs_and_learning_cards_are_consistent():
 
 def test_own_data_hero_and_sidebar_polish_regression():
     app = APP.read_text(encoding="utf-8")
-    css = (ROOT / "assets" / "interface.css").read_text(encoding="utf-8")
+    blue = (ROOT / "assets" / "blue_theme.css").read_text(encoding="utf-8")
     assert '同一套数据完成质量检查、模型比较、时间留出与可选未来预测；所有结果与项目固定证据分开保存。' not in app
-    assert 'sidebar-brand-card' in app
-    assert 'sidebar-section-title' in app
-    assert 'label_visibility="collapsed"' in app
-    assert '.sidebar-brand-card' in css
-    assert '.st-key-workspace_nav [role="radiogroup"]' in css
+    assert 'render_top_navigation(WORKSPACES)' in app
+    assert 'sidebar-control-head' in app
+    assert 'blue_theme.css' in app
+    assert '.st-key-global_top_nav' in blue
+    assert '.sidebar-control-head' in blue
 
 
 def test_workspace_copy_and_balanced_card_layout_regression():
@@ -87,7 +88,8 @@ def test_workspace_copy_and_balanced_card_layout_regression():
     assert "### 拍照或上传" in field
     assert "### 现场信息" in field
     assert "科学边界：照片用于水色、浑浊、泡沫/漂浮物等视觉现象筛查与复核优先级" not in field
-    assert '<p class="tagline">可读取项目固定证据' in llm
+    assert 'render_workspace_header(' in llm
+    assert '"大模型结果解读"' in llm
     assert 'st.columns([1, 1], gap="large")' in llm
     assert "st.columns([1,1],gap='large')" in workbench
     assert '.camera-permission-cn' in css

@@ -21,7 +21,7 @@ def point_map(frame):
     d=frame[['latitude','longitude']].apply(pd.to_numeric,errors='coerce').dropna().drop_duplicates()
     d=d[d.latitude.between(-90,90)&d.longitude.between(-180,180)]
     fig=go.Figure(go.Scattergeo(lat=d.latitude,lon=d.longitude,mode='markers',
-        marker=dict(size=8,color='#286b79',opacity=.8,line=dict(color='white',width=.7)),
+        marker=dict(size=8,color='#1c78c0',opacity=.8,line=dict(color='white',width=.7)),
         hovertemplate='纬度 %{lat:.3f}°<br>经度 %{lon:.3f}°<extra></extra>'))
     if d.empty:return style_map(fig,True)
     latpad=max(1.,(d.latitude.max()-d.latitude.min())*.12)
@@ -46,15 +46,15 @@ def style_map(fig, global_view=False):
     if _map_backend() == "geo":
         result = go.Figure(fig)
         result.update_geos(
-            showland=True, landcolor="#ecefea", showocean=True, oceancolor="#e7f1f2",
-            showcountries=True, countrycolor="#ffffff", showcoastlines=True, coastlinecolor="#78939b",
-            showframe=False, bgcolor="white",
+            showland=True, landcolor="#edf3f7", showocean=True, oceancolor="#e8f5fd",
+            showcountries=True, countrycolor="#ffffff", showcoastlines=True, coastlinecolor="#6f93aa",
+            showframe=False, bgcolor="#f9fcff",
         )
         result.update_layout(
-            height=480, margin=dict(l=0,r=0,t=50,b=25), paper_bgcolor="white",
-            font=dict(family="Microsoft YaHei, PingFang SC, sans-serif",size=12,color="#294b59"),
+            height=480, margin=dict(l=0,r=0,t=50,b=25), paper_bgcolor="#f9fcff",
+            font=dict(family="Microsoft YaHei, PingFang SC, sans-serif",size=12,color="#173f52"),
             legend=dict(orientation="h",x=.5,xanchor="center",y=1.12),
-            hoverlabel=dict(bgcolor="white",font_size=13),
+            hoverlabel=dict(bgcolor="#f9fcff",font_size=13),
         )
         return result
 
@@ -81,8 +81,8 @@ def style_map(fig, global_view=False):
         zoom=max(.5,min(9.,math.log2(360/span)-1.1))
     result=go.Figure(traces)
     result.update_layout(map=dict(style='open-street-map',center=center,zoom=zoom),height=480,
-        margin=dict(l=0,r=0,t=50,b=25),paper_bgcolor='white',
-        font=dict(family='Microsoft YaHei, PingFang SC, sans-serif',size=12,color='#294b59'),
+        margin=dict(l=0,r=0,t=50,b=25),paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(family='Microsoft YaHei, PingFang SC, sans-serif',size=12,color='#173f52'),
         legend=dict(orientation='h',x=.5,xanchor='center',y=1.12),
         hoverlabel=dict(bgcolor='white',font_size=13))
     if fig.layout.coloraxis.to_plotly_json():result.update_layout(coloraxis=fig.layout.coloraxis.to_plotly_json())

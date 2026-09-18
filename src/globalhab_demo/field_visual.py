@@ -774,15 +774,11 @@ def render(root: Any = None) -> None:
 
     root_path = Path(root) if root is not None else Path(__file__).resolve().parents[2]
     ensure_visual_learning_store(root_path)
-    st.markdown(
-        """
-        <div class="hero">
-          <div class="eyebrow" style="color:#b5d9dc">现场证据</div>
-          <h1>现场影像甄别</h1>
-          <p class="tagline">采集现场影像并登记人工或实验室证据，支持Case复核与后续本地模型更新</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    from globalhab_demo.ui_system import render_workspace_header
+    render_workspace_header(
+        "现场影像甄别",
+        "采集现场影像并登记人工或实验室证据，支持Case复核、自适应视觉路由与后续本地模型更新",
+        kicker="Field evidence",
     )
     with st.container(key="vision_workspace_tabs"):
         tab_screen, tab_data, tab_model = st.tabs([

@@ -194,3 +194,12 @@ python scripts/run_field_forward_validation.py --observations <csv> --currents <
 - 2026-09-17: removed fixed-height/elastic-spacer blank blocks from own-data remote-service/model cards while retaining strict equal-width/equal-height grid alignment.
 
 - 2026-09-17：按最终参考版式微调“模型与运行”卡片；保持灰色运行记录说明位置不变，仅增加说明与“开始分析”按钮之间的间距，使主按钮略向下并继续保持左右卡片等宽等高。
+
+
+## 2026-09-18 · 整站海洋蓝 UI 重构
+- 项目总览按决赛确认视觉稿重构为科研控制台：首页包含候选状态、研究思路五步闭环、Case 状态、工作区联动、Agent 探索轨迹、南澳真实事件热力图、环境因子与迁移证据矩阵及挪威前向验证热力表。
+- 首页定量图只读取项目已有 outputs；移除此前把事件时间序列展开成示意站位矩阵的做法，避免把视觉占位误当成真实站点观测。
+- 一级工作区导航迁移到主页面顶部，侧边栏仅保留地图、Case 与运行参数，结构与确认后的产品视觉稿一致。
+- 新增 `src/globalhab_demo/ui_system.py` 与 `assets/blue_theme.css`，统一页头、导航、卡片、Tab、上传区、按钮、数据表、Plotly 模板与响应式布局。
+- 研究与验证、自有数据分析、现场影像甄别、大模型结果解读统一使用浅色海洋科学页头，不再使用彼此割裂的深色 Hero。
+- 地图 presentation layer 同步到蓝色海洋色系；科学经纬度、模型、Case、证据和训练逻辑均未改变。

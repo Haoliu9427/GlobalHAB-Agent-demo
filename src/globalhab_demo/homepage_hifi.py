@@ -171,7 +171,7 @@ def _research_flow_html() -> str:
             nodes.append('<div class="hf-flow-arrow"><span></span></div>')
     return f'''
     <div class="hf-card hf-research-panel">
-      <div class="hf-card-title-row hf-title-inline"><div><div class="hf-card-title">研究思路概览</div><div class="hf-card-subtitle">从多源观测到可迁移的科学结论</div></div></div>
+      <div class="hf-card-title-row hf-title-inline"><div><div class="hf-card-title">研究思路概览</div><div class="hf-card-subtitle">从多源观测到可迁移的科学结论</div></div><a class="hf-card-action" href="?workspace={quote("数据分析")}" target="_self">发起研究任务 →</a></div>
       <div class="hf-research-flow">{"".join(nodes)}</div>
     </div>'''
 
@@ -180,7 +180,7 @@ def _workspace_flow_html(own_runs: int, library_count: int) -> str:
     items = [
         ("home", "项目总览", "Homepage", "teal"),
         ("doc", "研究验证", "ST / STS", "blue"),
-        ("bars", "数据分析", f"已登记 {own_runs} 组", "teal"),
+        ("bars", "数据分析", "研究助手 · 自主配置", "teal"),
         ("image", "影像识别", f"影像 {library_count} 条", "blue"),
         ("bulb", "模型解读", "科学结论", "blue"),
     ]
@@ -481,7 +481,7 @@ def render(root: Any) -> None:
         [data-testid="stSidebarCollapsedControl"] {display:none !important;}
         [data-testid="stAppViewContainer"] > .main {margin-left:0 !important;}
         </style>
-        <div id="globalhab-build-hf2" data-build="HF2-COASTAL-20260918"></div>
+        <div id="globalhab-build-hf2" data-build="HF2-AGENT-20260918"></div>
         """,
         unsafe_allow_html=True,
     )

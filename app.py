@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF2-COASTAL-20260918"
+BUILD_ID = "HF2-AGENT-20260918"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -669,11 +669,16 @@ if workspace_mode == "项目总览":
 if workspace_mode == "数据分析":
     render_workspace_header(
         "数据分析",
-        "上传观测 · 选择模型 · 查看预测",
+        "提出需求 · 联合证据 · 执行分析",
         kicker="Own observations",
     )
-    from globalhab_demo.real_training.own_observations import render as render_own_observations
-    render_own_observations()
+    analysis_mode = st.radio("分析方式", ["研究助手", "自主配置"], horizontal=True, key="analysis_mode")
+    if analysis_mode == "研究助手":
+        from globalhab_demo.research_assistant import render as render_assistant
+        render_assistant(ROOT)
+    else:
+        from globalhab_demo.real_training.own_observations import render as render_own_observations
+        render_own_observations()
     st.stop()
 if workspace_mode == "影像识别":
     from globalhab_demo.field_visual import render as render_field_visual

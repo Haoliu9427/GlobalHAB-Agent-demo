@@ -1,0 +1,110 @@
+{
+  "fixture": "synthetic software testing only",
+  "selected": "HistGradientBoosting",
+  "forecast_rows": 24,
+  "events": [
+    {
+      "step": 1,
+      "action": "检查数据",
+      "reason": "1680条观测；4个站点",
+      "status": "done",
+      "elapsed_seconds": 0.006,
+      "details": {
+        "rows": 1680,
+        "stations": 4,
+        "start": "2020-01-01",
+        "end": "2021-02-23",
+        "unknown_labels": 0,
+        "value_missing": 0
+      }
+    },
+    {
+      "step": 2,
+      "action": "影像筛查",
+      "reason": "图像质量不足以支持稳定的水色/表层特征甄别。",
+      "status": "done",
+      "elapsed_seconds": 0.015,
+      "backend": "规则 + 通用颜色/纹理特征演示基线"
+    },
+    {
+      "step": 3,
+      "action": "封存评估划分",
+      "reason": "候选选择只读取训练和验证窗口；测试窗口保持封存",
+      "status": "done",
+      "elapsed_seconds": 1.94,
+      "splits": {
+        "train": "d127c57d3b74b199aeaef1d2e193a11568830ec5aa8cfb64f0c2aa174efcc673",
+        "validation": "851834130d7e85151ed744e3e998bed7303929d04cb9ceb0041a8380c752d7f2",
+        "calibration": "e20654d898e08dc755af0e76647dbf2d64fcf19d87e9677cd3134c6972590d2b",
+        "test": "27db3dcac2a09c9c1bc54d99433510f29733196429bc96dd433c7a5b58bad627"
+      }
+    },
+    {
+      "step": 4,
+      "action": "验证候选",
+      "reason": "Logistic",
+      "status": "done",
+      "elapsed_seconds": 1.981,
+      "metrics": {
+        "model": "Logistic",
+        "AP": 0.8056825001114957,
+        "Brier": 0.10526267466316881,
+        "ECE": 0.06512408885538723,
+        "AP_range": 0.0,
+        "seconds": 0.03547074100060854
+      }
+    },
+    {
+      "step": 5,
+      "action": "验证候选",
+      "reason": "HistGradientBoosting",
+      "status": "done",
+      "elapsed_seconds": 2.488,
+      "metrics": {
+        "model": "HistGradientBoosting",
+        "AP": 0.9009992219432915,
+        "Brier": 0.08023404688663566,
+        "ECE": 0.06670372568280025,
+        "AP_range": 0.0,
+        "seconds": 0.5066664910009422
+      }
+    },
+    {
+      "step": 6,
+      "action": "提前结束探索",
+      "reason": "验证表现达到预设稳定性与校准门槛，不消耗第三个模型预算",
+      "status": "done",
+      "elapsed_seconds": 2.488
+    },
+    {
+      "step": 7,
+      "action": "冻结模型",
+      "reason": "HistGradientBoosting：按验证AP排序，平分时比较Brier与耗时；不再依据测试结果改选",
+      "status": "done",
+      "elapsed_seconds": 2.488
+    },
+    {
+      "step": 8,
+      "action": "独立检验",
+      "reason": "冻结候选与季节基线在相同留出集评估；保留全部三个种子和负结果",
+      "status": "done",
+      "elapsed_seconds": 5.839
+    },
+    {
+      "step": 9,
+      "action": "关联多模态证据",
+      "reason": "站点与日期匹配，可并列复核",
+      "status": "done",
+      "elapsed_seconds": 5.842,
+      "matched": true
+    },
+    {
+      "step": 10,
+      "action": "交付结果",
+      "reason": "保存计划、数据哈希、逐步日志及真实执行结果",
+      "status": "done",
+      "elapsed_seconds": 5.842
+    }
+  ],
+  "anomaly_fallback": true
+}

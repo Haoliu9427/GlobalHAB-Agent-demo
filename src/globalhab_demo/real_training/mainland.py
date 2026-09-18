@@ -112,7 +112,7 @@ def run(root, marker="ITS1"):
     print(json.dumps(manifest['counts']));print(pd.DataFrame(metrics).groupby(['sea','model'])[['AP','Brier']].mean().to_string())
 
 def render(root):
-    import streamlit as st
+    from globalhab_demo.display_locale import st
     root=Path(root)
     marker=st.selectbox('检测方法',['ITS1','18S V4'],key='mainland_marker')
     out=root/'outputs/china_mainland'/marker.replace(' ','_')

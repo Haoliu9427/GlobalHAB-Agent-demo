@@ -5,7 +5,7 @@ from .model_registry import MODELS,FOUNDATIONS,FUSIONS,OTHER,missing,expand,SCIE
 from .user_engine import build,run
 
 def render():
-    import streamlit as st
+    from globalhab_demo.display_locale import st
     st.caption('从上传数据开始；如需调用大模型，再展开远程服务设置。')
     data_col,task_col=st.columns([1,1],gap='large')
     with data_col, st.container(border=False,key='obs_upload_card'):

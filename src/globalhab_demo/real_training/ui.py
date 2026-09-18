@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 def render(root):
-    import streamlit as st
+    from globalhab_demo.display_locale import st
     import plotly.express as px
     root=Path(root);base=root/'outputs/real_training'
     mode=st.radio('验证数据', ['连续观测预测','中国近海调查'],horizontal=True,key='real_data_mode')
@@ -96,5 +96,5 @@ def render(root):
             st.caption('这里是香港固定留出实验，与上方其他海域任务分开。Qwen是语言模型，Chronos是时序基础模型。预训练语料重叠不能独立排除。')
             with st.expander('模型及运行记录'):st.json(status)
         else:st.info('当前工程尚无该模型的已完成实验记录。')
-        st.caption('分析自己的观测数据，请在左侧工作区选择“自有数据分析”。')
+        st.caption('分析自己的观测数据，请在左侧工作区选择“数据分析”。')
     st.download_button('下载当前实验指标',data=df.to_csv(index=False).encode('utf-8-sig'),file_name=folder.name+'_metrics.csv')

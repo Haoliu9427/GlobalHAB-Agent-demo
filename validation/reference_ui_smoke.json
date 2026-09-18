@@ -4,19 +4,19 @@
     "errors": []
   },
   {
-    "workspace": "自有数据分析",
+    "workspace": "数据分析",
     "errors": []
   },
   {
-    "workspace": "现场影像甄别",
+    "workspace": "影像识别",
     "errors": []
   },
   {
-    "workspace": "大模型结果解读",
+    "workspace": "模型解读",
     "errors": []
   },
   {
-    "workspace": "研究与验证",
+    "workspace": "研究验证",
     "errors": []
   }
 ]

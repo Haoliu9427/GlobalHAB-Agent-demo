@@ -11,7 +11,7 @@ def _map_backend():
     if env in {"geo", "osm"}:
         return env
     try:
-        import streamlit as st
+        from globalhab_demo.display_locale import st
         value = str(st.session_state.get("map_backend", "osm")).strip().lower()
         return value if value in {"geo", "osm"} else "osm"
     except Exception:
@@ -32,7 +32,7 @@ def point_map(frame):
     return style_map(fig)
 
 def draw_map(fig):
-    import streamlit as st
+    from globalhab_demo.display_locale import st
     with st.container(border=True):
         st.plotly_chart(fig,width='stretch',config={'displayModeBar':False,'responsive':True})
 

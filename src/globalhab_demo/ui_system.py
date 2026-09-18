@@ -59,7 +59,7 @@ def install_plotly_theme() -> None:
 
 
 def render_top_navigation(options):
-    import streamlit as st
+    from globalhab_demo.display_locale import st
     from urllib.parse import quote
     from html import escape
     options=list(options)
@@ -83,7 +83,7 @@ def render_top_navigation(options):
         del st.query_params["section"]
     icons=["▣","▤","▥","▧","☼"]
     links=''.join(f'<a class="nav-link {"active" if v==current else ""}" href="?workspace={quote(v)}" target="_self">{icon} &nbsp;{escape(v)}</a>' for v,icon in zip(options,icons))
-    st.markdown(f'''<header class="ocean-product-nav"><a class="ocean-brand" href="?workspace={quote(options[0])}" target="_self"><svg viewBox="0 0 42 42"><path d="M3 16c12 0 14-15 27-11M3 23c14 0 17-18 34-11M3 30c15 0 17-15 34-13M9 35c12 0 16-10 26-12"/></svg><span><b>GlobalHAB-Agent</b><small>从多源观测到可审计风险研判的科学 Agent</small></span></a><nav>{links}</nav><form class="ocean-nav-search" method="get"><input name="search" placeholder="搜索工作区…" aria-label="搜索工作区"/><button type="submit" aria-label="搜索">⌕</button></form><div class="ocean-nav-end"><span>DATA<br>SCIENCE<br>FOR A HEALTHY OCEAN</span></div></header>''',unsafe_allow_html=True)
+    st.markdown(f'''<header class="ocean-product-nav"><a class="ocean-brand" href="?workspace={quote(options[0])}" target="_self"><svg viewBox="0 0 42 42"><path d="M3 16c12 0 14-15 27-11M3 23c14 0 17-18 34-11M3 30c15 0 17-15 34-13M9 35c12 0 16-10 26-12"/></svg><span><b>GlobalHAB-Agent</b><small>从多源观测到可审计风险研判的科学Agent</small></span></a><nav>{links}</nav><form class="ocean-nav-search" method="get"><input name="search" placeholder="搜索工作区…" aria-label="搜索工作区"/><button type="submit" aria-label="搜索">⌕</button></form></header>''',unsafe_allow_html=True)
     def choose(value):
         st.session_state["workspace_mode"]=value
     with st.container(key="workspace_buttons"):
@@ -99,7 +99,7 @@ def render_top_navigation(options):
 
 def render_workspace_header(title: str, subtitle: str, *, kicker: str = "GlobalHAB-Agent") -> None:
     """Render the light workspace header used outside the homepage."""
-    import streamlit as st
+    from globalhab_demo.display_locale import st
 
     st.markdown(
         f"""

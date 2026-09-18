@@ -858,7 +858,7 @@ def _fmt_metric(x: Any) -> str:
 
 def _render_learning_kpis(items: list[tuple[str, str, str]], *, key: str, columns: int = 4) -> None:
     """Render visual-learning summaries with the same project KPI cards as screening."""
-    import streamlit as st
+    from globalhab_demo.display_locale import st
 
     cards = "".join(
         '<div class="kpi">'
@@ -875,7 +875,7 @@ def _render_learning_kpis(items: list[tuple[str, str, str]], *, key: str, column
 
 def render_library_tab(root: Any | None = None) -> None:
     """Render the persistent/user-exportable photo library subpage."""
-    import streamlit as st
+    from globalhab_demo.display_locale import st
 
     r = _root(root)
     ensure_visual_learning_store(r)
@@ -919,7 +919,7 @@ def render_library_tab(root: Any | None = None) -> None:
                 except Exception as exc:
                     st.error(str(exc))
         else:
-            st.info("先在“现场影像甄别”子页完成一次拍照/上传与甄别，再把照片保存到训练库。")
+            st.info("先在“影像识别”子页完成一次拍照/上传与甄别，再把照片保存到训练库。")
 
     with st.container(border=True, key="vision_library_batch_card"):
         st.markdown("#### 批量补充已标注照片")
@@ -1023,7 +1023,7 @@ def render_library_tab(root: Any | None = None) -> None:
 
 def render_training_tab(root: Any | None = None) -> None:
     """Render public baseline, candidate training, validation and model versioning."""
-    import streamlit as st
+    from globalhab_demo.display_locale import st
 
     r = _root(root)
     ensure_visual_learning_store(r)

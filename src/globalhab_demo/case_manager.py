@@ -303,7 +303,7 @@ def bulk_create_cases(
             "evidence_id": f"EV-{hashlib.sha256((case_id+'research').encode()).hexdigest()[:10]}",
             "type": "research_candidate",
             "grade": "C·模型风险候选",
-            "source": "研究与验证",
+            "source": "研究验证",
             "created_at": now,
             "summary": {
                 "candidate_region": research.get("candidate_region"),
@@ -493,7 +493,7 @@ def create_case_from_research(
         "evidence_id": f"EV-{hashlib.sha256((case_id+'research').encode()).hexdigest()[:10]}",
         "type": "research_candidate",
         "grade": "C·模型风险候选",
-        "source": "研究与验证",
+        "source": "研究验证",
         "created_at": now,
         "summary": {
             "candidate_region": research.get("candidate_region"),
@@ -553,7 +553,7 @@ def register_visual_evidence(
             "evidence_id": ev_id,
             "type": "visual_screening",
             "grade": "B·现场视觉筛查",
-            "source": "现场影像甄别",
+            "source": "影像识别",
             "created_at": _now(),
             "summary": visual,
             "boundary": "视觉证据不能单独确认具体藻种、毒素或HAB业务事件。",
@@ -624,7 +624,7 @@ def add_llm_note(
             "evidence_id": "EV-" + hashlib.sha256((case_id + note["created_at"] + text).encode("utf-8")).hexdigest()[:10],
             "type": "llm_interpretation",
             "grade": "解释记录·不改变证据等级",
-            "source": "大模型结果解读",
+            "source": "模型解读",
             "created_at": note["created_at"],
             "summary": {"mode": mode, "text_preview": text[:800]},
             "boundary": "大模型文本只解释已登记证据，不改变上游指标、概率、模型权重或事件确认状态。",
@@ -660,7 +660,7 @@ def evidence_rows(case: dict[str, Any] | None) -> list[dict[str, Any]]:
 
 def case_summary(case: dict[str, Any] | None, include_llm_history: bool = False) -> str:
     if not case:
-        return "## 当前完整Case\n- 当前没有激活的研究Case。请先在“研究与验证 → 风险研判”生成现场复核任务。"
+        return "## 当前完整Case\n- 当前没有激活的研究Case。请先在“研究验证 → 风险研判”生成现场复核任务。"
     research = case.get("research") or {}
     visual = case.get("visual") or {}
     field = case.get("field_metadata") or {}
@@ -679,7 +679,7 @@ def case_summary(case: dict[str, Any] | None, include_llm_history: bool = False)
             f"- 视觉后端={visual.get('backend','NA')}。",
         ])
     else:
-        lines.append("- 尚未登记现场影像甄别结果。")
+        lines.append("- 尚未登记影像识别结果。")
     lines.append("### 现场环境/元数据")
     if field:
         keep = ["capture_date","capture_time","location_text","water_color","odor","surface_signs","recent_heat","mass_mortality","water_temp_c","salinity","dissolved_oxygen_mg_l","chlorophyll_a"]

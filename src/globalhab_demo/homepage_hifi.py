@@ -16,7 +16,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import streamlit as st
+from globalhab_demo.display_locale import st
 
 PLOTLY_CONFIG = {
     "displayModeBar": False,
@@ -144,7 +144,7 @@ def _case_donut_html(counts: dict[str, int], total: int) -> str:
     )
     return f'''
     <div class="hf-card hf-case-panel">
-      <div class="hf-card-title-row"><div class="hf-card-title">Case 状态</div><a class="hf-card-action" href="?workspace=研究与验证&section=风险研判&cases=1" target="_self">查看全部 →</a></div>
+      <div class="hf-card-title-row"><div class="hf-card-title">Case 状态</div><a class="hf-card-action" href="?workspace=研究验证&section=风险研判&cases=1" target="_self">查看全部 →</a></div>
       <div class="hf-case-body">
         <div class="hf-donut" style="background:{donut}"><div><b>{total}</b><span>Case 总数</span></div></div>
         <div class="hf-case-legend">{legend}</div>
@@ -179,10 +179,10 @@ def _research_flow_html() -> str:
 def _workspace_flow_html(own_runs: int, library_count: int) -> str:
     items = [
         ("home", "项目总览", "Homepage", "teal"),
-        ("doc", "研究与验证", "ST / STS", "blue"),
-        ("bars", "自有数据分析", f"已登记 {own_runs} 组", "teal"),
-        ("image", "现场影像甄别", f"影像 {library_count} 条", "blue"),
-        ("bulb", "大模型结果解读", "科学结论", "blue"),
+        ("doc", "研究验证", "ST / STS", "blue"),
+        ("bars", "数据分析", f"已登记 {own_runs} 组", "teal"),
+        ("image", "影像识别", f"影像 {library_count} 条", "blue"),
+        ("bulb", "模型解读", "科学结论", "blue"),
     ]
     nodes: list[str] = []
     for idx, (icon, title, sub, accent) in enumerate(items):
@@ -212,7 +212,8 @@ def _hero_and_upper_html(
     route = str(best.get("route") or "—")
     lag = best.get("lag_days")
     route_label = {"downstream":"沿流传播", "local":"局地变化", "upstream":"逆流对照"}.get(route, "传播候选")
-    candidate = f"{route_label} · {int(lag)}天" if lag is not None and str(lag).isdigit() else route_label
+    candidate = "顺流传播" if route == "downstream" else route_label
+    candidate_note = f"上下游信号相隔约{int(lag)}天 · 合成实验" if lag is not None and str(lag).isdigit() else "合成实验中的候选线索"
     cut_date = html.escape(str(best.get("cut_date") or "—"))
     ap = _safe_float(norway_card.get("model_average_precision"), np.nan)
     ap_text = f"{ap:.3f}" if np.isfinite(ap) else "—"
@@ -222,7 +223,7 @@ def _hero_and_upper_html(
     banner_style = f' style="background-image:url({banner})"' if banner else ""
 
     kpis = "".join([
-        _kpi_card("database", "当前候选", candidate, f"前向切分 · {cut_date}", "blue"),
+        _kpi_card("database", "发现的传播线索", candidate, candidate_note, "blue"),
         _kpi_card("bars", "挪威 AP", ap_text, delta_note, "blue"),
         _kpi_card("doc", "待处理 Case", str(case_pending), "现场复核与证据更新队列", "blue"),
         _kpi_card("image", "影像记录", str(library_count), "已登记现场影像记录", "blue"),
@@ -465,7 +466,7 @@ def _norway_panel_html(root: Path) -> str:
     </div>'''
 
 def _panel_header(title: str, action: str = "", section: str = "") -> None:
-    action_html = f'<a href="?workspace={quote("研究与验证")}&section={quote(section)}" target="_self">查看详情 →</a>' if section else (f'<span>{html.escape(action)}</span>' if action else "")
+    action_html = f'<a href="?workspace={quote("研究验证")}&section={quote(section)}" target="_self">查看详情 →</a>' if section else (f'<span>{html.escape(action)}</span>' if action else "")
     st.markdown(f'<div class="hf-viz-title"><b>{html.escape(title)}</b>{action_html}</div>', unsafe_allow_html=True)
 
 
@@ -480,7 +481,7 @@ def render(root: Any) -> None:
         [data-testid="stSidebarCollapsedControl"] {display:none !important;}
         [data-testid="stAppViewContainer"] > .main {margin-left:0 !important;}
         </style>
-        <div id="globalhab-build-hf2" data-build="HF2-IMPORTFIX-20260918"></div>
+        <div id="globalhab-build-hf2" data-build="HF2-COASTAL-20260918"></div>
         """,
         unsafe_allow_html=True,
     )
@@ -500,7 +501,7 @@ def render(root: Any) -> None:
     c1, c2, c3 = st.columns([1.0, 1.07, 1.17], gap="medium")
     with c1:
         with st.container(key="hf_agent_panel"):
-            _panel_header("Agent 探索轨迹", section="探索与验证")
+            _panel_header("Agent探索轨迹", section="探索与验证")
             st.plotly_chart(_agent_trace_figure(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_agent_chart")
     with c2:
         with st.container(key="hf_sa_panel"):
@@ -511,4 +512,33 @@ def render(root: Any) -> None:
             _panel_header("环境因子与迁移验证", section="科学解释")
             st.plotly_chart(_evidence_matrix(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_evidence_chart")
 
-    st.markdown(_norway_panel_html(root), unsafe_allow_html=True)
+    _render_china_panel(root)
+
+
+def _render_china_panel(root: Path) -> None:
+    """Paired AP comparison; every seed contributes, no cherry-picked maximum."""
+    with st.container(key="china_overview", border=True):
+        _panel_header("中国近海 · 跨年检验", section="真实数据训练与验证")
+        st.caption("2019—2020年训练 → 2021年检验 · 藻种检出识别")
+        fig = go.Figure()
+        rows=[]
+        for marker in ['ITS1','18S_V4']:
+            data=_read_csv(root/'outputs'/'china_mainland'/marker/'metrics.csv')
+            if data.empty:continue
+            for sea in ['黄海','东海','南海']:
+                group=data[data.sea.eq(sea)]
+                baseline=group[group.model.eq('物种检出率基线')]['AP']
+                model=group[group.model.eq('HistGradientBoosting')]['AP']
+                if len(baseline) and len(model):
+                    rows.append((f'{sea} · {marker.replace("_"," ")}',float(baseline.mean()),float(model.mean()),float(model.min()),float(model.max()),int(group.iloc[0]['n'])))
+        if not rows:
+            st.info("尚未找到中国近海验证文件。")
+            return
+        labels=[r[0] for r in rows]
+        for label,base,model,lo,hi,n in rows:
+            fig.add_trace(go.Scatter(x=[base,model],y=[label,label],mode='lines',line=dict(color='#bad6e2',width=9),showlegend=False,hoverinfo='skip'))
+        fig.add_trace(go.Scatter(x=[r[1] for r in rows],y=labels,mode='markers',name='检出率基线',marker=dict(size=13,color='#8ca6b7',symbol='circle-open',line=dict(width=3)),hovertemplate='%{y}<br>基线 AP %{x:.3f}<extra></extra>'))
+        fig.add_trace(go.Scatter(x=[r[2] for r in rows],y=labels,mode='markers+text',text=[f'{r[2]:.3f}  ({r[2]-r[1]:+.3f})' for r in rows],textposition='top center',cliponaxis=False,name='梯度提升模型',marker=dict(size=15,color='#087e91'),customdata=[[r[3],r[4],r[5]] for r in rows],hovertemplate='%{y}<br>平均 AP %{x:.3f}<br>种子范围 %{customdata[0]:.3f}–%{customdata[1]:.3f}<br>检验记录 %{customdata[2]}<extra></extra>'))
+        fig.update_layout(height=270,margin=dict(l=10,r=90,t=32,b=32),xaxis=dict(range=[0,1],title='AP · 越高越好',dtick=.2),yaxis=dict(autorange='reversed'),legend=dict(orientation='h',y=1.25,x=0),font=dict(size=13),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+        st.plotly_chart(fig,use_container_width=True,config=PLOTLY_CONFIG,key='china_coastal_comparison')
+        st.caption("圆点：3个随机种子的均值；括号：相对基线的AP差值。不同标记分别评估；渤海有观测，暂无对应跨年测试。此处不代表藻华提前预警准确率。")

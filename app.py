@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF2-IMPORTFIX-20260918"
+BUILD_ID = "HF2-COASTAL-20260918"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -211,6 +211,7 @@ install_plotly_theme = _ui_system.install_plotly_theme
 render_top_navigation = _ui_system.render_top_navigation
 render_workspace_header = _ui_system.render_workspace_header
 
+from globalhab_demo.display_locale import st
 install_plotly_theme()
 st.markdown("<style>" + (ROOT / "assets" / "interface.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
 st.markdown("<style>" + (ROOT / "assets" / "blue_theme.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
@@ -540,7 +541,7 @@ def real_qpcr_map(frame: pd.DataFrame) -> go.Figure:
     return style_map(fig, global_view=False)
 
 
-WORKSPACES = ["项目总览", "研究与验证", "自有数据分析", "现场影像甄别", "大模型结果解读"]
+WORKSPACES = ["项目总览", "研究验证", "数据分析", "影像识别", "模型解读"]
 workspace_mode = render_top_navigation(WORKSPACES)
 with st.container(key="top_controls"):
     control_panel = st.popover("⚙", help="地图、Case与运行参数")
@@ -617,7 +618,7 @@ if case_list:
             else:
                 if st.button("开始 / 继续现场复核", type="primary", use_container_width=True, key=f"case_start_{active_case_id}"):
                     mark_case_in_progress(active_case_id, ROOT)
-                    st.session_state["_workspace_jump"] = "现场影像甄别"
+                    st.session_state["_workspace_jump"] = "影像识别"
                     st.rerun()
                 a1, a2 = st.columns(2)
                 if a1.button("取消复核", use_container_width=True, key=f"case_cancel_{active_case_id}"):
@@ -665,20 +666,20 @@ if workspace_mode == "项目总览":
     from globalhab_demo.homepage_hifi import render as render_homepage
     render_homepage(ROOT)
     st.stop()
-if workspace_mode == "自有数据分析":
+if workspace_mode == "数据分析":
     render_workspace_header(
-        "自有数据分析",
+        "数据分析",
         "上传观测 · 选择模型 · 查看预测",
         kicker="Own observations",
     )
     from globalhab_demo.real_training.own_observations import render as render_own_observations
     render_own_observations()
     st.stop()
-if workspace_mode == "现场影像甄别":
+if workspace_mode == "影像识别":
     from globalhab_demo.field_visual import render as render_field_visual
     render_field_visual(ROOT)
     st.stop()
-if workspace_mode == "大模型结果解读":
+if workspace_mode == "模型解读":
     from globalhab_demo.real_training.result_interpreter import render as render_result_interpreter
     render_result_interpreter(ROOT)
     st.stop()
@@ -1014,7 +1015,7 @@ with tab_alert:
                 st.session_state["case_sidebar_select"] = target_case["case_id"]
                 mark_case_in_progress(target_case["case_id"], ROOT)
                 st.session_state["vision_location"] = str((target_case.get("research") or {}).get("candidate_region", ""))
-                st.session_state["_workspace_jump"] = "现场影像甄别"
+                st.session_state["_workspace_jump"] = "影像识别"
                 if skipped_cases:
                     st.session_state["_case_batch_notice"] = f"新建 {len(created_cases)} 个；另有 {len(skipped_cases)} 个相同候选任务已存在，未重复创建。"
                 else:
@@ -2847,7 +2848,7 @@ with tab_evidence:
             file_name=f"{current_case['case_id']}.json", mime="application/json", use_container_width=True,
         )
         if b2.button("送入大模型综合解读", use_container_width=True, key="evidence_case_to_llm"):
-            st.session_state["_workspace_jump"] = "大模型结果解读"
+            st.session_state["_workspace_jump"] = "模型解读"
             st.session_state["_llm_source_jump"] = "当前完整Case（推荐）"
             st.rerun()
         st.divider()

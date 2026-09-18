@@ -23,7 +23,7 @@ import requests
 def settings():
     values = {k: os.getenv("HAB_QWEN_" + k.upper(), "") for k in ["base_url", "api_key", "model"]}
     try:
-        import streamlit as st
+        from globalhab_demo.display_locale import st
 
         section = st.secrets.get("qwen", {})
         for k in values:

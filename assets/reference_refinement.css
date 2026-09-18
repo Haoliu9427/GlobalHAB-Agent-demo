@@ -130,3 +130,40 @@ a.hf-workspace-node{text-decoration:none!important;transition:background .15s,bo
 .hf-home-root{margin-top:-26px;}
 .hf-norway-card{display:grid;grid-template-columns:140px minmax(0,1fr);gap:8px;padding:12px 16px;min-height:118px;}.hf-norway-content{margin-top:0;gap:12px;}.hf-norway-table{grid-template-columns:88px repeat(4,minmax(0,1fr));}.hf-norway-rowlabel{font-size:.72rem;}.hf-norway-card>.hf-card-title{white-space:nowrap;font-size:1rem;}
 @media(max-width:950px){.hf-home-root{margin-top:0;}.hf-norway-card{display:block;}.hf-norway-content{margin-top:8px;}}
+/* Coastal refinement: four-character navigation, balanced utility area. */
+.ocean-product-nav{gap:24px;}
+.ocean-brand{flex-basis:315px;}
+.st-key-workspace_buttons{left:390px!important;right:265px!important;}
+.ocean-nav-search{flex-basis:190px;margin-right:42px;}
+.st-key-top_controls{right:24px!important;}
+.st-key-workspace_buttons button p{font-size:14px!important;}
+.st-key-research_modules [role="tablist"]{display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr));height:auto!important;gap:12px!important;padding:8px 2px 18px!important;background:transparent!important;}
+.st-key-research_modules [role="tab"]{height:88px!important;white-space:normal!important;border:1px solid #dce9f1!important;border-radius:12px!important;background:white!important;box-shadow:0 3px 12px #183d5510!important;padding:14px 10px!important;}
+.st-key-research_modules [role="tab"] p{font-size:14px!important;line-height:1.5!important;white-space:normal!important;}
+.st-key-research_modules [role="tab"][aria-selected="true"]{background:#eaf6fb!important;border-color:#42a5bb!important;color:#08738a!important;box-shadow:inset 0 3px #168caa!important;}
+.st-key-research_modules [data-baseweb="tab-highlight"],.st-key-research_modules [data-baseweb="tab-border"]{display:none!important;}
+.st-key-china_overview{background:linear-gradient(110deg,#f3fafc,#fff)!important;border:1px solid #d9e9ee!important;border-radius:16px!important;padding:18px!important;}
+@media(max-width:1250px){.st-key-workspace_buttons{left:335px!important;right:70px!important;}.ocean-nav-search{display:none;}}
+@media(max-width:950px){.st-key-workspace_buttons{left:16px!important;right:16px!important;}.st-key-research_modules [role="tablist"]{grid-template-columns:repeat(4,minmax(0,1fr));}.st-key-research_modules [role="tab"]{height:70px!important;}}
+@media(max-width:600px){.st-key-research_modules [role="tablist"]{grid-template-columns:repeat(2,minmax(0,1fr));}}
+.st-key-research_modules [role="tab"]{height:118px!important;display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:6px!important;}
+.st-key-research_modules [role="tab"]::before{content:'◎';display:block;color:#0c8cab;background:#e4f5fa;border-radius:50%;width:28px;height:28px;text-align:center;font:600 20px/28px Arial;}
+.st-key-research_modules [role="tab"]::after{font-size:11px;color:#7892a3;font-weight:400;}
+.st-key-research_modules [role="tab"]:nth-child(1)::after{content:'海区风险与优先级';}
+.st-key-research_modules [role="tab"]:nth-child(2)::before{content:'◷';}
+.st-key-research_modules [role="tab"]:nth-child(2)::after{content:'观测与事件对照';}
+.st-key-research_modules [role="tab"]:nth-child(3)::before{content:'≈';}
+.st-key-research_modules [role="tab"]:nth-child(3)::after{content:'比较养殖响应';}
+.st-key-research_modules [role="tab"]:nth-child(4)::before{content:'⌁';}
+.st-key-research_modules [role="tab"]:nth-child(4)::after{content:'追溯影响路径';}
+.st-key-research_modules [role="tab"]:nth-child(5)::before{content:'⌕';}
+.st-key-research_modules [role="tab"]:nth-child(5)::after{content:'实验轨迹与对照';}
+.st-key-research_modules [role="tab"]:nth-child(6)::before{content:'≡';}
+.st-key-research_modules [role="tab"]:nth-child(6)::after{content:'检查数据与证据';}
+.st-key-research_modules [role="tab"]:nth-child(7)::before{content:'▥';}
+.st-key-research_modules [role="tab"]:nth-child(7)::after{content:'跨年与跨区检验';}
+@media(max-width:600px){.st-key-research_modules [role="tab"]{height:112px!important;}}
+/* Keep native controls and the header on the same plane while scrolling. */
+.ocean-product-nav{position:fixed!important;top:0;left:0;width:100%!important;margin:0!important;z-index:10;}
+[data-testid="stElementContainer"]:has(.ocean-product-nav){height:64px!important;min-height:64px!important;}
+@media(max-width:950px){[data-testid="stElementContainer"]:has(.ocean-product-nav){height:110px!important;min-height:110px!important;}}

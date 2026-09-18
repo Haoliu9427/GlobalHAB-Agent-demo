@@ -385,7 +385,7 @@ def make_result(
 
 def result_summary(result: dict[str, Any] | None) -> str:
     if not result:
-        return "## 最近一次现场影像甄别\n- 当前会话还没有完成现场影像甄别。"
+        return "## 最近一次影像识别\n- 当前会话还没有完成影像识别。"
     q = result.get("quality", {})
     v = result.get("visual", {})
     m = result.get("field_metadata", {})
@@ -393,7 +393,7 @@ def result_summary(result: dict[str, Any] | None) -> str:
     effective_category = result.get("effective_visual_category", v.get("category", "NA"))
     effective_score = result.get("effective_visual_anomaly_score", v.get("visual_anomaly_score", 0))
     lines = [
-        "## 最近一次现场影像甄别",
+        "## 最近一次影像识别",
         f"- 方法：{result.get('backend','NA')}。",
         f"- 科学角色：{result.get('scientific_role','NA')}。",
         f"- 最终视觉类型：{effective_category}；视觉异常分数={float(effective_score):.3f}（用于现场复核，不是HAB概率）。",
@@ -436,7 +436,7 @@ def _parse_optional_float(text: str, label: str) -> float | None:
 
 def _render_context_kpis(items: list[tuple[str, str, str]]) -> None:
     """Render project-consistent four-card context summary without metric truncation."""
-    import streamlit as st
+    from globalhab_demo.display_locale import st
     cards = "".join(
         '<div class="kpi">'
         f'<div class="kpi-label">{html.escape(str(label))}</div>'
@@ -450,7 +450,7 @@ def _render_context_kpis(items: list[tuple[str, str, str]]) -> None:
 
 def _render_screening_tab(root: Any = None) -> None:
     """Render the screening subpage with adaptive routing when assets exist."""
-    import streamlit as st
+    from globalhab_demo.display_locale import st
     from globalhab_demo.adaptive_visual import compact_status_rows
 
     root_path = Path(root) if root is not None else Path(__file__).resolve().parents[2]
@@ -466,7 +466,7 @@ def _render_screening_tab(root: Any = None) -> None:
     if batch_notice:
         st.success(batch_notice)
 
-    st.markdown("### 现场影像甄别")
+    st.markdown("### 影像识别")
     st.caption("拍照 → 自适应路由 → 视觉筛查 → 不确定性门控 / DEFER → 现场复核。")
     task_queue = queue_cases(root_path)
     if task_queue:
@@ -497,11 +497,11 @@ def _render_screening_tab(root: Any = None) -> None:
             risk = research.get("risk_score")
             _render_context_kpis([
                 ("当前Case", str(active_case.get("case_id")), "研究、现场、实验室和解释共享同一Case"),
-                ("研究候选区", str(research.get("candidate_region", "NA")), "从研究与验证工作区自动带入"),
+                ("研究候选区", str(research.get("candidate_region", "NA")), "从研究验证工作区自动带入"),
                 ("Route / Lag", f"{research.get('route','NA')} / {research.get('lag_days','NA')}d", "研究候选的方向与时滞"),
                 ("研究风险指数", f"{float(risk):.1f}/100" if isinstance(risk, (int,float)) else str(risk or "NA"), "仅用于安排现场复核优先级"),
             ])
-            st.caption("已读取研究与验证生成的现场复核任务。本页新增的视觉、现场与实验室证据会按证据层级登记到同一Case，不会覆盖研究模型结果。")
+            st.caption("已读取研究验证生成的现场复核任务。本页新增的视觉、现场与实验室证据会按证据层级登记到同一Case，不会覆盖研究模型结果。")
     else:
         st.caption("可直接上传影像；关联研究任务请先在风险研判中创建 Case。")
 
@@ -551,7 +551,7 @@ def _render_screening_tab(root: Any = None) -> None:
         st.dataframe(compact_status_rows(root_path), use_container_width=True, hide_index=True)
         st.caption("默认允许在首次使用时获取并缓存公共预训练视觉编码器；已有本地权重时优先使用本地文件。项目训练头存在时优先使用，否则使用内置视觉现象原型头。原型头用于现场视觉筛查，不代表经过真实HAB照片校准的藻华分类器。")
 
-    run = st.button("开始现场影像甄别", type="primary", use_container_width=True, key="vision_run")
+    run = st.button("开始影像识别", type="primary", use_container_width=True, key="vision_run")
     if run:
         if image_file is None:
             st.error("请先拍照或上传一张海面图片。")
@@ -709,8 +709,8 @@ def _render_screening_tab(root: Any = None) -> None:
                         st.success("当前Case已保存；任务队列中没有其他待复核Case。")
                 except Exception as exc:
                     st.error(str(exc))
-            if st.button("返回研究与验证查看证据链", use_container_width=True, key="vision_back_research"):
-                st.session_state["_workspace_jump"] = "研究与验证"
+            if st.button("返回研究验证查看证据链", use_container_width=True, key="vision_back_research"):
+                st.session_state["_workspace_jump"] = "研究验证"
                 st.rerun()
 
             st.markdown("#### 专业 / 实验室确认")
@@ -756,8 +756,8 @@ def _render_screening_tab(root: Any = None) -> None:
         use_container_width=True,
     )
     if d2.button("送入大模型综合解读", use_container_width=True, key="vision_to_llm"):
-        st.session_state["_workspace_jump"] = "大模型结果解读"
-        st.session_state["_llm_source_jump"] = "当前完整Case（推荐）" if active_case else "最近一次现场影像甄别"
+        st.session_state["_workspace_jump"] = "模型解读"
+        st.session_state["_llm_source_jump"] = "当前完整Case（推荐）" if active_case else "最近一次影像识别"
         st.rerun()
 
     st.caption("隐私说明：照片本身不会因为点击“大模型综合解读”而发送给远程服务；默认仅发送结构化Case摘要，并且仍需在大模型工作区显式勾选授权。")
@@ -765,7 +765,7 @@ def _render_screening_tab(root: Any = None) -> None:
 
 def render(root: Any = None) -> None:
     """Render the continuous-learning field visual workspace."""
-    import streamlit as st
+    from globalhab_demo.display_locale import st
     from globalhab_demo.visual_learning import (
         ensure_visual_learning_store,
         render_library_tab,
@@ -776,13 +776,13 @@ def render(root: Any = None) -> None:
     ensure_visual_learning_store(root_path)
     from globalhab_demo.ui_system import render_workspace_header
     render_workspace_header(
-        "现场影像甄别",
+        "影像识别",
         "上传影像 · 筛查复核 · 保存证据",
         kicker="Field evidence",
     )
     with st.container(key="vision_workspace_tabs"):
         tab_screen, tab_data, tab_model = st.tabs([
-            "现场影像甄别",
+            "影像识别",
             "我的影像数据",
             "模型训练与版本",
         ])

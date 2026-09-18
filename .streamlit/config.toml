@@ -8,6 +8,9 @@ font = "sans-serif"
 [server]
 headless = true
 maxUploadSize = 50
+# Production deployments are activated with a process restart. Do not evict
+# shared Python modules while another Streamlit session is importing them.
+fileWatcherType = "none"
 
 [browser]
 gatherUsageStats = false

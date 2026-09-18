@@ -1,0 +1,17 @@
+{
+  "build": "HF3.6.1-STARTUP-20260918",
+  "file_watcher_none_effective": true,
+  "concurrent_import_threads": 8,
+  "entrypoints": [
+    "app.py",
+    "streamlit_app.py"
+  ],
+  "reruns_per_entrypoint": 3,
+  "workspace_checks": 5,
+  "joint_behavior_tests": 5,
+  "quick_vision_result": true,
+  "vision_failure_feedback": true,
+  "research_data_unchanged": true,
+  "cloud_verified": false,
+  "exact_cloud_key_unavailable": true
+}

@@ -510,7 +510,7 @@ def render(root: Any) -> None:
         [data-testid="stSidebarCollapsedControl"] {display:none !important;}
         [data-testid="stAppViewContainer"] > .main {margin-left:0 !important;}
         </style>
-        <div id="globalhab-build-hf2" data-build="HF3.5-FINAL-20260918"></div>
+        <div id="globalhab-build-hf2" data-build="HF3.6-MOBILE-20260918"></div>
         """,
         unsafe_allow_html=True,
     )

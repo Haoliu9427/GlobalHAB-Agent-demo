@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF3.5-FINAL-20260918"
+BUILD_ID = "HF3.6-MOBILE-20260918"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -225,6 +225,7 @@ st.markdown("<style>" + (ROOT / "assets" / "interface.css").read_text(encoding="
 st.markdown("<style>" + (ROOT / "assets" / "blue_theme.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
 st.markdown("<style>" + (ROOT / "assets" / "high_fidelity.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
 st.markdown("<style>" + (ROOT / "assets" / "reference_refinement.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
+st.markdown("<style>" + (ROOT / "assets" / "mobile.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
 
 
 @st.cache_data(show_spinner=False)
@@ -697,8 +698,8 @@ if workspace_mode == "数据分析":
         render_own_observations()
     st.stop()
 if workspace_mode == "影像识别":
-    from globalhab_demo.field_visual import render as render_field_visual
-    render_field_visual(ROOT)
+    import globalhab_demo.field_visual as _field_visual
+    importlib.reload(_field_visual).render(ROOT)
     st.stop()
 if workspace_mode == "模型解读":
     from globalhab_demo.real_training.result_interpreter import render as render_result_interpreter

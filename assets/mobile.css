@@ -1,0 +1,25 @@
+/* Phone layout: CSS viewport pixels, independent of hardware resolution. */
+@media(max-width:760px){
+ html,body{overflow-x:hidden!important}
+ [data-testid="stMainBlockContainer"],.block-container{padding-left:12px!important;padding-right:12px!important;max-width:100%!important;width:100%!important;box-sizing:border-box!important}
+ [data-testid="stHorizontalBlock"]{flex-wrap:wrap!important;gap:12px!important}
+ [data-testid="stHorizontalBlock"]>[data-testid="stColumn"]{min-width:0!important;width:100%!important;flex:1 1 100%!important}
+ .hf-home-root{margin-top:0!important}.hf-home-hero,.hf-home-title-wrap{height:auto!important;min-height:86px!important}.hf-home-title-wrap h1{font-size:28px!important}.hf-home-title-wrap p{font-size:13px!important;line-height:1.6!important;margin:8px 0 16px!important}
+ .hf-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}.hf-kpi-card{grid-template-columns:32px minmax(0,1fr)!important;padding:12px!important;gap:8px!important;min-height:116px!important}.hf-kpi-icon{width:30px!important;height:38px!important}.hf-kpi-icon svg{width:24px!important;height:24px!important}.hf-kpi-arrow{display:none!important}.hf-kpi-copy b{font-size:22px!important;white-space:normal!important}.hf-kpi-copy span,.hf-kpi-copy small{font-size:12px!important;line-height:1.5!important}
+ .hf-upper-grid{grid-template-columns:minmax(0,1fr)!important;gap:12px!important}.hf-sector-panel{min-height:290px!important;padding:14px!important}.hf-research-wheel{width:100%!important;max-width:340px!important;height:auto!important}
+ .hf-case-body{height:auto!important;grid-template-columns:130px minmax(0,1fr)!important;gap:14px!important}.hf-donut{width:130px!important;height:130px!important}.hf-case-legend{display:block!important}.hf-case-legend-row{font-size:12px!important;margin:10px 0!important}.hf-case-legend-row b{font-size:12px!important}
+ .hf-workspace-flow{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;overflow:visible!important}.hf-workspace-node{min-width:0!important;width:100%!important;box-sizing:border-box!important;gap:8px!important;height:74px!important}.hf-workspace-arrow{display:none!important}.hf-workspace-icon{width:32px!important;height:32px!important;flex-basis:32px!important}.hf-workspace-node span{font-size:11px!important;white-space:normal!important}
+ .hf-task-launch{padding:14px!important;gap:10px!important;flex-wrap:wrap!important}.hf-launch-button{padding:12px!important;font-size:15px!important}.hf-launch-copy b{font-size:17px!important}
+ .st-key-hf_agent_panel,.st-key-hf_sa_panel,.st-key-hf_evidence_panel{min-width:0!important;padding:14px 10px!important;height:auto!important;min-height:420px!important}.hf-viz-title{height:auto!important;flex-wrap:wrap!important;gap:4px!important}.hf-viz-title b{font-size:16px!important}.hf-figure-note{font-size:12px!important;white-space:normal!important}
+ .st-key-china_overview{padding:12px!important}.kpi-grid,.kpi-4{grid-template-columns:repeat(2,minmax(0,1fr))!important}.kpi-value{font-size:20px!important;white-space:normal!important}
+ [class*="st-key-vision_"],[class*="st-key-research_section_"]{padding:14px!important;min-width:0!important}.workspace-header{min-height:0!important;padding:14px 0!important}.workspace-header h1{font-size:26px!important}
+ .st-key-research_modules [role="tablist"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}.st-key-research_modules [role="tab"]{height:92px!important}
+ [data-testid="stFileUploaderDropzone"]{flex-wrap:wrap!important;min-height:100px!important;padding:12px!important}video{max-width:100%!important;width:100%!important;object-fit:contain!important}
+ .st-key-workspace_buttons [data-testid="stHorizontalBlock"]{flex-wrap:nowrap!important}.st-key-workspace_buttons [data-testid="stColumn"]{flex:0 0 108px!important;min-width:108px!important;width:108px!important}
+ [data-testid="stDataFrame"]{max-width:100%!important} [data-testid="stMetricValue"]{font-size:22px!important;white-space:normal!important}
+}
+/* Native APK supplies its own toolbar and bottom navigation. */
+html.gh-android .ocean-product-nav,html.gh-android .st-key-workspace_buttons,
+html.gh-android [data-testid="stElementContainer"]:has(.ocean-product-nav){display:none!important}
+html.gh-android .st-key-top_controls{position:relative!important;top:auto!important;right:auto!important;left:auto!important;margin-left:auto!important;width:48px!important;z-index:1!important}
+html.gh-android [data-testid="stMainBlockContainer"]{padding-top:0!important}

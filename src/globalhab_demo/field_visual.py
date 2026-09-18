@@ -526,9 +526,19 @@ def _render_screening_tab(root: Any = None) -> None:
         )
         sea_surface = st.checkbox("照片主体是海面/水体，而不是天空、岸边或人物", value=True, key="vision_surface_confirm")
         st.caption("建议避开逆光，尽量让海面占画面大部分；同一点位最好从不同角度拍2–3张。图像只在当前会话中分析，不默认上传到远程大模型。")
+        if image_file is not None:
+            import hashlib
+            fingerprint = hashlib.sha256(image_file.getvalue()).hexdigest()
+            if st.session_state.get('vision_file_fingerprint') != fingerprint:
+                st.session_state['vision_file_fingerprint'] = fingerprint
+                st.session_state.pop('field_visual_result', None)
+            st.caption(f'图片已收到：{getattr(image_file, "name", "现场照片")}。请选择下面的识别方式。')
+        run = st.button("开始影像识别", type="primary", use_container_width=True, key="vision_run")
+        quick = st.button("快速规则筛查（无需下载模型）", use_container_width=True, key="vision_quick_run")
+        st.caption('快速筛查分析水色、纹理与照片质量，不调用深度模型，也不能识别藻种或毒素。')
+        feedback = st.container()
 
-    with meta_col, st.container(border=True, key="vision_meta_card"):
-        st.markdown("### 现场信息")
+    with meta_col, st.expander("现场信息 · 可选补充", expanded=False):
         c1, c2 = st.columns(2)
         capture_date = c1.date_input("拍摄日期", value=date.today(), key="vision_date")
         capture_time = c2.time_input("拍摄时间", value=None, key="vision_time")
@@ -551,11 +561,14 @@ def _render_screening_tab(root: Any = None) -> None:
         st.dataframe(compact_status_rows(root_path), use_container_width=True, hide_index=True)
         st.caption("默认允许在首次使用时获取并缓存公共预训练视觉编码器；已有本地权重时优先使用本地文件。项目训练头存在时优先使用，否则使用内置视觉现象原型头。原型头用于现场视觉筛查，不代表经过真实HAB照片校准的藻华分类器。")
 
-    run = st.button("开始影像识别", type="primary", use_container_width=True, key="vision_run")
-    if run:
+    if run or quick:
+        st.session_state.pop('field_visual_result', None)
         if image_file is None:
-            st.error("请先拍照或上传一张海面图片。")
+            feedback.error("请先拍照或上传一张海面图片。")
         else:
+            mode = '安全规则基线' if quick else vision_mode
+            with feedback:
+                status = st.status('正在读取图片…', expanded=True)
             try:
                 raw = image_file.getvalue()
                 image = load_image(raw)
@@ -576,12 +589,20 @@ def _render_screening_tab(root: Any = None) -> None:
                     "notes": notes.strip(),
                     "case_id": active_case_id,
                 }
-                result = make_result(image, metadata, root=root_path, requested_mode=vision_mode)
+                status.write('图片已解析，正在分析质量、水色和纹理。')
+                if mode != '安全规则基线':
+                    status.write('正在加载服务器视觉模型并推理。首次使用可能需要下载权重；请保持页面打开。')
+                result = make_result(image, metadata, root=root_path, requested_mode=mode)
                 st.session_state["field_visual_result"] = result
                 st.session_state["field_visual_image_bytes"] = raw
                 st.session_state["field_visual_image_name"] = getattr(image_file, "name", "field_capture.jpg") or "field_capture.jpg"
-            except ValueError as exc:
-                st.error(str(exc))
+                status.update(label='本次分析已完成', state='complete', expanded=False)
+                feedback.success(f"结果：{result['effective_visual_category']}；复核优先级：{result['screening_priority']}。详细结果在下方。")
+            except Exception as exc:
+                status.update(label='本次分析未完成', state='error', expanded=True)
+                feedback.error(str(exc) if isinstance(exc, ValueError) else '服务器未能完成本次识别。可以先使用快速规则筛查，再检查视觉模型状态。')
+                with feedback.expander('查看错误信息'):
+                    st.code(f'{type(exc).__name__}: {exc}')
 
     result = st.session_state.get("field_visual_result")
     if not result:

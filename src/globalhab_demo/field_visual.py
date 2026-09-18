@@ -510,7 +510,11 @@ def _render_screening_tab(root: Any = None) -> None:
         st.markdown("### 拍照或上传")
         source_mode = st.radio("图像来源", ["现场拍照", "上传图片"], horizontal=True, key="vision_source_mode")
         image_file = None
-        if source_mode == "现场拍照":
+        native_camera = "GlobalHABAndroid/1.2" in st.context.headers.get("User-Agent", "")
+        if source_mode == "现场拍照" and native_camera:
+            st.caption("点击下方选择文件按钮，再选择“打开系统相机拍照”。拍摄确认后，照片会返回此处供识别。")
+            image_file = st.file_uploader("拍照并添加照片", type=["jpg", "jpeg", "png"], key="vision_native_camera")
+        elif source_mode == "现场拍照":
             st.markdown(
                 '<div class="camera-permission-cn">需要使用摄像头。若浏览器尚未授权，请在站点权限中允许摄像头访问后再拍摄。</div>',
                 unsafe_allow_html=True,

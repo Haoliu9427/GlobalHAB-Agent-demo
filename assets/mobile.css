@@ -15,11 +15,19 @@
  [class*="st-key-vision_"],[class*="st-key-research_section_"]{padding:14px!important;min-width:0!important}.workspace-header{min-height:0!important;padding:14px 0!important}.workspace-header h1{font-size:26px!important}
  .st-key-research_modules [role="tablist"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}.st-key-research_modules [role="tab"]{height:92px!important}
  [data-testid="stFileUploaderDropzone"]{flex-wrap:wrap!important;min-height:100px!important;padding:12px!important}video{max-width:100%!important;width:100%!important;object-fit:contain!important}
- .st-key-workspace_buttons [data-testid="stHorizontalBlock"]{flex-wrap:nowrap!important}.st-key-workspace_buttons [data-testid="stColumn"]{flex:0 0 108px!important;min-width:108px!important;width:108px!important}
+ .ocean-product-nav{position:relative!important;top:auto!important;left:auto!important;width:100%!important;margin:0!important;padding:8px 0!important;min-height:58px!important;height:auto!important;display:flex!important}
+ .ocean-product-nav nav,.ocean-nav-search{display:none!important}
+ .ocean-product-nav .ocean-brand{flex:1 1 auto!important;min-width:0!important;padding-right:42px!important}
+ .ocean-brand b{font-size:21px!important}.ocean-brand small{font-size:10px!important;white-space:normal!important}.ocean-brand svg{width:32px!important;height:32px!important;flex-basis:32px!important}
+ [data-testid="stElementContainer"]:has(.ocean-product-nav){height:auto!important;min-height:0!important}
+ .st-key-workspace_buttons{position:relative!important;left:auto!important;right:auto!important;top:auto!important;width:100%!important;overflow:visible!important;margin:0 0 12px!important;z-index:1!important}
+ .st-key-workspace_buttons [data-testid="stHorizontalBlock"]{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important;flex-wrap:wrap!important}
+ .st-key-workspace_buttons [data-testid="stColumn"]{min-width:0!important;width:100%!important;flex:initial!important}
+ .st-key-workspace_buttons button{width:100%!important;min-height:48px!important;height:48px!important;padding:6px 4px!important;gap:4px!important;border:1px solid #dceaf4!important;border-radius:10px!important;background:#eef6fc!important}
+ .st-key-workspace_buttons button p{font-size:13px!important;white-space:nowrap!important}
+ .st-key-workspace_buttons button [data-testid="stIconMaterial"]{font-size:18px!important}
+ .st-key-top_controls{top:10px!important;right:12px!important;width:36px!important}
  [data-testid="stDataFrame"]{max-width:100%!important} [data-testid="stMetricValue"]{font-size:22px!important;white-space:normal!important}
 }
-/* Native APK supplies its own toolbar and bottom navigation. */
-html.gh-android .ocean-product-nav,html.gh-android .st-key-workspace_buttons,
-html.gh-android [data-testid="stElementContainer"]:has(.ocean-product-nav){display:none!important}
-html.gh-android .st-key-top_controls{position:relative!important;top:auto!important;right:auto!important;left:auto!important;margin-left:auto!important;width:48px!important;z-index:1!important}
+/* Keep the real web workspace navigation as the single navigation surface. */
 html.gh-android [data-testid="stMainBlockContainer"]{padding-top:0!important}

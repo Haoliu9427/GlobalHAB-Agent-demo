@@ -1,0 +1,12 @@
+{
+  "build": "HF3.6.2-NATIVE-CAMERA-20260918",
+  "native_photo_ingestion_screening_test": true,
+  "web_quick_screening_test": true,
+  "workspace_regression": 5,
+  "viewport_width": 412,
+  "body_scroll_width": 412,
+  "navigation_button_height": 48,
+  "navigation_rows": 2,
+  "real_android_camera_tested": false,
+  "online_deployed": false
+}

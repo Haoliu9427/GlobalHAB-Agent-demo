@@ -155,6 +155,17 @@ def render(root):
             st.plotly_chart(matrix_figure(perturbations, stability=True), width='stretch', key='joint_stability')
             st.caption('27种组合：藻华±10%、水温±0.4℃、溶解氧±0.5 mg/L；格内为越阈组合占比。')
         st.caption('以上为环境阈值对照，不是物种损伤概率；相同阈值显示相同结果。')
+        with st.expander('结果为什么变或不变 · 查看一个格子的计算', expanded=False):
+            obj = st.selectbox('解释对象', objects, key='joint_explain_object')
+            factor = st.selectbox('解释因子', FACTORS, key='joint_explain_factor')
+            row = result[(result['对象']==obj)&(result['因子']==factor)].iloc[0]
+            nearby = perturbations[(perturbations['对象']==obj)&(perturbations['因子']==factor)]
+            count = int(nearby['超过自定阈值'].sum())
+            numerator, denominator = (row['自定阈值'],row['当前输入']) if factor=='溶解氧' else (row['当前输入'],row['自定阈值'])
+            st.markdown(f"**{obj} · {factor}**：{numerator:.2f} ÷ {denominator:.2f} = **{row['阈值比']:.2f}倍**；当前{'越阈' if row['超过自定阈值'] else '未越阈'}。")
+            st.write(f"扰动输入范围 {nearby['当前输入'].min():.2f}–{nearby['当前输入'].max():.2f}；阈值 {row['自定阈值']:.2f}。27种等权组合中 {count} 种越阈，占 {count/27:.1%}。")
+            st.caption('占比按离散组合计数；参数改变但没有组合跨过阈值时，占比保持不变。其他因子的扰动不会改变这个单因子格子。该占比不是事件发生概率。')
+            st.dataframe(nearby[['情景编号','当前输入','自定阈值','阈值比','超过自定阈值']], hide_index=True, width='stretch')
         payload = {'region': selected, 'objects': objects, 'inputs': {'hab': hab, 'temperature': temperature, 'mhw': mhw, 'oxygen': oxygen},
                    'thresholds': thresholds.to_dict('records'), 'assessment': result.to_dict('records'),
                    'perturbation_exceedance': perturbations.groupby(['对象', '因子'])['超过自定阈值'].mean().reset_index().to_dict('records'),

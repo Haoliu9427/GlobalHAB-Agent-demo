@@ -260,3 +260,23 @@ height:394px!important;min-height:394px!important;padding:14px 16px 10px!importa
 .st-key-top_controls button [data-testid="stIconMaterial"]{font-size:22px!important;line-height:1!important;}
 .st-key-workspace_buttons button{gap:8px!important;display:flex;align-items:center;justify-content:center;}
 .st-key-workspace_buttons button [data-testid="stIconMaterial"]{font-size:22px!important;line-height:1!important;}
+/* HF3.3: classic composition, restrained contrast and consistent spacing. */
+.hf-home-root{--hf-border:#dbe7ec;--hf-shadow:0 2px 10px rgba(35,73,94,.025)}
+.hf-home-root .hf-card,.hf-home-root .hf-kpi-card{border-color:#dbe7ec;box-shadow:0 2px 10px rgba(35,73,94,.025);border-radius:12px}
+.hf-kpi-grid{gap:16px;margin-bottom:18px}.hf-upper-grid{gap:18px;margin-bottom:18px}.hf-overview-actions{gap:16px}
+.hf-home-root .hf-kpi-copy span,.hf-home-root .hf-kpi-copy small,.hf-card-subtitle,.hf-workspace-node span,.hf-case-legend-row{color:#587284!important;font-size:13px;line-height:1.6}
+.hf-kpi-copy b{font-variant-numeric:tabular-nums;line-height:1.3}.hf-card-title{color:#183f55}.hf-workspace-panel{margin-bottom:18px}.hf-workspace-arrow{color:#5d9caf}
+.hf-research-wheel .wheel-center-sub{font-size:12px!important;fill:#526f80}.hf-launch-copy p{font-size:13px;color:#527385}
+.st-key-hf_agent_panel,.st-key-hf_sa_panel,.st-key-hf_evidence_panel{height:422px!important;min-height:422px!important;padding:16px 18px 12px!important;border:1px solid #dbe7ec!important;box-shadow:0 2px 10px rgba(35,73,94,.025)!important;border-radius:12px!important}
+.hf-viz-title{height:28px!important;gap:10px}.hf-viz-title b{color:#183f55}.hf-viz-title a{white-space:nowrap;font-size:13px;color:#376e90}.hf-figure-note{font-size:12px;line-height:20px;color:#526f80;margin-top:3px}
+.hf-home-root a:focus-visible,.hf-viz-title a:focus-visible{outline:2px solid #147c99;outline-offset:4px;border-radius:4px}
+@media(prefers-reduced-motion:reduce){.hf-home-root *{transition:none!important}}
+/* Journal-style refinement stays within the established dashboard. */
+.hf-figure-note{line-height:19px;white-space:normal}.hf-viz-title b{font-weight:600!important;letter-spacing:0}.hf-card-title{font-weight:600}.hf-kpi-copy b{font-weight:650}
+.st-key-hf_agent_panel .js-plotly-plot,.st-key-hf_sa_panel .js-plotly-plot,.st-key-hf_evidence_panel .js-plotly-plot{font-variant-numeric:tabular-nums}
+/* Preview refinement: preserve layout while improving small text. */
+.hf-home-root .hf-kpi-copy span{font-weight:600}.hf-case-legend-row b{font-size:13px;color:#587284}.hf-home-root .hf-card-action{font-size:13px}
+.st-key-hf_agent_panel,.st-key-hf_sa_panel,.st-key-hf_evidence_panel{height:auto!important;min-height:422px!important}
+.hf-figure-note{min-height:20px;font-size:12px;line-height:20px}
+@media(max-width:600px){.hf-viz-title b{font-size:16px!important}.hf-viz-title{height:auto!important;min-height:28px;flex-wrap:wrap}.hf-home-root .hf-home-title-wrap p{font-size:13px!important}}
+@media(max-width:1000px){.hf-workspace-flow{overflow-x:auto;padding-bottom:8px;scroll-snap-type:x proximity}.hf-workspace-node{flex:0 0 200px;min-width:200px;box-sizing:border-box;scroll-snap-align:start}.hf-workspace-arrow{flex:0 0 22px}.hf-workspace-node span{white-space:normal}}

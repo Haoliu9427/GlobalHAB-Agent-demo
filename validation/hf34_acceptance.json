@@ -1,0 +1,14 @@
+{
+  "build": "HF3.4-FIGURES-20260918",
+  "behavior_tests_passed": 5,
+  "workspace_apptest_passed": 5,
+  "map_backends_verified": [
+    "osm",
+    "geo"
+  ],
+  "map_coordinates_preserved": true,
+  "desktop_chart_cards_checked": true,
+  "classic_layout_preserved": true,
+  "original_research_data_unchanged": true,
+  "online_deployed": false
+}

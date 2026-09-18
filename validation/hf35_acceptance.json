@@ -1,0 +1,21 @@
+{
+  "build": "HF3.5-FINAL-20260918",
+  "behavior_tests_passed": 5,
+  "workspace_apptest_passed": 5,
+  "map_backends_verified": [
+    "osm",
+    "geo"
+  ],
+  "map_coordinates_preserved": true,
+  "desktop_chart_cards_checked": true,
+  "card_heights": [
+    422,
+    422,
+    422
+  ],
+  "narrow_workspace_no_shrink_verified": true,
+  "approved_preview": true,
+  "classic_layout_preserved": true,
+  "original_research_data_unchanged": true,
+  "online_deployed": false
+}

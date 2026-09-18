@@ -249,3 +249,14 @@ height:394px!important;min-height:394px!important;padding:14px 16px 10px!importa
  .st-key-research_section_joint_bio [data-testid="stColumn"]{width:100%!important;flex:1 1 100%!important;min-width:0!important;}
 }
 .st-key-research_modules [role="tab"]:nth-child(3)::after{content:'多对象联合评估';}
+
+/* HF3.1: common 40px control boxes centered on the 64px header. */
+.ocean-nav-search{height:40px;box-sizing:border-box;align-items:center;margin-right:48px;}
+.ocean-nav-search input{height:100%;box-sizing:border-box;line-height:normal;}
+.ocean-nav-search button{display:flex;align-items:center;justify-content:center;width:38px;height:38px;padding:0;flex:0 0 38px;}
+.ocean-nav-search button svg{width:20px;height:20px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;}
+.st-key-top_controls{top:12px!important;right:24px!important;width:44px!important;}
+.st-key-top_controls button{height:40px!important;min-height:40px!important;display:flex;align-items:center;justify-content:center;padding:0 4px!important;}
+.st-key-top_controls button [data-testid="stIconMaterial"]{font-size:22px!important;line-height:1!important;}
+.st-key-workspace_buttons button{gap:8px!important;display:flex;align-items:center;justify-content:center;}
+.st-key-workspace_buttons button [data-testid="stIconMaterial"]{font-size:22px!important;line-height:1!important;}

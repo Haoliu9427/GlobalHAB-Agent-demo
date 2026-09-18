@@ -81,16 +81,16 @@ def render_top_navigation(options):
     if section:
         st.session_state["research_section"]=section
         del st.query_params["section"]
-    icons=["▣","▤","▥","▧","☼"]
-    links=''.join(f'<a class="nav-link {"active" if v==current else ""}" href="?workspace={quote(v)}" target="_self">{icon} &nbsp;{escape(v)}</a>' for v,icon in zip(options,icons))
-    st.markdown(f'''<header class="ocean-product-nav"><a class="ocean-brand" href="?workspace={quote(options[0])}" target="_self"><svg viewBox="0 0 42 42"><path d="M3 16c12 0 14-15 27-11M3 23c14 0 17-18 34-11M3 30c15 0 17-15 34-13M9 35c12 0 16-10 26-12"/></svg><span><b>GlobalHAB-Agent</b><small>从多源观测到可审计风险研判的科学Agent</small></span></a><nav>{links}</nav><form class="ocean-nav-search" method="get"><input name="search" placeholder="搜索工作区…" aria-label="搜索工作区"/><button type="submit" aria-label="搜索">⌕</button></form></header>''',unsafe_allow_html=True)
+    icons=[":material/home:",":material/science:",":material/query_stats:",":material/photo_camera:",":material/psychology:"]
+    links=''.join(f'<a class="nav-link {"active" if v==current else ""}" href="?workspace={quote(v)}" target="_self">{escape(v)}</a>' for v in options)
+    st.markdown(f'''<header class="ocean-product-nav"><a class="ocean-brand" href="?workspace={quote(options[0])}" target="_self"><svg viewBox="0 0 42 42"><path d="M3 16c12 0 14-15 27-11M3 23c14 0 17-18 34-11M3 30c15 0 17-15 34-13M9 35c12 0 16-10 26-12"/></svg><span><b>GlobalHAB-Agent</b><small>从多源观测到可审计风险研判的科学Agent</small></span></a><nav>{links}</nav><form class="ocean-nav-search" method="get"><input name="search" placeholder="搜索工作区…" aria-label="搜索工作区"/><button type="submit" aria-label="搜索"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button></form></header>''',unsafe_allow_html=True)
     def choose(value):
         st.session_state["workspace_mode"]=value
     with st.container(key="workspace_buttons"):
         columns=st.columns(len(options), gap="small")
         for i,(col,value) in enumerate(zip(columns,options)):
             with col:
-                st.button(icons[i]+"  "+value,key="header_workspace_"+str(i),on_click=choose,args=(value,),use_container_width=True)
+                st.button(value,icon=icons[i],key="header_workspace_"+str(i),on_click=choose,args=(value,),width="stretch")
     active=options.index(current)
     st.markdown(f"<style>.st-key-workspace_buttons .st-key-header_workspace_{active} button {{background:#0879c7!important;color:#fff!important;}} .st-key-workspace_buttons .st-key-header_workspace_{active} button p {{color:#fff!important;}}</style>",unsafe_allow_html=True)
     if st.session_state.get("nav_search_note"):

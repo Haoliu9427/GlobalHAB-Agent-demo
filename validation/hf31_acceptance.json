@@ -1,0 +1,16 @@
+{
+  "build": "HF3.1-MAP-NAV-20260918",
+  "behavior_tests_passed": 5,
+  "workspace_apptest_passed": 5,
+  "map_backends_verified": [
+    "osm",
+    "geo"
+  ],
+  "map_coordinates_preserved": true,
+  "browser_search_settings_center_y": [
+    31.666667938232425,
+    32
+  ],
+  "original_research_data_unchanged": true,
+  "online_deployed": false
+}

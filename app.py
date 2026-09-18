@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF3-JOINT-BIO-20260918"
+BUILD_ID = "HF3.1-MAP-NAV-20260918"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -552,7 +552,7 @@ def real_qpcr_map(frame: pd.DataFrame) -> go.Figure:
 WORKSPACES = ["项目总览", "研究验证", "数据分析", "影像识别", "模型解读"]
 workspace_mode = render_top_navigation(WORKSPACES)
 with st.container(key="top_controls"):
-    control_panel = st.popover("⚙", help="地图、Case与运行参数")
+    control_panel = st.popover("", icon=":material/settings:", help="地图、Case与运行参数")
 
 with control_panel, st.expander("运行版本", expanded=False):
     st.code(BUILD_ID, language=None)

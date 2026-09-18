@@ -1,5 +1,7 @@
 """Behavior checks for shared inputs, threshold changes and visible zero rows."""
 import unittest
+import os
+from unittest.mock import patch
 import numpy as np
 from globalhab_demo.joint_bio import default_thresholds, evaluate_joint, perturb_joint, matrix_figure
 from globalhab_demo.bio_response import evaluate_intervention_robustness, INTERVENTIONS
@@ -7,6 +9,18 @@ from globalhab_demo.research_figures import robustness_distribution
 
 
 class JointAssessmentTests(unittest.TestCase):
+    def test_region_map_honors_shared_backend(self):
+        from globalhab_demo.joint_bio import region_map
+        with patch.dict(os.environ, {'GLOBALHAB_MAP_BACKEND': 'osm'}):
+            osm = region_map('智利巴塔哥尼亚峡湾')
+        with patch.dict(os.environ, {'GLOBALHAB_MAP_BACKEND': 'geo'}):
+            geo = region_map('智利巴塔哥尼亚峡湾')
+        self.assertEqual(osm.layout.map.style, 'open-street-map')
+        self.assertTrue(all(t.type == 'scattermap' for t in osm.data))
+        self.assertTrue(all(t.type == 'scattergeo' for t in geo.data))
+        self.assertEqual(geo.layout.geo.projection.type, 'equirectangular')
+        self.assertEqual([list(t.lat) for t in osm.data], [list(t.lat) for t in geo.data])
+
     def test_common_environment_and_object_specific_thresholds(self):
         thresholds = default_thresholds()
         baseline = evaluate_joint(65, 28, 5, thresholds)

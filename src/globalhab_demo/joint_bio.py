@@ -90,13 +90,14 @@ def region_map(selected):
                       marker=dict(size=[17 if n == selected else 9 for n in group.region], color=color,
                                   line=dict(width=1.5, color='white')),
                       hovertemplate='%{text}<br>%{customdata}<extra></extra>'))
-    fig.update_geos(projection_type='natural earth', showframe=False, showland=True, landcolor='#edf2ef',
+    fig.update_geos(projection_type='equirectangular', showframe=False, showland=True, landcolor='#edf2ef',
                     showocean=True, oceancolor='#e3f2f6', showcountries=True, countrycolor='white',
                     showcoastlines=True, coastlinecolor='#b2c6ce', lonaxis_range=[-180, 180], lataxis_range=[-60, 85])
     fig.update_layout(height=270, margin=dict(l=0, r=0, t=5, b=30), geo=dict(bgcolor='rgba(0,0,0,0)'),
                       paper_bgcolor='rgba(0,0,0,0)', font=dict(family=FONT, size=12, color='#173f52'),
                       legend=dict(orientation='h', y=-.02, x=.5, xanchor='center'))
-    return fig
+    from .map_style import style_map
+    return style_map(fig, global_view=True)
 
 
 def render(root):
@@ -128,7 +129,7 @@ def render(root):
         if not objects:
             st.info('至少选择一个对象后显示联合评估。')
             return None
-        with st.expander('调整各对象的阈值', expanded=False):
+        with st.expander('各对象的评估阈值 · 可分别修改', expanded=True):
             st.caption('各对象初始阈值相同，避免无依据地假定物种耐受差异；可按物种或场站资料分别修改。')
             thresholds = st.data_editor(default_thresholds(), hide_index=True, disabled=['评估对象'], key='joint_thresholds',
                 column_config={
@@ -142,6 +143,8 @@ def render(root):
         except (ValueError, TypeError) as exc:
             st.error(str(exc))
             return None
+        if len(thresholds) > 1 and len(thresholds[['藻华上限','水温上限℃','溶解氧下限mg/L']].drop_duplicates()) == 1:
+            st.info('当前所选对象的三项阈值相同，因此两张图的对应行相同；这是共同环境的阈值对照，尚不能区分对象的生物敏感性。可在上表按物种或场站资料分别设置。')
         left, right = st.columns(2, gap='large')
         with left:
             st.markdown('#### 当前环境 · 多对象并列对照')

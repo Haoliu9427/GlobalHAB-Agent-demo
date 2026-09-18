@@ -503,7 +503,7 @@ def _render_screening_tab(root: Any = None) -> None:
             ])
             st.caption("已读取研究与验证生成的现场复核任务。本页新增的视觉、现场与实验室证据会按证据层级登记到同一Case，不会覆盖研究模型结果。")
     else:
-        st.info("当前没有激活的研究Case。可以独立使用影像筛查；如需完整闭环，请先在“研究与验证 → 风险研判”生成现场复核任务。")
+        st.caption("可直接上传影像；关联研究任务请先在风险研判中创建 Case。")
 
     input_col, meta_col = st.columns([1, 1], gap="large")
     with input_col, st.container(border=True, key="vision_input_card"):
@@ -777,7 +777,7 @@ def render(root: Any = None) -> None:
     from globalhab_demo.ui_system import render_workspace_header
     render_workspace_header(
         "现场影像甄别",
-        "采集现场影像并登记人工或实验室证据，支持Case复核、自适应视觉路由与后续本地模型更新",
+        "上传影像 · 筛查复核 · 保存证据",
         kicker="Field evidence",
     )
     with st.container(key="vision_workspace_tabs"):

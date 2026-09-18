@@ -1,0 +1,31 @@
+{
+  "browser": "Chromium headless 131",
+  "desktop_viewport": [
+    1448,
+    1086
+  ],
+  "narrow_viewport": [
+    800,
+    1000
+  ],
+  "navigated_workspaces": [
+    "项目总览",
+    "自有数据分析",
+    "现场影像甄别",
+    "大模型结果解读"
+  ],
+  "app_exceptions": 0,
+  "checks": [
+    "导航按钮可点击",
+    "选中导航保持蓝色",
+    "首页热图类别日期正确显示",
+    "自有数据远程配置默认折叠",
+    "完整摘要展开查看",
+    "窄屏横向导航和流程滚动"
+  ],
+  "limitations": [
+    "远程服务没有凭证实调",
+    "研究与验证通过AppTest启动，未逐个运行全部训练流程",
+    "字体按访问设备字体回退，浏览器验证使用Noto Sans CJK SC"
+  ]
+}

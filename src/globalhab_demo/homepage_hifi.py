@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 import html
+from urllib.parse import quote
 import json
 from pathlib import Path
 from typing import Any
@@ -143,7 +144,7 @@ def _case_donut_html(counts: dict[str, int], total: int) -> str:
     )
     return f'''
     <div class="hf-card hf-case-panel">
-      <div class="hf-card-title-row"><div class="hf-card-title">Case 状态</div><div class="hf-card-action">查看全部 →</div></div>
+      <div class="hf-card-title-row"><div class="hf-card-title">Case 状态</div><div class="hf-card-action">状态汇总</div></div>
       <div class="hf-case-body">
         <div class="hf-donut" style="background:{donut}"><div><b>{total}</b><span>Case 总数</span></div></div>
         <div class="hf-case-legend">{legend}</div>
@@ -186,8 +187,8 @@ def _workspace_flow_html(own_runs: int, library_count: int) -> str:
     nodes: list[str] = []
     for idx, (icon, title, sub, accent) in enumerate(items):
         nodes.append(
-            f'<div class="hf-workspace-node hf-workspace-{accent}"><div class="hf-workspace-icon">{_svg_icon(icon)}</div>'
-            f'<div><b>{title}</b><span>{sub}</span></div></div>'
+            f'<a href="?workspace={quote(title)}" target="_self" class="hf-workspace-node hf-workspace-{accent}"><div class="hf-workspace-icon">{_svg_icon(icon)}</div>'
+            f'<div><b>{title}</b><span>{sub}</span></div></a>'
         )
         if idx < len(items) - 1:
             nodes.append('<div class="hf-workspace-arrow">→</div>')
@@ -279,7 +280,7 @@ def _agent_trace_figure(root: Path) -> go.Figure:
         )
     fig.update_xaxes(title="试验步", dtick=1)
     fig.update_yaxes(title="Average Precision (AP)", rangemode="tozero")
-    return _base_layout(fig, height=238)
+    return _base_layout(fig, height=238, showlegend=False)
 
 
 def _sa_site_heatmap(root: Path) -> go.Figure:
@@ -296,8 +297,8 @@ def _sa_site_heatmap(root: Path) -> go.Figure:
     score["rank"] = score["samples"] * 2 + np.log10(score["peak"] + 1)
     sites = score.sort_values("rank", ascending=False).head(10).index.tolist()
     sub = raw[raw["location"].isin(sites) & raw["sample_date"].notna()].copy()
-    sub["month_day"] = sub["sample_date"].dt.strftime("%m-%d")
-    pivot = sub.pivot_table(index="location", columns="month_day", values="k_cristata_cells_l", aggfunc="max", fill_value=0)
+    sub["month_day"] = sub["sample_date"].dt.strftime("%Y-%m-%d")
+    pivot = sub.pivot_table(index="location", columns="month_day", values="k_cristata_cells_l", aggfunc="max")
     if pivot.shape[1] > 18:
         keep = np.linspace(0, pivot.shape[1]-1, 18).round().astype(int)
         pivot = pivot.iloc[:, np.unique(keep)]
@@ -311,14 +312,14 @@ def _sa_site_heatmap(root: Path) -> go.Figure:
             v = raw_vals[i, j]
             text[i, j] = "—" if v <= 0 else (f"{v/1e6:.1f}M" if v >= 1e6 else f"{v/1e3:.0f}k" if v >= 1e3 else f"{v:.0f}")
     fig.add_trace(go.Heatmap(
-        z=z, x=pivot.columns.tolist(), y=pivot.index.tolist(), customdata=raw_vals, text=text,
+        z=z.tolist(), x=pivot.columns.tolist(), y=[f"S{i+1}" for i in range(len(pivot))], customdata=[[[str(site), None if not np.isfinite(v) else float(v)] for v in row] for site,row in zip(pivot.index,raw_vals)], text=text.tolist(),
         colorscale=[[0,"#e9f7f4"],[.32,"#bee4d5"],[.58,"#f4dd99"],[.8,"#ef9b61"],[1,"#dc5b43"]],
         zmin=0, zmax=max(7.2, float(np.nanmax(z)) if z.size else 7.2),
         colorbar=dict(title="cells/L", thickness=10, len=.84, x=1.02, tickvals=[2,3,4,5,6,7], ticktext=["10²","10³","10⁴","10⁵","10⁶","10⁷"]),
-        hovertemplate="%{y}<br>%{x}<br>K. cristata %{customdata:,.0f} cells/L<extra></extra>",
+        hovertemplate="%{customdata[0]}<br>%{x}<br>K. cristata %{customdata[1]:,.0f} cells/L<extra></extra>", hoverongaps=False,
         xgap=1, ygap=1,
     ))
-    fig.update_xaxes(title="日期（2025）", tickangle=0, showgrid=False)
+    fig.update_xaxes(title="采样日期", type="category", tickangle=0, showgrid=False, tickvals=pivot.columns.tolist()[::3], ticktext=[d[5:] for d in pivot.columns.tolist()[::3]])
     fig.update_yaxes(title=None, autorange="reversed", showgrid=False, tickfont=dict(size=9, color="#6c8193"))
     return _base_layout(fig, height=238, showlegend=False)
 
@@ -478,7 +479,7 @@ def render(root: Any) -> None:
         [data-testid="stSidebarCollapsedControl"] {display:none !important;}
         [data-testid="stAppViewContainer"] > .main {margin-left:0 !important;}
         </style>
-        <div id="globalhab-build-hf2" data-build="HF2-20260918"></div>
+        <div id="globalhab-build-hf2" data-build="HF2-REFINED-20260918"></div>
         """,
         unsafe_allow_html=True,
     )
@@ -495,14 +496,14 @@ def render(root: Any) -> None:
         unsafe_allow_html=True,
     )
 
-    c1, c2, c3 = st.columns([1.0, 1.07, 1.17], gap="small")
+    c1, c2, c3 = st.columns([1.0, 1.07, 1.17], gap="medium")
     with c1:
         with st.container(key="hf_agent_panel"):
-            _panel_header("Agent 探索轨迹", "查看详情 →")
+            _panel_header("Agent 探索轨迹", "合成探索")
             st.plotly_chart(_agent_trace_figure(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_agent_chart")
     with c2:
         with st.container(key="hf_sa_panel"):
-            _panel_header("南澳真实事件回放", "查看详情 →")
+            _panel_header("南澳真实事件回放", "qPCR · 空白为未采样")
             st.plotly_chart(_sa_site_heatmap(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_sa_chart")
     with c3:
         with st.container(key="hf_evidence_panel"):

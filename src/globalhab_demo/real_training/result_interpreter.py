@@ -350,7 +350,7 @@ def render(root: Path) -> None:
     from globalhab_demo.ui_system import render_workspace_header
     render_workspace_header(
         "大模型结果解读",
-        "读取已登记的研究结果、用户数据、现场影像或完整Case，形成结构化说明；不重新计算科学指标",
+        "选择结果 · 连接模型 · 生成解读",
         kicker="Result interpretation",
     )
 
@@ -425,10 +425,6 @@ def render(root: Path) -> None:
         with meta_b:
             st.caption("摘要规模")
             st.markdown(f"**{len(summary):,} 字符**" if summary else "**等待结果**")
-        st.markdown('<div class="llm-source-flex-gap"></div>', unsafe_allow_html=True)
-        st.caption("摘要预览（只读）")
-        preview = summary[:600].strip() if summary else "当前来源尚未生成可用摘要。"
-        st.text_area("摘要预览", value=preview, height=105, disabled=True, label_visibility="collapsed")
         st.markdown('<div class="llm-source-flex-gap"></div>', unsafe_allow_html=True)
         with st.expander("查看完整结果摘要", expanded=False):
             if summary:
@@ -588,7 +584,8 @@ def render(root: Path) -> None:
         if st.session_state.get("llm_model_list"):
             st.caption("服务返回模型：" + "、".join(map(str, st.session_state["llm_model_list"])))
         consent = st.checkbox("允许把上方结果摘要发送给远程大模型", key="llm_interpret_consent")
-        st.caption("项目内置结果、最近一次自有数据和现场影像甄别只发送结构化摘要；现场照片本身不会发送，也不会发送完整原始CSV或API Key。若你主动上传结果文件，其摘要中显示的字段和前20行会随请求发送；请先移除不希望发送的敏感标识。调用可能产生服务商费用。")
+        with st.expander("方法与统计口径", expanded=False):
+            st.caption("项目内置结果、最近一次自有数据和现场影像甄别只发送结构化摘要；现场照片本身不会发送，也不会发送完整原始CSV或API Key。若你主动上传结果文件，其摘要中显示的字段和前20行会随请求发送；请先移除不希望发送的敏感标识。调用可能产生服务商费用。")
 
     signature = hashlib.sha256((
         source + mode + output_length + "|".join(focus_items) + str(include_number_checklist) + question + summary

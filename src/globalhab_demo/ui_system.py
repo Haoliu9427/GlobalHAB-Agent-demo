@@ -69,6 +69,10 @@ def render_top_navigation(options: Iterable[str]) -> str:
 
     options = list(options)
     pending = st.session_state.pop("_workspace_jump", None)
+    requested = st.query_params.get("workspace")
+    if requested in options:
+        pending = requested
+        del st.query_params["workspace"]
     if pending in options:
         st.session_state["workspace_mode"] = pending
     if st.session_state.get("workspace_mode") not in options:
@@ -133,13 +137,14 @@ def render_top_navigation(options: Iterable[str]) -> str:
     st.markdown(
         f"""
         <style>
-        .st-key-{active_key} button {{
+        .st-key-global_top_nav .st-key-{active_key} button,
+        .st-key-global_top_nav .st-key-{active_key} button:hover {{
           background:#1677c5 !important;
           border-color:#1677c5 !important;
           color:#fff !important;
           box-shadow:0 2px 6px rgba(29,121,197,.16) !important;
         }}
-        .st-key-{active_key} button p {{color:#fff !important;}}
+        .st-key-global_top_nav .st-key-{active_key} button p {{color:#fff !important;}}
         </style>
         """,
         unsafe_allow_html=True,

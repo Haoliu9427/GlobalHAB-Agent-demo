@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF2-20260918"
+BUILD_ID = "HF2-REFINED-20260918"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -209,6 +209,7 @@ install_plotly_theme()
 st.markdown("<style>" + (ROOT / "assets" / "interface.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
 st.markdown("<style>" + (ROOT / "assets" / "blue_theme.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
 st.markdown("<style>" + (ROOT / "assets" / "high_fidelity.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
+st.markdown("<style>" + (ROOT / "assets" / "reference_refinement.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
 
 
 @st.cache_data(show_spinner=False)
@@ -538,9 +539,9 @@ workspace_mode = render_top_navigation(WORKSPACES)
 
 st.sidebar.markdown(
     """
-    <div class="sidebar-control-head" data-build="HF2-20260918">
+    <div class="sidebar-control-head" data-build="HF2-REFINED-20260918">
       <b>运行控制</b>
-      <span>地图、Case 与当前工作区参数 · HF2</span>
+      <span>地图、Case 与当前工作区参数</span>
     </div>
     """,
     unsafe_allow_html=True,
@@ -655,7 +656,7 @@ if workspace_mode == "项目总览":
 if workspace_mode == "自有数据分析":
     render_workspace_header(
         "自有数据分析",
-        "上传现场观测，独立完成数据检查、模型比较、时间留出验证与结果留档",
+        "上传观测 · 选择模型 · 查看预测",
         kicker="Own observations",
     )
     from globalhab_demo.real_training.own_observations import render as render_own_observations
@@ -672,7 +673,7 @@ if workspace_mode == "大模型结果解读":
 
 render_workspace_header(
     "跨区域有害藻华风险研判",
-    "从异常识别、时滞与空间效应检验，到真实事件回放、前向验证与Case证据闭环",
+    "选择研究任务，查看地图、实验与验证结果",
     kicker="Research & validation",
 )
 with st.sidebar:
@@ -837,30 +838,31 @@ else:
     }
 
 active_holdout = REGION_LABELS[active_config["holdout_region"]]
-st.caption(
-    f"当前结果：{active_config['days']}天序列 · {active_config['budget']}次实验 · "
-    f"完全留出 {active_holdout} · 前向测试 {active_config['test_fraction']:.0%} · "
-    f"随机种子 {active_config['seed']}"
-)
-control_passed = recovered and bool(
-    card["minimum_references"]["negative_controls_lower_than_candidate"]
-)
-kpi_grid([
-    ("当前合成结果", f"沿流关联 · {int(best['lag_days'])}天",
-     "完整留区与前向阻断；仅用于合成验证"),
-    ("负对照", "通过" if control_passed else "待确认",
-     "反向路径与时间置换均低于候选" if control_passed else "未满足预设反证条件"),
-    ("Average Precision", f"{float(best['pr_auc']):.3f}", "当前设置下的合成留出排序"),
-])
-kpi_grid([
-    ("Brier Skill", f"{float(best['brier_skill']):.3f}", "相对气候概率基准"),
-    ("高风险区事件覆盖", f"{float(best['recall_at_top20']):.1%}", "最高20%容量内覆盖的事件比例"),
-    ("校准误差 ECE", f"{float(best['ece']):.3f}", "越接近0表示概率越稳定"),
-])
+with st.expander("当前探索结果与运行设置", expanded=False):
+    st.caption(
+        f"当前结果：{active_config['days']}天序列 · {active_config['budget']}次实验 · "
+        f"完全留出 {active_holdout} · 前向测试 {active_config['test_fraction']:.0%} · "
+        f"随机种子 {active_config['seed']}"
+    )
+    control_passed = recovered and bool(
+        card["minimum_references"]["negative_controls_lower_than_candidate"]
+    )
+    kpi_grid([
+        ("当前合成结果", f"沿流关联 · {int(best['lag_days'])}天",
+         "完整留区与前向阻断；仅用于合成验证"),
+        ("负对照", "通过" if control_passed else "待确认",
+         "反向路径与时间置换均低于候选" if control_passed else "未满足预设反证条件"),
+        ("Average Precision", f"{float(best['pr_auc']):.3f}", "当前设置下的合成留出排序"),
+    ])
+    kpi_grid([
+        ("Brier Skill", f"{float(best['brier_skill']):.3f}", "相对气候概率基准"),
+        ("高风险区事件覆盖", f"{float(best['recall_at_top20']):.1%}", "最高20%容量内覆盖的事件比例"),
+        ("校准误差 ECE", f"{float(best['ece']):.3f}", "越接近0表示概率越稳定"),
+    ])
 
-st.caption(
-    "情景输入即时更新；合成探索设置需点击“应用设置并重新计算”。"
-)
+    st.caption(
+        "情景输入即时更新；合成探索设置需点击“应用设置并重新计算”。"
+    )
 
 with st.container(key="research_modules"):
     tab_alert, tab_real, tab_bio, tab_methods, tab_agent, tab_evidence, tab_training = st.tabs([
@@ -2177,13 +2179,14 @@ with tab_bio:
     st.warning(
         "本模块输出相对压力与情景对照，不计算死亡率、生物量损失或毒素浓度；现场措施需结合实测DO、鱼群状态、设备能力和管理要求。"
     )
-    st.caption(
-        "架构参考：[Føre等，Computers and Electronics in Agriculture（2024）]"
-        "(https://doi.org/10.1016/j.compag.2024.108676)与"
-        "[Lima等，Open Research Europe（2023）]"
-        "(https://open-research-europe.ec.europa.eu/articles/2-16)。"
-        "文献用于支持“环境—生物状态—运营对照”的结构设计，不构成当前参数的鱼种标定。"
-    )
+    with st.expander("方法与统计口径", expanded=False):
+        st.caption(
+            "架构参考：[Føre等，Computers and Electronics in Agriculture（2024）]"
+            "(https://doi.org/10.1016/j.compag.2024.108676)与"
+            "[Lima等，Open Research Europe（2023）]"
+            "(https://open-research-europe.ec.europa.eu/articles/2-16)。"
+            "文献用于支持“环境—生物状态—运营对照”的结构设计，不构成当前参数的鱼种标定。"
+        )
 
 with tab_methods:
     st.markdown("### 冲击—输运—响应关系")

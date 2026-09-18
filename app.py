@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF2-CARDS-20260918"
+BUILD_ID = "HF2-VISUAL-20260918"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -1826,13 +1826,13 @@ with tab_bio:
         )
         region_profile = BIO_PRODUCTION_REGIONS[selected_bio_region]
         research_plot(
-            production_region_map(production_regions, selected_bio_region),
+            production_region_map(production_regions[production_regions["cage_sandbox"]].copy(), selected_bio_region),
             width="stretch", config={"displayModeBar": False},
         )
-        st.caption(
-            "青色点可进入网箱鱼情景比较；橙色和紫色点用于呈现全球捕捞或贝类生产背景。"
-            "洪堡流和西印度洋不进入网箱鱼模型，仅保留区域背景。"
-        )
+        st.caption("地图与菜单均仅显示可进入网箱鱼沙盘的海区。")
+        with st.expander("全球渔业背景（不进入网箱鱼模拟）"):
+            research_plot(production_region_map(production_regions, selected_bio_region),width="stretch",config={"displayModeBar":False})
+            st.caption("捕捞及贝类区域仅提供背景；没有套用网箱鱼生理参数。")
 
         bio_control, bio_result = st.columns([1.0, 2.15], gap="large")
         with bio_control:
@@ -2264,7 +2264,11 @@ with tab_methods:
             "anomaly_score_7d", "anomaly_score_14d", "anomaly_score_30d",
             "anomaly_score_60d", "multiscale_anomaly_score",
         ]]
-        st.line_chart(anomaly_plot, height=300)
+        anomaly_fig=px.line(anomaly_region_daily,x="date",y="multiscale_anomaly_score",labels={"date":"观测日期","multiscale_anomaly_score":"多尺度异常强度"},color_discrete_sequence=["#128a9b"])
+        marked=anomaly_region_daily[anomaly_region_daily["anomaly_event"].astype(bool)]
+        anomaly_fig.add_scatter(x=marked["date"],y=marked["multiscale_anomaly_score"],mode="markers",name="异常日",marker=dict(color="#d99861",size=6))
+        anomaly_fig.update_layout(height=310,hovermode="x unified",margin=dict(l=10,r=20,t=20,b=20),legend=dict(orientation="h",y=1.1))
+        research_plot(anomaly_fig,width="stretch",config={"displayModeBar":False})
         anomaly_events_display = (
             anomaly_region_events.sort_values("peak_score", ascending=False).head(12).copy()
             if not anomaly_region_events.empty else anomaly_events.head(0).copy()
@@ -2343,7 +2347,8 @@ with tab_methods:
             labels={"lag_days": "时滞（天）", "information_bits": "条件传递熵（bit）", "direction": "路径"},
             color_discrete_sequence=["#1c78c0", "#b8865b"],
         )
-        te_chart.add_vline(x=14, line_dash="dot", line_color="#4d9ce0")
+        te_chart.add_vrect(x0=peak_lag-1.5,x1=peak_lag+1.5,fillcolor="#83cdd2",opacity=.22,line_width=0)
+        te_chart.add_annotation(x=peak_lag,y=float(peak_lag_row["mean_cte_bits"]),text=f"最强信号 · {peak_lag}天",showarrow=True,ay=-35,ax=60,bgcolor="#eef8fb")
         te_chart.update_layout(height=350, margin={"l": 5, "r": 5, "t": 20, "b": 5})
         research_plot(te_chart, width="stretch", config={"displayModeBar": False})
         st.caption(f"当前峰值时滞：{peak_lag}天。14天为合成生成器预设真值，仅用于事后核验。")
@@ -2381,12 +2386,14 @@ with tab_methods:
         effect_plot["影响"] = effect_plot["effect_type"].map({
             "direct": "直接", "indirect": "间接", "total": "总影响"
         })
-        effect_chart = px.bar(
-            effect_plot, x="变量", y="effect_per_1sd", color="影响", barmode="group",
+        effect_chart = px.scatter(
+            effect_plot, y="变量", x="effect_per_1sd", color="影响", symbol="影响",
             labels={"effect_per_1sd": "合成HAB概率变化 / 1 SD"},
             color_discrete_sequence=["#2c83bc", "#e39b47", "#4d9ce0"],
         )
-        effect_chart.update_layout(height=390, margin={"l": 5, "r": 5, "t": 20, "b": 5})
+        effect_chart.update_traces(marker=dict(size=14))
+        effect_chart.add_vline(x=0,line_color="#9bb8c7",line_dash="dot")
+        effect_chart.update_layout(height=320, margin={"l": 5, "r": 5, "t": 20, "b": 5})
         research_plot(effect_chart, width="stretch", config={"displayModeBar": False})
         anomaly_effect_rows = spatial_effects[
             spatial_effects["variable"].eq("multiscale_anomaly_score_lag14")
@@ -2519,6 +2526,10 @@ with tab_agent:
 
     with st.container(border=True, key="research_section_tab_agent_2"):
         st.markdown("#### 完整探索轨迹")
+        trace_fig=px.line(log,x="step",y="pr_auc",markers=True,labels={"step":"实验步","pr_auc":"AP · 越高越好"},color_discrete_sequence=["#15899c"])
+        trace_fig.update_traces(connectgaps=False,marker=dict(size=9),hovertemplate="第%{x}步<br>AP %{y:.3f}<extra></extra>")
+        trace_fig.update_layout(height=300,margin=dict(l=12,r=16,t=20,b=20),showlegend=False)
+        research_plot(trace_fig,width="stretch",config={"displayModeBar":False})
         display = log[[
             "step", "hypothesis", "action_id", "status", "pr_auc", "pr_auc_gain",
             "brier_skill", "ece", "false_positive_rate_at_top20",
@@ -2678,12 +2689,12 @@ with tab_agent:
             chart_data = bench.sort_values("ap", ascending=True).copy()
             st.markdown("##### 模型性能排名")
             st.caption("同一严格留出集上的 Average Precision；所有方法使用完全相同的测试记录与事件。")
-            fig_bench = px.bar(
-                chart_data, x="ap", y="model", color="category", orientation="h",
+            fig_bench = px.scatter(
+                chart_data, x="ap", y="model", color="category",
                 labels={"ap": "Average Precision", "model": "模型", "category": "方法类别"},
-                text_auto=".3f",
+                text="ap",
             )
-            fig_bench.update_traces(textposition="outside", cliponaxis=False)
+            fig_bench.update_traces(marker=dict(size=12),texttemplate="%{x:.3f}",textposition="middle right", cliponaxis=False)
             # Plotly Express按颜色拆成多个trace后可能重新分组；显式固定全局AP排序。
             fig_bench.update_yaxes(
                 categoryorder="array",

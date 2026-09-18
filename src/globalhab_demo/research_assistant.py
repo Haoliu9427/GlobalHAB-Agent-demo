@@ -118,14 +118,35 @@ def execute_task(raw,plan,image_bytes=None,notify=lambda s:None,root=None):
     return dict(events=events,table=table,forecast=forecast,interpretation=interpretation,evidence=evidence,selection=selection,selected=selected,review=review,archive=archive.getvalue())
 
 
+def demonstration_csv():
+    """Reproducible synthetic onboarding data, never presented as field evidence."""
+    rng=np.random.default_rng(9);rows=[]
+    for station in range(4):
+        for i,date in enumerate(pd.date_range('2020-01-01',periods=420)):
+            value=np.sin(i/8+station)+rng.normal(0,.4)
+            rows.append(dict(station_id=str(station),date=str(date.date()),available_at=str(date.date()),latitude=25+station,longitude=120,observed_event=int(value>.5),value=value,source='SYNTHETIC_ONBOARDING_DEMO'))
+    return pd.DataFrame(rows).to_csv(index=False).encode()
+
+
 def render(root):
     st.markdown('### 研究助手')
     st.caption('提出目标 → 检查证据 → 确认方案 → 执行与复核')
+    source_mode=st.radio('从哪里开始？',['使用示例数据','上传自己的数据'],horizontal=True,key='ra_source_mode')
+    demo=source_mode=='使用示例数据'
+    if demo:
+        st.info('无需准备文件：使用4个站点的合成示例，体验完整分析流程。示例结果不代表真实海域性能。')
+    st.caption('①确认目标和时效　②生成并确认计划　③查看结果。照片可不上传。')
     with st.container(border=True):
-        goal=st.text_area('你希望解决什么问题？',placeholder='例如：比较未来7天的站点风险，并结合现场照片确定需要复核的站点。',key='ra_goal')
+        goal=st.text_area('你希望解决什么问题？',placeholder='例如：比较未来7天的站点风险，并结合现场照片确定需要复核的站点。',value='比较站点未来风险，检验模型表现。' if demo else '',key='ra_goal_'+source_mode)
         c1,c2=st.columns(2)
         with c1:
-            upload=st.file_uploader('观测数据 · CSV',type=['csv'],key='ra_data')
+            upload=None
+            if demo:
+                st.markdown('#### 示例已就绪')
+                st.write('4个虚拟站点 · 420天 · 1,680条观测')
+                st.download_button('下载合成示例CSV',demonstration_csv(),file_name='SYNTHETIC_DEMO.csv')
+            else:
+                upload=st.file_uploader('观测数据 · CSV',type=['csv'],key='ra_data')
             st.download_button('下载数据模板',','.join(REQUIRED)+'\n',file_name='observations_template.csv')
         with c2:
             photo=st.file_uploader('现场影像 · 可选',type=['png','jpg','jpeg'],key='ra_image')
@@ -136,10 +157,11 @@ def render(root):
     with c1:horizon=st.selectbox('确认预测时效',[7,14,30],format_func=lambda n:f'{n}天',key='ra_horizon')
     with c2:budget=st.selectbox('最多比较模型数',[2,3],index=1,key='ra_budget')
     with c3:future=st.checkbox('同时预测各站点下一采样时点',key='ra_future')
-    description=st.text_input('事件与变量定义',placeholder='物种、事件阈值，以及value的含义和单位',key='ra_definition')
+    description=st.text_input('事件与变量定义',placeholder='物种、事件阈值，以及value的含义和单位',value='合成演示事件：value为无单位信号，大于0.5记为事件；非真实藻华数据。' if demo else '',key='ra_definition_'+source_mode)
     st.caption('根据数据检查与实验反馈安排下一步；需要指定模型或远程API时，可切换到“自主配置”。')
-    if not upload:return
-    raw=upload.getvalue();image_bytes=photo.getvalue() if photo else None
+    if not demo and not upload:
+        st.info('没有CSV？可切换到使用示例数据。只有照片时，请使用顶部的影像识别工作区。');return
+    raw=demonstration_csv() if demo else upload.getvalue();image_bytes=photo.getvalue() if photo else None
     if image_bytes and len(image_bytes)>15*1024*1024:st.error('影像超过15MB，请缩小后上传。');return
     signature=hashlib.sha256(raw+(image_bytes or b'')+json.dumps([goal,horizon,budget,future,description,station,str(date),surface,VERSION],ensure_ascii=False).encode()).hexdigest()
     if st.button('检查数据并生成计划',type='primary',key='ra_plan'):
@@ -154,7 +176,7 @@ def render(root):
             if parsed['intent']=='历史异常筛查':mode='anomaly';reason='按需求回顾站点历史异常，不执行未来预测。'
             if parsed['requested_horizons'] and parsed['requested_horizons']!=[horizon]:
                 st.error('需求中的时间窗口与所选时效不一致，请调整后重新生成计划。');return
-            st.session_state['ra_plan_record']=(signature,dict(goal=goal,parsed_goal=parsed,description=description,horizon=horizon,budget=budget,future=future,mode=mode,reason=reason,input_sha256=hashlib.sha256(raw).hexdigest(),image_station=station,image_date=str(date),sea_surface=surface,version=VERSION,checks=checks))
+            st.session_state['ra_plan_record']=(signature,dict(data_origin='synthetic_demo' if demo else 'user_upload',goal=goal,parsed_goal=parsed,description=description,horizon=horizon,budget=budget,future=future,mode=mode,reason=reason,input_sha256=hashlib.sha256(raw).hexdigest(),image_station=station,image_date=str(date),sea_surface=surface,version=VERSION,checks=checks))
         except Exception as exc:st.error(str(exc))
     saved=st.session_state.get('ra_plan_record')
     if not saved or saved[0]!=signature:
@@ -177,6 +199,7 @@ def render(root):
     result=st.session_state.get('ra_result')
     if not result or result[0]!=signature:return
     r=result[1]
+    if demo:st.warning('以下为合成示例运行结果，仅供体验流程。')
     tabs=st.tabs(['分析结论','执行轨迹','多模态证据'])
     with tabs[0]:
         st.write(r['interpretation'])

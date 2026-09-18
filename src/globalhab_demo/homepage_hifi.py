@@ -292,7 +292,7 @@ def _agent_trace_figure(root: Path) -> go.Figure:
         )
     fig.update_xaxes(title="试验步", dtick=1)
     fig.update_yaxes(title="Average Precision (AP)", rangemode="tozero")
-    return _base_layout(fig, height=230, showlegend=False)
+    return _base_layout(fig, height=265, showlegend=False)
 
 
 def _sa_site_heatmap(root: Path) -> go.Figure:
@@ -405,7 +405,7 @@ def _evidence_matrix(root: Path) -> go.Figure:
     ))
     fig.update_xaxes(side="top", showgrid=False, tickfont=dict(size=9))
     fig.update_yaxes(autorange="reversed", showgrid=False, tickfont=dict(size=9))
-    return _base_layout(fig, height=230, showlegend=False)
+    return _base_layout(fig, height=265, showlegend=False)
 
 
 def _norway_heatmap(root: Path) -> go.Figure:
@@ -497,7 +497,7 @@ def render(root: Any) -> None:
         [data-testid="stSidebarCollapsedControl"] {display:none !important;}
         [data-testid="stAppViewContainer"] > .main {margin-left:0 !important;}
         </style>
-        <div id="globalhab-build-hf2" data-build="HF2-CARDS-20260918"></div>
+        <div id="globalhab-build-hf2" data-build="HF2-VISUAL-20260918"></div>
         """,
         unsafe_allow_html=True,
     )
@@ -514,20 +514,22 @@ def render(root: Any) -> None:
         unsafe_allow_html=True,
     )
 
-    c1, c2, c3 = st.columns([1.0, 1.07, 1.17], gap="medium")
+    c1, c2, c3 = st.columns(3, gap="medium")
     with c1:
         with st.container(key="hf_agent_panel"):
             _panel_header("Agent探索轨迹", section="探索与验证")
             st.plotly_chart(_agent_trace_figure(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_agent_chart")
+            st.caption("合成实验 · 每个点代表一次试验")
     with c2:
         with st.container(key="hf_sa_panel"):
             _panel_header("南澳真实事件回放", section="真实事件回放")
             st.plotly_chart(_sa_site_heatmap(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_sa_chart")
-            st.markdown('<div class="sa-key"><i></i>灰格：无有效记录　<span>浅绿：记录值为0</span><br>浓度单位：细胞/升 · 对数色阶；站点及日期为展示子集。</div>',unsafe_allow_html=True)
+            st.caption("灰：缺测 · 浅绿：0 · 细胞/升（对数）")
     with c3:
         with st.container(key="hf_evidence_panel"):
             _panel_header("环境因子与迁移验证", section="科学解释")
-            st.markdown(_evidence_summary_html(root), unsafe_allow_html=True)
+            st.plotly_chart(_evidence_figure(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_evidence_visual")
+            st.caption("不同指标分别读图 · 悬停查看含义")
 
     _render_china_panel(root)
 
@@ -578,3 +580,30 @@ def _evidence_summary_html(root: Path) -> str:
     if norway:
         cards.append(f'<div class="evidence-note"><span>真实数据验证 · 挪威</span><b>AP {float(norway["model_average_precision"]):.3f} <small>参考模型 {float(norway["reference_average_precision"]):.3f}</small></b><p>AP衡量风险排序，越高越好；不等于准确率。</p></div>')
     return '<div class="evidence-notes">'+''.join(cards)+'</div>'
+
+
+def _evidence_figure(root):
+    from plotly.subplots import make_subplots
+    lag=_read_csv(root/'outputs/te_cte_lag_summary.csv')
+    spatial=_read_csv(root/'outputs/spatial_durbin_effects.csv')
+    norway=_read_json(root/'outputs/norway_forward_benchmark_card.json')
+    fig=make_subplots(rows=3,cols=1,vertical_spacing=.22,subplot_titles=['传播方向 · 合成实验（bit）','邻区关联 · 合成实验（百分点）','风险排序 · 挪威真实验证（AP）'])
+    if not lag.empty:
+        r=lag.loc[lag.mean_cte_bits.idxmax()]
+        fig.add_trace(go.Bar(x=[r.mean_cte_bits,r.mean_reverse_cte_bits],y=['顺流','反向'],orientation='h',marker_color=['#168a9b','#bad6e3'],text=[f'{r.mean_cte_bits:.3f}',f'{r.mean_reverse_cte_bits:.3f}'],textposition='outside',cliponaxis=False,hovertemplate=f'时滞{int(r.lag_days)}天 · %{{y}}<br>条件信息量 %{{x:.3f}} bit；不是准确率<extra></extra>'),row=1,col=1)
+        fig.update_xaxes(range=[0,max(r.mean_cte_bits,r.mean_reverse_cte_bits)*1.45],row=1,col=1)
+    labels=[];values=[]
+    for code,label in [('multiscale_anomaly_score_lag14','异常'),('nutrient_context','营养'),('circulation_residence_proxy','输运')]:
+        q=spatial[(spatial.variable==code)&(spatial.effect_type=='indirect')]
+        if len(q):labels.append(label);values.append(float(q.iloc[0].effect_per_1sd)*100)
+    fig.add_trace(go.Bar(x=values,y=labels,orientation='h',marker_color=['#269bad' if v>=0 else '#d49562' for v in values],text=[f'{v:+.1f}' for v in values],textposition='outside',cliponaxis=False,hovertemplate='%{y}<br>每1标准差输入变化，对应模型概率间接关联 %{x:.1f} 个百分点<br>不是实测因果效应<extra></extra>'),row=2,col=1)
+    if values:fig.update_xaxes(range=[min(-1,min(values)*1.65),max(1,max(values)*1.4)],row=2,col=1)
+    if norway:
+        v=[norway['model_average_precision'],norway['reference_average_precision']]
+        fig.add_trace(go.Bar(x=v,y=['模型','参考'],orientation='h',marker_color=['#168a9b','#bad6e3'],text=[f'{x:.3f}' for x in v],textposition='outside',cliponaxis=False,hovertemplate='%{y} AP %{x:.3f}<br>风险排序指标，越高越好；不等于准确率<extra></extra>'),row=3,col=1)
+        fig.update_xaxes(range=[0,max(v)*1.5],row=3,col=1)
+    fig.update_layout(height=265,margin=dict(l=38,r=38,t=27,b=5),showlegend=False,bargap=.35,font=dict(size=10),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+    fig.update_annotations(font_size=11,x=0,xanchor='left')
+    fig.update_xaxes(showticklabels=False,showgrid=False,zeroline=True,zerolinecolor='#aac1ca')
+    fig.update_yaxes(autorange='reversed',showgrid=False,tickfont_size=10)
+    return fig

@@ -202,3 +202,12 @@ a.hf-workspace-node{text-decoration:none!important;transition:background .15s,bo
 [class*="st-key-research_section_"]{padding:20px!important;background:#fff!important;border:1px solid #dbe9f1!important;border-radius:16px!important;box-shadow:0 4px 16px #183d5507;margin:8px 0 18px!important;}
 [class*="st-key-research_section_"] [data-testid="stVerticalBlockBorderWrapper"]{border-radius:12px;}
 @media(max-width:900px){.hf-upper-grid{grid-template-columns:1fr;}.hf-sector-panel{min-height:320px!important;}.hf-research-wheel{height:290px;}}
+/* Equal overview panels: fixed chart canvases, captions kept inside cards. */
+.st-key-hf_agent_panel,.st-key-hf_sa_panel,.st-key-hf_evidence_panel{box-sizing:border-box!important;height:350px!important;min-height:350px!important;max-height:none!important;overflow:visible!important;padding:12px 14px!important;}
+.st-key-hf_agent_panel [data-testid="stCaptionContainer"],.st-key-hf_evidence_panel [data-testid="stCaptionContainer"],.sa-key{font-size:10px!important;line-height:16px!important;margin:0!important;padding:0!important;}
+.hf-viz-title{height:28px!important;flex-shrink:0;}.hf-viz-title b{font-size:15px!important;}
+.st-key-llm_source_card,.st-key-llm_mode_card,.st-key-llm_service_card{height:auto!important;min-height:0!important;width:100%!important;background:#fff!important;padding:18px 22px!important;border:1px solid #dce9f1!important;border-radius:14px!important;box-sizing:border-box!important;}
+.llm-source-flex-gap,.llm-mode-flex-gap{display:none!important;}
+@media(max-width:800px){.hf-viz-title b{font-size:14px!important;}}
+.st-key-hf_agent_panel,.st-key-hf_sa_panel,.st-key-hf_evidence_panel{height:380px!important;min-height:380px!important;flex-shrink:0!important;}
+.st-key-llm_source_card [data-testid="stVerticalBlock"],.st-key-llm_mode_card [data-testid="stVerticalBlock"]{gap:12px!important;}

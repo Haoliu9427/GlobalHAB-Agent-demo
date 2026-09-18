@@ -70,6 +70,12 @@ def render(root):
     with views[1]:
         values=pd.read_csv(folder/'stability.csv');model=st.selectbox('查看模型',sorted(values.model.unique()),format_func=lambda n:{'Chronos':'Chronos-Bolt-small','Chronos+EcoFusion':'Chronos-Bolt-small + EcoFusion'}.get(n,n),key='real_stability_model')
         shown=values[values.model==model].copy();shown['model']=shown['model'].replace({'Chronos':'Chronos-Bolt-small','Chronos+EcoFusion':'Chronos-Bolt-small + EcoFusion'})
+        if 'year' in shown.columns and 'AP' in shown.columns:
+            trend=shown[shown['split']==splitname].groupby('year',as_index=False).agg(AP=('AP','mean'),AP_std=('AP','std'))
+            if not trend.empty:
+                trend_fig=px.line(trend,x='year',y='AP',error_y='AP_std',markers=True,labels={'year':'测试年份','AP':'AP · 越高越好'},color_discrete_sequence=['#12889c'])
+                trend_fig.update_layout(height=300,showlegend=False)
+                research_plot(trend_fig,use_container_width=True)
         research_table(shown,hide_index=True,use_container_width=True)
         st.caption('missing20与noise01为人为输入扰动；observed_high_temperature为训练温度90分位以上的实测子集，并非所有极端天气。')
     with views[2]:

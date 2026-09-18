@@ -354,9 +354,9 @@ def render(root: Path) -> None:
         kicker="Result interpretation",
     )
 
-    source_col, mode_col = st.columns([1, 1], gap="large")
-    with source_col, st.container(border=False, key="llm_source_card"):
-        st.markdown("### 选择要解读的结果")
+    source_col, mode_col = st.container(), st.container()
+    with source_col, st.container(border=True, key="llm_source_card"):
+        st.markdown("### 1 · 选择结果")
         pending_source = st.session_state.pop("_llm_source_jump", None)
         if pending_source in BUILTIN_SOURCES:
             st.session_state["llm_result_source"] = pending_source
@@ -450,9 +450,9 @@ def render(root: Path) -> None:
         st.markdown('<div class="llm-source-flex-gap"></div>', unsafe_allow_html=True)
         st.markdown('<div class="compact-card-footer">远程发送前仍需明确授权；摘要上限45,000字符。</div>', unsafe_allow_html=True)
 
-    with mode_col, st.container(border=False, key="llm_mode_card"):
-        st.markdown("### 解读方式")
-        mode = st.radio("输出风格", list(INTERPRETATION_MODES), key="llm_interpret_mode")
+    with mode_col, st.container(border=True, key="llm_mode_card"):
+        st.markdown("### 2 · 设置解读")
+        mode = st.radio("输出风格", list(INTERPRETATION_MODES), horizontal=True, key="llm_interpret_mode")
         st.markdown('<div class="llm-mode-flex-gap"></div>', unsafe_allow_html=True)
         set_a, set_b = st.columns(2, gap="small")
         with set_a:

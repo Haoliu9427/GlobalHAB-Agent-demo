@@ -48,14 +48,14 @@ def test_batch_review_and_case_lifecycle_ui_present():
     assert "永久删除Case" in app
     assert "取消复核" in app and "归档" in app
     assert "登记并处理下一个" in field
-    assert "待复核任务队列" in field
+    assert "待复核任务（" in field
 
 
 def test_visual_workspace_tabs_and_learning_cards_are_consistent():
     field = FIELD.read_text(encoding="utf-8")
     learning = (ROOT / "src" / "globalhab_demo" / "visual_learning.py").read_text(encoding="utf-8")
     css = (ROOT / "assets" / "interface.css").read_text(encoding="utf-8")
-    assert '"现场影像甄别"' in field and '"我的影像数据"' in field and '"模型训练与版本"' in field
+    assert '"影像甄别"' in field and '"影像数据"' in field and '"模型版本"' in field
     assert '① 现场影像甄别' not in field
     assert '② 我的影像数据' not in field
     assert '③ 模型训练与版本' not in field
@@ -85,8 +85,9 @@ def test_workspace_copy_and_balanced_card_layout_regression():
     css = (ROOT / "assets" / "interface.css").read_text(encoding="utf-8")
     assert "### 01 · 拍照或上传" not in field
     assert "### 02 · 现场信息" not in field
-    assert "### 拍照或上传" in field
-    assert "### 现场信息" in field
+    assert "### 上传海面影像" in field
+    assert "#### 1 · 选择影像" in field
+    assert "#### 2 · 现场信息" in field
     assert "科学边界：照片用于水色、浑浊、泡沫/漂浮物等视觉现象筛查与复核优先级" not in field
     assert 'render_workspace_header(' in llm
     assert '"大模型结果解读"' in llm
@@ -120,7 +121,7 @@ def test_content_density_and_user_facing_llm_prompt_examples():
     assert "请指出最值得进一步复核的证据" in llm
     assert "摘要预览" in llm
     assert "下载摘要" in llm
-    assert "compact-card-footer" in llm
+    assert "### 3 · 生成解读" in llm
     assert "字段与数据要求" in workbench
     assert "本次分析说明" in workbench
     assert "远程调用与隐私说明" in workbench
@@ -151,7 +152,7 @@ def test_parent_owned_equal_height_cards_and_content_fill():
     assert 'st.container(border=False, key="llm_source_card")' in llm
     assert 'st.container(border=False, key="llm_mode_card")' in llm
     assert "compact-card-footer" in workbench
-    assert "compact-card-footer" in llm
+    assert "### 1 · 选择结果" in llm and "### 2 · 设置输出" in llm
     assert '[data-testid="stColumn"]:has(.st-key-obs_upload_card)' in css
     assert '[data-testid="stColumn"]:has(.st-key-llm_source_card)' in css
     assert 'compact balanced cards' in css
@@ -165,7 +166,7 @@ def test_compact_balanced_copy_and_no_oversized_final_floor():
     # Main cards stay concise; detailed guidance moves into collapsed expanders.
     assert "字段与数据要求" in workbench
     assert "本次分析说明" in workbench
-    assert "查看完整结果摘要" in llm
+    assert "预览与下载摘要" in llm
     assert 'expanded=False' in llm
     assert "#### 当前输入" not in llm
     assert "#### 发送设置" not in llm
@@ -192,10 +193,10 @@ def test_remote_service_defaults_and_bottom_run_alignment_regression():
 def test_llm_source_card_uses_space_for_summary_preview_regression():
     llm = LLM.read_text(encoding="utf-8")
     assert 'height=105' in llm
-    assert '查看完整结果摘要' in llm
-    assert '摘要预览（只读）' in llm
+    assert '预览与下载摘要' in llm
+    assert '摘要预览' in llm
     assert 'preview = summary[:600]' in llm
-    assert 'llm-source-flex-gap' in llm
+    assert 'expanded=False' in llm
 
 
 def test_final_symmetric_spacing_and_always_clickable_remote_test():
@@ -207,7 +208,7 @@ def test_final_symmetric_spacing_and_always_clickable_remote_test():
     assert 'pair-status-grid' in workbench
     assert all(x in workbench for x in ['obs_service_top_zone','obs_service_middle_zone','obs_service_bottom_zone'])
     assert 'user_run_zone' in workbench
-    assert llm.count('llm-source-flex-gap') >= 3
+    assert 'with st.expander("预览与下载摘要", expanded=False)' in llm
     assert 'height=105' in llm
     assert '.pair-card-spacer' in css
     assert 'justify-content:space-between!important;' in css
@@ -225,8 +226,8 @@ def test_remote_pair_uses_three_layer_symmetric_layout():
     assert workbench.count('pair-card-spacer') == 0
     assert '连接状态' in workbench and '当前模型' in workbench
     assert all(x in workbench for x in ['验证方式','模型数','预测时效','训练预算'])
-    assert llm.count('llm-mode-flex-gap') >= 4
-    assert llm.count('llm-source-flex-gap') >= 3
+    assert 'with st.expander("更多输出设置", expanded=False)' in llm
+    assert 'with st.expander("连接服务与发送授权", expanded=False)' in llm
     assert 'height=105' in llm
     assert 'preview = summary[:600]' in llm
     assert ':has(.llm-mode-flex-gap)' in css

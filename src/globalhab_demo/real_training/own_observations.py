@@ -138,5 +138,35 @@ def execute(content,selected,horizon=7,description='',epochs=20,notify=lambda x:
         return table,manifest,buffer.getvalue()
 
 def render():
+    import streamlit as st
     from .user_workbench import render as workbench
+
+    # Keep the dense model workbench one deliberate step away from the
+    # workspace landing view.  The underlying workbench and all of its model,
+    # validation, export and remote-service controls remain unchanged.
+    if not st.session_state.get("own_observations_workspace_open", False):
+        st.markdown("### 上传观测，完成一次独立验证")
+        st.caption("准备一份带时间、站点和事件标签的 CSV；系统会先检查数据，再比较模型并生成可下载结果。")
+        summary = st.columns(3)
+        summary[0].metric("输入", "现场观测 CSV")
+        summary[1].metric("验证", "时间与空间留出")
+        summary[2].metric("输出", "指标与结果包")
+        if st.button(
+            "开始分析",
+            type="primary",
+            use_container_width=True,
+            key="open_own_observations_workspace",
+        ):
+            st.session_state["own_observations_workspace_open"] = True
+            st.rerun()
+        with st.expander("上传前检查", expanded=False):
+            st.write("必需字段：station_id、date、available_at、latitude、longitude、observed_event、value、source。")
+            st.write("请先确认事件阈值和 value 的含义；环境变量可以留作可选字段。")
+        return
+
+    top_left, top_right = st.columns([5, 1])
+    top_left.caption("按“数据 → 任务 → 模型 → 运行”的顺序完成设置。")
+    if top_right.button("收起工作台", use_container_width=True, key="close_own_observations_workspace"):
+        st.session_state["own_observations_workspace_open"] = False
+        st.rerun()
     workbench()

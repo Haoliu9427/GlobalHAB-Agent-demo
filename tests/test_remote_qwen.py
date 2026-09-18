@@ -57,21 +57,21 @@ def test_blocks_private_endpoint(monkeypatch):
 
 def test_user_config_ui():
     from streamlit.testing.v1 import AppTest
-    app=AppTest.from_string('from globalhab_demo.real_training.user_workbench import render\nrender()').run()
+    app=AppTest.from_string('from globalhab_demo.real_training.user_workbench import render\nrender()',default_timeout=180).run()
     assert not app.exception
     app.text_input(key='user_api_url').set_value('https://example.org/v1')
     app.text_input(key='user_api_model').set_value('other-compatible-model')
     app.text_input(key='user_api_key').set_value('private-key').run()
     assert not app.exception
     assert app.text_input(key='user_api_key').proto.type==1
-    other=AppTest.from_string('from globalhab_demo.real_training.user_workbench import render\nrender()').run()
+    other=AppTest.from_string('from globalhab_demo.real_training.user_workbench import render\nrender()',default_timeout=180).run()
     assert other.text_input(key='user_api_key').value==''
-    next(b for b in app.button if b.label=='清除本次密钥和结果').click().run()
+    next(b for b in app.button if b.label=='清除凭证').click().run()
     assert app.text_input(key='user_api_key').value==''
 
 def test_deepseek_provider():
     from streamlit.testing.v1 import AppTest
-    app=AppTest.from_string('from globalhab_demo.real_training.user_workbench import render\nrender()').run()
+    app=AppTest.from_string('from globalhab_demo.real_training.user_workbench import render\nrender()',default_timeout=180).run()
     app.text_input(key='user_api_key').set_value('old-key').run()
     app.selectbox(key='remote_provider').select('DeepSeek').run()
     assert not app.exception

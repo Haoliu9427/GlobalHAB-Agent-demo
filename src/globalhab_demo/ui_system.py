@@ -5,6 +5,7 @@ model routing, evidence states or validation logic.
 """
 from __future__ import annotations
 
+from html import escape
 from typing import Iterable
 
 import plotly.express as px
@@ -58,53 +59,131 @@ def install_plotly_theme() -> None:
     px.defaults.color_continuous_scale = ["#EFF7FE", "#C9E6F8", "#78BCE5", "#1C78C0"]
 
 
-_CONTROL_PANEL = None
+def render_top_navigation(options: Iterable[str]) -> str:
+    """Render a button-based product header and return the selected workspace.
 
-def get_control_panel():
-    return _CONTROL_PANEL
-
-
-def render_top_navigation(options):
+    Buttons are used instead of ``st.radio`` so the navigation does not expose
+    browser- or Streamlit-version-specific radio circles. This makes the live
+    application match the approved dashboard composition more reliably.
+    """
     import streamlit as st
-    from urllib.parse import quote
-    from html import escape
-    global _CONTROL_PANEL
-    options=list(options)
-    requested=st.query_params.get("workspace")
-    query=st.query_params.get("search", "").strip()
-    if query:
-        matches=[v for v in options if query.lower() in v.lower()]
-        if matches:requested=matches[0]
-        del st.query_params["search"]
-        if not matches:st.session_state["nav_search_note"]="未找到工作区，请输入：总览、研究、数据、影像或解读。"
-    pending=st.session_state.pop("_workspace_jump",None)
-    if requested in options:
-        pending=requested
-        if "workspace" in st.query_params:del st.query_params["workspace"]
-    if pending in options:st.session_state["workspace_mode"]=pending
-    current=st.session_state.setdefault("workspace_mode",options[0])
-    if current not in options:current=options[0]
-    section=st.query_params.get("section")
-    if section:
-        st.session_state["research_section"]=section
-        del st.query_params["section"]
-    icons=["▣","▤","▥","▧","☼"]
-    links=''.join(f'<a class="nav-link {"active" if v==current else ""}" href="?workspace={quote(v)}" target="_self">{icon} &nbsp;{escape(v)}</a>' for v,icon in zip(options,icons))
-    st.markdown(f'''<header class="ocean-product-nav"><a class="ocean-brand" href="?workspace={quote(options[0])}" target="_self"><svg viewBox="0 0 42 42"><path d="M3 16c12 0 14-15 27-11M3 23c14 0 17-18 34-11M3 30c15 0 17-15 34-13M9 35c12 0 16-10 26-12"/></svg><span><b>GlobalHAB-Agent</b><small>从多源观测到可审计风险研判的科学 Agent</small></span></a><nav>{links}</nav><form class="ocean-nav-search" method="get"><input name="search" placeholder="搜索工作区…" aria-label="搜索工作区"/><button type="submit" aria-label="搜索">⌕</button></form><div class="ocean-nav-end"><span>DATA<br>SCIENCE<br>FOR A HEALTHY OCEAN</span></div></header>''',unsafe_allow_html=True)
-    def choose(value):
-        st.session_state["workspace_mode"]=value
-    with st.container(key="workspace_buttons"):
-        columns=st.columns(len(options), gap="small")
-        for i,(col,value) in enumerate(zip(columns,options)):
+
+    options = list(options)
+    pending = st.session_state.pop("_workspace_jump", None)
+    if pending in options:
+        st.session_state["workspace_mode"] = pending
+    if st.session_state.get("workspace_mode") not in options:
+        st.session_state["workspace_mode"] = options[0]
+
+    current = st.session_state["workspace_mode"]
+    labels = {
+        "项目总览": "▣  项目总览",
+        "研究与验证": "▤  研究与验证",
+        "自有数据分析": "▥  自有数据分析",
+        "现场影像甄别": "▧  现场影像甄别",
+        "大模型结果解读": "✺  大模型结果解读",
+    }
+    nav_keys = {
+        "项目总览": "nav_home",
+        "研究与验证": "nav_research",
+        "自有数据分析": "nav_data",
+        "现场影像甄别": "nav_visual",
+        "大模型结果解读": "nav_llm",
+    }
+
+    def _select_workspace(value: str) -> None:
+        st.session_state["workspace_mode"] = value
+
+    with st.container(key="global_top_nav"):
+        cols = st.columns(
+            [2.10, .74, .92, .96, 1.02, 1.08, 2.25],
+            gap="small",
+            vertical_alignment="center",
+            wrap=False,
+        )
+        with cols[0]:
+            st.markdown(
+                """
+                <div class="top-brand-wrap">
+                  <div class="top-brand-mark" aria-hidden="true">
+                    <svg viewBox="0 0 42 42" role="img">
+                      <path d="M4 15c7 0 7-7 14-7s7 7 14 7 7-7 7-7"/>
+                      <path d="M4 22c7 0 7-7 14-7s7 7 14 7 7-7 7-7"/>
+                      <path d="M4 29c7 0 7-7 14-7s7 7 14 7 7-7 7-7"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="top-brand-title">GlobalHAB-Agent</div>
+                    <div class="top-brand-sub">从多源观测到可审计风险研判的科学 Agent</div>
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        for col, value in zip(cols[1:6], options):
             with col:
-                st.button(icons[i]+"  "+value,key="header_workspace_"+str(i),on_click=choose,args=(value,),use_container_width=True)
-    active=options.index(current)
-    st.markdown(f"<style>.st-key-workspace_buttons .st-key-header_workspace_{active} button {{background:#0879c7!important;color:#fff!important;}} .st-key-workspace_buttons .st-key-header_workspace_{active} button p {{color:#fff!important;}}</style>",unsafe_allow_html=True)
-    with st.container(key="top_controls"):
-        _CONTROL_PANEL=st.popover("⚙",help="地图、Case与运行参数")
-    if st.session_state.get("nav_search_note"):
-        st.caption(st.session_state.pop("nav_search_note"))
-    return current
+                st.button(
+                    labels.get(value, value),
+                    key=nav_keys[value],
+                    use_container_width=True,
+                    on_click=_select_workspace,
+                    args=(value,),
+                )
+        with cols[6]:
+            st.markdown(
+                """
+                <div class="top-utility-wrap" aria-label="全局工具">
+                  <div class="top-search-visual" aria-label="搜索案例、区域或时间（展示）">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="10.8" cy="10.8" r="5.8"></circle>
+                      <path d="m15.2 15.2 4.1 4.1"></path>
+                    </svg>
+                    <span>搜索案例、区域或时间…</span>
+                  </div>
+                  <span class="top-utility-icon top-notification" aria-label="通知">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M6.8 17.2h10.4l-1.3-1.8v-4.1a3.9 3.9 0 0 0-7.8 0v4.1z"></path>
+                      <path d="M10.3 19.1a1.9 1.9 0 0 0 3.4 0"></path>
+                    </svg>
+                    <i aria-hidden="true"></i>
+                  </span>
+                  <span class="top-utility-icon" aria-label="用户中心">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="12" cy="8.2" r="3.2"></circle>
+                      <path d="M5.8 19c.6-3.2 2.7-5 6.2-5s5.6 1.8 6.2 5"></path>
+                    </svg>
+                  </span>
+                  <div class="top-brand-side"><strong>DATA SCIENCE</strong><span>FOR A HEALTHY OCEAN</span></div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    active_key = nav_keys[current]
+    st.markdown(
+        f"""
+        <style>
+        html body [data-testid="stAppViewContainer"] .st-key-global_top_nav
+        .st-key-{active_key} .stButton button {{
+          background:#1677c5 !important;
+          border-color:#1677c5 !important;
+          color:#fff !important;
+          box-shadow:0 2px 6px rgba(29,121,197,.16) !important;
+        }}
+        html body [data-testid="stAppViewContainer"] .st-key-global_top_nav
+        .st-key-{active_key} .stButton button:hover {{
+          background:#116bb2 !important;
+          border-color:#116bb2 !important;
+          color:#fff !important;
+        }}
+        html body [data-testid="stAppViewContainer"] .st-key-global_top_nav
+        .st-key-{active_key} .stButton button p {{color:#fff !important;}}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    return st.session_state["workspace_mode"]
+
 
 def render_workspace_header(title: str, subtitle: str, *, kicker: str = "GlobalHAB-Agent") -> None:
     """Render the light workspace header used outside the homepage."""
@@ -114,9 +193,9 @@ def render_workspace_header(title: str, subtitle: str, *, kicker: str = "GlobalH
         f"""
         <section class="workspace-header">
           <div class="workspace-header-copy">
-            <div class="workspace-kicker">{kicker}</div>
-            <h1>{title}</h1>
-            <p>{subtitle}</p>
+            <div class="workspace-kicker">{escape(str(kicker))}</div>
+            <h1>{escape(str(title))}</h1>
+            <p>{escape(str(subtitle))}</p>
           </div>
           <div class="workspace-header-ocean" aria-hidden="true">
             <span></span><span></span><span></span>

@@ -350,13 +350,13 @@ def render(root: Path) -> None:
     from globalhab_demo.ui_system import render_workspace_header
     render_workspace_header(
         "大模型结果解读",
-        "选择结果 · 连接模型 · 生成解读",
+        "选择已有结果，生成结构化科学说明",
         kicker="Result interpretation",
     )
 
     source_col, mode_col = st.columns([1, 1], gap="large")
     with source_col, st.container(border=False, key="llm_source_card"):
-        st.markdown("### 选择要解读的结果")
+        st.markdown("### 1 · 选择结果")
         pending_source = st.session_state.pop("_llm_source_jump", None)
         if pending_source in BUILTIN_SOURCES:
             st.session_state["llm_result_source"] = pending_source
@@ -419,21 +419,16 @@ def render(root: Path) -> None:
         }
         scope = scope_labels.get(source, "结构化结果")
         meta_a, meta_b = st.columns(2, gap="small")
-        with meta_a:
-            st.caption("证据范围")
-            st.markdown(f"**{scope}**")
-        with meta_b:
-            st.caption("摘要规模")
-            st.markdown(f"**{len(summary):,} 字符**" if summary else "**等待结果**")
-        st.markdown('<div class="llm-source-flex-gap"></div>', unsafe_allow_html=True)
-        with st.expander("查看完整结果摘要", expanded=False):
+        meta_a.metric("证据范围", scope)
+        meta_b.metric("摘要", f"{len(summary):,} 字符" if summary else "等待结果")
+        with st.expander("预览与下载摘要", expanded=False):
+            preview = summary[:600].strip() if summary else "当前来源尚未生成可用摘要。"
+            st.text_area("摘要预览", value=preview, height=105, disabled=True, label_visibility="collapsed")
             if summary:
                 st.text(summary[:50000])
                 st.caption(f"摘要字符数：{len(summary):,}。大模型最多接收前45,000字符。")
             else:
                 st.info("请选择可用结果，或上传一个结果文件。")
-        action_a, action_b = st.columns(2, gap="small")
-        with action_a:
             if summary:
                 st.download_button(
                     "下载摘要",
@@ -445,48 +440,38 @@ def render(root: Path) -> None:
                 )
             else:
                 st.button("下载摘要", disabled=True, use_container_width=True, key="llm_summary_download_disabled")
-        with action_b:
-            st.button("原始文件默认不发送", disabled=True, use_container_width=True, key="llm_source_privacy_status")
-        st.markdown('<div class="llm-source-flex-gap"></div>', unsafe_allow_html=True)
-        st.markdown('<div class="compact-card-footer">远程发送前仍需明确授权；摘要上限45,000字符。</div>', unsafe_allow_html=True)
+            st.caption("原始文件默认不发送；远程发送摘要前仍需明确授权。")
 
     with mode_col, st.container(border=False, key="llm_mode_card"):
-        st.markdown("### 解读方式")
+        st.markdown("### 2 · 设置输出")
         mode = st.radio("输出风格", list(INTERPRETATION_MODES), key="llm_interpret_mode")
-        st.markdown('<div class="llm-mode-flex-gap"></div>', unsafe_allow_html=True)
-        set_a, set_b = st.columns(2, gap="small")
-        with set_a:
-            output_length = st.selectbox(
-                "输出长度",
-                ["精简", "标准（推荐）", "详细"],
-                index=1,
-                key="llm_output_length",
-            )
-        with set_b:
+        output_length = st.selectbox(
+            "输出长度",
+            ["精简", "标准（推荐）", "详细"],
+            index=1,
+            key="llm_output_length",
+        )
+        with st.expander("更多输出设置", expanded=False):
             include_number_checklist = st.checkbox(
                 "关键数字核对",
                 value=True,
                 key="llm_number_checklist",
                 help="在结果末尾列出关键数字及含义。",
             )
-        st.markdown('<div class="llm-mode-flex-gap"></div>', unsafe_allow_html=True)
-        focus_items = st.multiselect(
-            "重点关注",
-            ["核心信号", "证据一致性", "不确定性", "下一步复核"],
-            default=["核心信号", "证据一致性", "不确定性", "下一步复核"],
-            key="llm_focus_items",
-        )
-        st.markdown('<div class="llm-mode-flex-gap"></div>', unsafe_allow_html=True)
-        question = st.text_area(
-            "补充问题（可选）",
-            placeholder="例如：请指出最值得进一步复核的证据。",
-            max_chars=800,
-            height=100,
-            key="llm_interpret_question",
-        )
-        st.caption("输出：核心结论 · 证据边界 · 下一步建议。")
-        st.markdown('<div class="llm-mode-flex-gap"></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="compact-card-footer">当前：{mode} · {output_length} · 重点{len(focus_items)}项。</div>', unsafe_allow_html=True)
+            focus_items = st.multiselect(
+                "重点关注",
+                ["核心信号", "证据一致性", "不确定性", "下一步复核"],
+                default=["核心信号", "证据一致性", "不确定性", "下一步复核"],
+                key="llm_focus_items",
+            )
+            question = st.text_area(
+                "补充问题（可选）",
+                placeholder="例如：请指出最值得进一步复核的证据。",
+                max_chars=800,
+                height=100,
+                key="llm_interpret_question",
+            )
+        st.caption(f"{mode} · {output_length} · 聚焦 {len(focus_items)} 项")
 
     def clear_credentials() -> None:
         for key in ["llm_api_key", "llm_api_model", "llm_api_url"]:
@@ -505,9 +490,8 @@ def render(root: Path) -> None:
         st.session_state.pop("llm_discovered_model", None)
         st.session_state.pop("llm_interpretation", None)
 
-    with st.container(border=True, key="llm_service_card"):
-        st.markdown("### 大模型服务")
-        st.caption("支持DeepSeek、Qwen及其他Chat Completions兼容服务。API Key仅保存在当前Streamlit会话内存。")
+    with st.expander("连接服务与发送授权", expanded=False):
+        st.caption("支持 DeepSeek、Qwen 及其他兼容服务；API Key 仅保存在当前会话。")
         cfg_source = st.radio("服务配置来源", ["自行填写", "使用服务器配置"], horizontal=True, key="llm_remote_mode")
         if cfg_source == "自行填写":
             provider = st.selectbox("模型服务", ["自定义兼容服务", "DeepSeek", "Qwen"], key="llm_provider", on_change=change_provider)
@@ -553,7 +537,7 @@ def render(root: Path) -> None:
                 help="DeepSeek V4 默认开启思考模式。稳定解读会显式关闭思考，避免推理内容占满输出预算后最终回答为空；需要更强推理时可选择低/高强度。",
             )
             thinking_mode = {"稳定解读（推荐）": "stable", "低强度思考": "low", "高强度思考": "high"}[thinking_label]
-            st.caption("DeepSeek默认采用稳定解读：只读取最终可见回答，不把reasoning_content当作结果。若思考模式未生成最终回答，系统会自动以稳定模式重试一次。")
+            st.caption("稳定模式只读取最终可见回答；必要时系统会自动重试一次。")
 
         missing_fields = []
         if not remote.get("base_url"):
@@ -584,8 +568,7 @@ def render(root: Path) -> None:
         if st.session_state.get("llm_model_list"):
             st.caption("服务返回模型：" + "、".join(map(str, st.session_state["llm_model_list"])))
         consent = st.checkbox("允许把上方结果摘要发送给远程大模型", key="llm_interpret_consent")
-        with st.expander("方法与统计口径", expanded=False):
-            st.caption("项目内置结果、最近一次自有数据和现场影像甄别只发送结构化摘要；现场照片本身不会发送，也不会发送完整原始CSV或API Key。若你主动上传结果文件，其摘要中显示的字段和前20行会随请求发送；请先移除不希望发送的敏感标识。调用可能产生服务商费用。")
+        st.caption("只发送结构化摘要，不发送现场照片、完整原始 CSV 或 API Key。上传文件摘要可能包含字段和前 20 行，请先移除敏感标识。")
 
     signature = hashlib.sha256((
         source + mode + output_length + "|".join(focus_items) + str(include_number_checklist) + question + summary
@@ -599,9 +582,10 @@ def render(root: Path) -> None:
         generate_blockers.append("大模型连接参数未完整")
     if not consent:
         generate_blockers.append("尚未勾选远程发送授权")
+    st.markdown("### 3 · 生成解读")
     if generate_blockers:
         st.caption("生成按钮未启用：" + "；".join(generate_blockers) + "。")
-    if st.button("生成大模型解读", type="primary", disabled=bool(generate_blockers), use_container_width=True, key="llm_generate"):
+    if st.button("生成解读", type="primary", disabled=bool(generate_blockers), use_container_width=True, key="llm_generate"):
         try:
             with st.spinner("大模型正在解读已计算结果……"):
                 output_budget = 3200 if thinking_mode == "stable" else (5200 if thinking_mode == "low" else 8000)
@@ -620,20 +604,28 @@ def render(root: Path) -> None:
     decoded = st.session_state.get("llm_interpretation")
     if decoded and decoded[0] == signature:
         text, usage = decoded[1], decoded[2]
-        st.markdown("### 大模型解读结果")
-        st.info("以下文本由大模型生成，只解释上游已计算结果；不会改变模型指标、概率、阈值或科学证据。")
+        st.markdown("### 解读结果")
+        st.info("以下内容解释已有结果，不改变任何科学指标或证据。")
         st.markdown(text)
         if usage:
-            st.caption("服务返回用量信息：" + json.dumps(usage, ensure_ascii=False))
-        st.download_button("下载解读 Markdown", data=text.encode("utf-8"), file_name="GlobalHAB_LLM_interpretation.md", mime="text/markdown")
+            with st.expander("调用信息", expanded=False):
+                st.json(usage)
+        result_actions = st.columns(2)
+        result_actions[0].download_button(
+            "下载解读",
+            data=text.encode("utf-8"),
+            file_name="GlobalHAB_LLM_interpretation.md",
+            mime="text/markdown",
+            use_container_width=True,
+        )
         if source == "当前完整Case（推荐）" and st.session_state.get("active_case_id"):
-            if st.button("保存到当前Case解释记录", use_container_width=True, key="llm_save_case_note"):
+            if result_actions[1].button("保存到当前 Case", use_container_width=True, key="llm_save_case_note"):
                 try:
                     from globalhab_demo.case_manager import add_llm_note
                     add_llm_note(
                         st.session_state.get("active_case_id"), text, mode, source_summary=summary, root=root
                     )
-                    st.success("大模型解读已保存为Case解释记录；它不会改变任何上游模型指标或证据等级。")
+                    st.success("解读已保存到当前 Case；上游指标和证据等级保持不变。")
                 except Exception as exc:
                     st.error(str(exc))
     elif decoded:

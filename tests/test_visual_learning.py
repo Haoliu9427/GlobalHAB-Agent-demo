@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import zipfile
+from io import BytesIO
 from pathlib import Path
 
 import numpy as np
@@ -38,6 +40,13 @@ def test_model_registry_defaults_to_public_baseline(tmp_path):
     assert vl.get_active_model(tmp_path)["active_version"] == "public-baseline-v1"
     cards = vl.list_model_versions(tmp_path)
     assert any(c["version_id"] == "public-baseline-v1" for c in cards)
+
+
+def test_library_export_ignores_deployment_dotfiles(tmp_path):
+    paths = vl.ensure_visual_learning_store(tmp_path)
+    (paths["images"] / ".gitkeep").write_text("", encoding="utf-8")
+    with zipfile.ZipFile(BytesIO(vl.export_library_zip(tmp_path))) as archive:
+        assert "images/.gitkeep" not in archive.namelist()
 
 
 def test_train_candidate_and_activate(tmp_path, monkeypatch):

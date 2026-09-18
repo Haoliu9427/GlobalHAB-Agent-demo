@@ -532,22 +532,31 @@ st.sidebar.markdown(
     """
     <div class="sidebar-brand-card">
       <div class="ocean-brand">GlobalHAB-Agent</div>
-      <div class="sidebar-brand-sub">Marine HAB Intelligence</div>
+      <div class="sidebar-brand-sub">HAB research and validation system</div>
     </div>
     """,
     unsafe_allow_html=True,
 )
 pending_workspace = st.session_state.pop("_workspace_jump", None)
-if pending_workspace in {"研究与验证", "自有数据分析", "现场影像甄别", "大模型结果解读"}:
+if pending_workspace in {"项目总览", "研究与验证", "自有数据分析", "现场影像甄别", "大模型结果解读"}:
     st.session_state["workspace_mode"] = pending_workspace
 with st.sidebar.container(key="workspace_nav"):
     st.markdown('<div class="sidebar-section-title">工作区</div>', unsafe_allow_html=True)
     workspace_mode = st.radio(
         "工作区",
-        ["研究与验证", "自有数据分析", "现场影像甄别", "大模型结果解读"],
+        ["项目总览", "研究与验证", "自有数据分析", "现场影像甄别", "大模型结果解读"],
         key="workspace_mode",
         label_visibility="collapsed",
     )
+with st.sidebar.expander("地图显示", expanded=False):
+    map_backend_label = st.radio(
+        "底图方式",
+        ["OpenStreetMap", "内置矢量底图（无需外部瓦片）"],
+        key="map_backend_label",
+        help="内置矢量底图不请求OpenStreetMap瓦片，适合大陆网络或离线演示环境。",
+    )
+    st.session_state["map_backend"] = "geo" if map_backend_label.startswith("内置") else "osm"
+    st.caption("手机正式版建议使用高德Android SDK；科学坐标仍保留WGS84，仅显示层转换。")
 
 case_list = list_cases(ROOT)
 active_case_id = st.session_state.get("active_case_id")
@@ -644,13 +653,17 @@ if case_list:
                     st.rerun()
 else:
     active_case_id = None
+if workspace_mode == "项目总览":
+    from globalhab_demo.homepage import render as render_homepage
+    render_homepage(ROOT)
+    st.stop()
 if workspace_mode == "自有数据分析":
     st.markdown(
         """
         <div class="hero">
-          <div class="eyebrow" style="color:#b5d9dc">OWN DATA WORKBENCH</div>
+          <div class="eyebrow" style="color:#b5d9dc">自有数据</div>
           <h1>自有数据分析</h1>
-          <p class="tagline">上传现场观测，比较模型、验证历史结果并形成可下载的独立分析记录</p>
+          <p class="tagline">上传现场观测，独立完成数据检查、模型比较与结果留档</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -670,10 +683,10 @@ if workspace_mode == "大模型结果解读":
 st.markdown(
     """
     <div class="hero">
-      <div class="eyebrow" style="color:#a7eee2">MARINE HAB ANALYSIS</div>
-      <h1>GlobalHAB-Agent</h1>
-      <p class="tagline">跨区域有害藻华风险研判与验证</p>
-      <p class="value">融合环境、输运、生物监测与养殖响应数据，支持情景分析、时滞检验、模型比较和前向验证。</p>
+      <div class="eyebrow" style="color:#a7eee2">研究与验证</div>
+      <h1>跨区域有害藻华风险研判</h1>
+      <p class="tagline">从异常识别、时滞与空间效应检验，到真实事件回放和前向验证</p>
+      <p class="value">该工作区保留完整的实验设置、对照与适用边界；其他工作区通过Case和登记结果与这里联动。</p>
     </div>
     """,
     unsafe_allow_html=True,

@@ -777,9 +777,9 @@ def render(root: Any = None) -> None:
     st.markdown(
         """
         <div class="hero">
-          <div class="eyebrow" style="color:#b5d9dc">CONTINUOUS-LEARNING FIELD VISION</div>
+          <div class="eyebrow" style="color:#b5d9dc">现场证据</div>
           <h1>现场影像甄别</h1>
-          <p class="tagline">手机拍摄海面照片，完成低成本视觉初筛，并把人工/实验室确认持续沉淀为新的本地视觉模型</p>
+          <p class="tagline">采集现场影像并登记人工或实验室证据，支持Case复核与后续本地模型更新</p>
         </div>
         """,
         unsafe_allow_html=True,

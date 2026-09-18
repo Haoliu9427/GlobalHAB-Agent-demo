@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="860" viewBox="0 0 1600 860">
+  <defs>
+    <style>
+      .bg{fill:#f7f8f7}.box{fill:#fff;stroke:#cfd9d8;stroke-width:2}.core{fill:#f3f8f7;stroke:#2d6d78;stroke-width:3}.agent{fill:#f5f7f8;stroke:#5d788a;stroke-width:3}.title{font:700 24px 'Noto Sans CJK SC','Microsoft YaHei','PingFang SC',sans-serif;fill:#173f52}.kicker{font:600 15px 'Noto Sans CJK SC','Microsoft YaHei','PingFang SC',sans-serif;fill:#6b7f84}.body{font:400 16px 'Noto Sans CJK SC','Microsoft YaHei','PingFang SC',sans-serif;fill:#4d656b}.small{font:400 14px 'Noto Sans CJK SC','Microsoft YaHei','PingFang SC',sans-serif;fill:#65787d}.arrow{stroke:#83999c;stroke-width:3;fill:none;marker-end:url(#m)}.feedback{stroke:#789093;stroke-width:2.5;fill:none;stroke-dasharray:8 7;marker-end:url(#m)}
+    </style>
+    <marker id="m" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#83999c"/></marker>
+  </defs>
+  <rect class="bg" width="1600" height="860" rx="20"/>
+  <text x="70" y="70" class="title" font-size="32">GlobalHAB-Agent：从多源观测到可审计风险研判的科学 Agent</text>
+  <text x="70" y="102" class="small">核心不是“大模型聊天”，而是方法路由、ST/STS科学推理、预算约束试验选择、真实证据回流组成的闭环。</text>
+
+  <rect class="box" x="60" y="160" width="220" height="250" rx="12"/>
+  <text x="80" y="195" class="kicker">01 · INPUT</text><text x="80" y="230" class="title">多源输入</text>
+  <text x="80" y="266" class="body"><tspan x="80" dy="0">环境时序 / SST-MHW</tspan><tspan x="80" dy="28">营养盐 / 流场与输运</tspan><tspan x="80" dy="28">HAB / qPCR / 现场观测</tspan><tspan x="80" dy="28">经纬度 / 时间 / 现场影像</tspan><tspan x="80" dy="28">养殖信息 / 用户CSV</tspan><tspan x="80" dy="28">已登记CSV/JSON结果</tspan></text>
+
+  <rect class="box" x="330" y="160" width="220" height="250" rx="12"/>
+  <text x="350" y="195" class="kicker">02 · PERCEPTION</text><text x="350" y="230" class="title">感知与质控</text>
+  <text x="350" y="270" class="body"><tspan x="350">多尺度异常识别</tspan><tspan x="350" dy="30">样本与缺失支持检查</tspan><tspan x="350" dy="30">现场影像质量门控</tspan><tspan x="350" dy="30">时空覆盖诊断</tspan></text>
+
+  <rect class="core" x="600" y="135" width="300" height="300" rx="12"/>
+  <text x="620" y="172" class="kicker">03 · SCIENTIFIC CORE</text><text x="620" y="208" class="title">Adaptive Router → ST / STS</text>
+  <text x="620" y="250" class="body"><tspan x="620" font-weight="700">ST</tspan><tspan>：Shock + Transmission</tspan><tspan x="620" dy="29">异常 → 时滞/方向 → 阻断预测</tspan><tspan x="620" dy="29">TE / CTE + blocked prediction</tspan><tspan x="620" dy="42" font-weight="700">STS</tspan><tspan>：ST + Spillover</tspan><tspan x="620" dy="29">Spatial Durbin直接/间接效应</tspan><tspan x="620" dy="42">路由器按数据条件选择可用分支</tspan></text>
+
+  <rect class="agent" x="950" y="135" width="270" height="300" rx="12"/>
+  <text x="970" y="172" class="kicker">04 · AGENT LOOP</text><text x="970" y="208" class="title">假设与试验选择</text>
+  <text x="970" y="250" class="body"><tspan x="970">route × lag × model</tspan><tspan x="970" dy="30">固定预算选择下一试验</tspan><tspan x="970" dy="30">接收 AP / 校准 / 对照反馈</tspan><tspan x="970" dy="30">保留候选并更新优先级</tspan><tspan x="970" dy="30">完整记录 Agent log</tspan></text>
+
+  <rect class="box" x="1270" y="160" width="260" height="250" rx="12"/>
+  <text x="1290" y="195" class="kicker">05 · EVIDENCE / OUTPUT</text><text x="1290" y="230" class="title">证据落地与输出</text>
+  <text x="1290" y="268" class="body"><tspan x="1290">南澳/挪威真实验证</tspan><tspan x="1290" dy="28">Case现场复核</tspan><tspan x="1290" dy="28">影像 / 实验室证据</tspan><tspan x="1290" dy="28">生物响应情景</tspan><tspan x="1290" dy="28">候选区、时滞、风险排序</tspan><tspan x="1290" dy="28">结构化解读与适用边界</tspan></text>
+
+  <path class="arrow" d="M280 285 H325"/><path class="arrow" d="M550 285 H595"/><path class="arrow" d="M900 285 H945"/><path class="arrow" d="M1220 285 H1265"/>
+
+  <rect class="box" x="170" y="510" width="1260" height="125" rx="12"/>
+  <text x="195" y="545" class="title" font-size="21">四个工作区如何组成一个整体 Agent</text>
+  <text x="195" y="582" class="body"><tspan font-weight="700">研究与验证</tspan><tspan>：科学推理和候选产生　→　</tspan><tspan font-weight="700">自有数据分析</tspan><tspan>：外部数据独立验证　→　</tspan><tspan font-weight="700">现场影像甄别</tspan><tspan>：Case证据补全　→　</tspan><tspan font-weight="700">大模型结果解读</tspan><tspan>：读取已登记证据形成解释</tspan></text>
+  <text x="195" y="612" class="small">Homepage只做联动与状态汇总，不生成新的科学结论。</text>
+
+  <path class="feedback" d="M1400 430 C1415 700 1040 755 790 730 C520 705 365 655 350 420"/>
+  <text x="635" y="762" class="small">现场证据 / 用户数据 / 训练库 → 后续模型与Case更新（反馈回路）</text>
+
+  <rect x="60" y="790" width="1470" height="1" fill="#d5dfde"/>
+  <text x="60" y="825" class="small">Scientific boundary: LLM does not recompute metrics; missing evidence disables branches instead of fabricating inputs; real replay and forward validation are reported separately from synthetic verification.</text>
+</svg>

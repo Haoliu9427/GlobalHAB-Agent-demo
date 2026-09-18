@@ -1087,3 +1087,48 @@ button[role="tab"][aria-selected="true"]{color:#18556a;background:#fff;}
     margin-top:1.65rem!important;
   }
 }
+
+/* 2026-09-18 restrained scientific interface + integrated homepage.
+   The project keeps visual hierarchy but removes decorative gradients, lift-on-hover,
+   oversized rounding and other dashboard patterns that can make the interface feel generated. */
+[data-testid="stAppViewContainer"]{background:#f6f7f6!important;}
+.sidebar-brand-card{background:#173f52!important;border-radius:10px!important;box-shadow:none!important;border-color:#173f52!important;}
+.hero{border-radius:10px!important;box-shadow:none!important;padding:1.25rem 1.4rem!important;}
+.hero::after{display:none!important;}
+.eyebrow{letter-spacing:.03em!important;text-transform:none!important;font-weight:650!important;}
+.sidebar-section-title{text-transform:none!important;letter-spacing:.02em!important;font-size:.78rem!important;}
+.st-key-workspace_nav [data-baseweb="radio"],.st-key-workspace_nav [role="radiogroup"] > label{border-radius:8px!important;transition:background .12s ease,border-color .12s ease!important;}
+.st-key-workspace_nav [data-baseweb="radio"]:hover,.st-key-workspace_nav [role="radiogroup"] > label:hover{transform:none!important;box-shadow:none!important;}
+.kpi,.product-card,[data-testid="stMetric"],.signal,.risk-bridge,[data-testid="stExpander"]{border-radius:9px!important;box-shadow:none!important;}
+.kpi{border-top:2px solid #6f9399!important;}
+.kpi:nth-child(3n+2),.kpi:nth-child(3n){border-top-color:#6f9399!important;}
+button[role="tab"],[data-testid="stFileUploaderDropzone"],button[kind="primary"]{border-radius:7px!important;}
+
+.home-heading{margin:.2rem 0 1rem;padding-bottom:.9rem;border-bottom:1px solid #d8e0df;}
+.home-title{font-size:2rem;line-height:1.25;font-weight:720;color:#173f52;letter-spacing:-.02em;}
+.home-subtitle{font-size:.95rem;line-height:1.65;color:#64777d;margin-top:.35rem;max-width:920px;}
+.home-status-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:.25rem 0 1.4rem;}
+.home-stat{background:#fff;border:1px solid #d9e2e1;border-radius:9px;padding:14px 15px;min-width:0;}
+.home-stat span{display:block;color:#677a80;font-size:.76rem;margin-bottom:7px;}
+.home-stat b{display:block;color:#183e50;font-size:1.18rem;line-height:1.35;overflow-wrap:anywhere;}
+.home-stat small{display:block;color:#829096;font-size:.7rem;line-height:1.45;margin-top:6px;}
+.st-key-home_research_card,.st-key-home_vision_card,.st-key-home_own_card,.st-key-home_llm_card{
+ background:#fff!important;border:1px solid #d9e2e1!important;border-radius:10px!important;padding:20px!important;box-shadow:none!important;margin-bottom:12px!important;
+}
+.st-key-home_research_card,.st-key-home_own_card{border-top:2px solid #456f7a!important;}
+.st-key-home_vision_card,.st-key-home_llm_card{border-top:2px solid #819698!important;}
+.st-key-home_research_card h4,.st-key-home_vision_card h4,.st-key-home_own_card h4,.st-key-home_llm_card h4{margin-top:0!important;color:#173f52!important;}
+
+.agent-architecture{display:grid;grid-template-columns:minmax(150px,1fr) 28px minmax(150px,1fr) 28px minmax(190px,1.25fr) 28px minmax(175px,1.12fr) 28px minmax(160px,1fr) 28px minmax(160px,1fr);align-items:stretch;gap:0;margin:.7rem 0 .65rem;overflow-x:auto;padding-bottom:6px;}
+.arch-stage{background:#fff;border:1px solid #d5dfde;border-radius:8px;padding:13px 14px;min-width:150px;}
+.arch-stage.arch-core{border-top:3px solid #2d6d78;background:#f7faf9;}
+.arch-stage.arch-agent{border-top:3px solid #5d788a;background:#f8f9fa;}
+.arch-stage.arch-input,.arch-stage.arch-output{background:#f9faf9;}
+.arch-kicker{font-size:.68rem;color:#75888d;margin-bottom:6px;letter-spacing:.02em;}
+.arch-title{font-size:.88rem;line-height:1.4;font-weight:720;color:#183e50;margin-bottom:7px;}
+.arch-body{font-size:.74rem;line-height:1.62;color:#526a70;}
+.arch-arrow{display:flex;align-items:center;justify-content:center;color:#8ba1a3;font-size:1.25rem;min-width:28px;}
+.arch-feedback{border-left:3px solid #7c9697;background:#eef3f2;color:#455f65;border-radius:0 7px 7px 0;padding:10px 12px;font-size:.76rem;line-height:1.6;margin-bottom:1rem;}
+.arch-feedback span{font-weight:700;color:#315c65;margin-right:8px;}
+@media(max-width:1000px){.home-status-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.agent-architecture{grid-template-columns:220px 28px 220px 28px 260px 28px 240px 28px 220px 28px 220px;}}
+@media(max-width:600px){.home-status-grid{grid-template-columns:1fr;}.home-title{font-size:1.65rem;}.agent-architecture{grid-template-columns:210px 24px 210px 24px 250px 24px 225px 24px 210px 24px 210px;}}

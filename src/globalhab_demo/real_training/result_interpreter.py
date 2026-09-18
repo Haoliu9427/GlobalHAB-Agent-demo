@@ -350,9 +350,9 @@ def render(root: Path) -> None:
     st.markdown(
         """
         <div class="hero">
-          <div class="eyebrow" style="color:#b5d9dc">LLM RESULT INTERPRETATION</div>
+          <div class="eyebrow" style="color:#b5d9dc">结果解读</div>
           <h1>大模型结果解读</h1>
-          <p class="tagline">可读取项目固定证据、真实训练、中国近海、自有数据、现场影像与完整Case，生成科研、答辩或管理场景的结构化解释</p>
+          <p class="tagline">读取已登记的研究结果、用户数据、现场影像或完整Case，形成结构化说明；不重新计算科学指标</p>
         </div>
         """,
         unsafe_allow_html=True,

@@ -2,6 +2,20 @@
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import os
+
+
+def _map_backend():
+    """Return the presentation backend without changing scientific coordinates."""
+    env = os.getenv("GLOBALHAB_MAP_BACKEND", "").strip().lower()
+    if env in {"geo", "osm"}:
+        return env
+    try:
+        import streamlit as st
+        value = str(st.session_state.get("map_backend", "osm")).strip().lower()
+        return value if value in {"geo", "osm"} else "osm"
+    except Exception:
+        return "osm"
 
 def point_map(frame):
     d=frame[['latitude','longitude']].apply(pd.to_numeric,errors='coerce').dropna().drop_duplicates()
@@ -25,6 +39,25 @@ def draw_map(fig):
 # Keep a single tile-map renderer for every map in the application.
 
 def style_map(fig, global_view=False):
+    # ``geo`` uses Plotly's built-in vector geography and therefore does not
+    # request external map tiles. It is the safe fallback for networks where
+    # OpenStreetMap tiles are slow or unavailable. Scientific values and source
+    # coordinates remain unchanged in both modes.
+    if _map_backend() == "geo":
+        result = go.Figure(fig)
+        result.update_geos(
+            showland=True, landcolor="#ecefea", showocean=True, oceancolor="#e7f1f2",
+            showcountries=True, countrycolor="#ffffff", showcoastlines=True, coastlinecolor="#78939b",
+            showframe=False, bgcolor="white",
+        )
+        result.update_layout(
+            height=480, margin=dict(l=0,r=0,t=50,b=25), paper_bgcolor="white",
+            font=dict(family="Microsoft YaHei, PingFang SC, sans-serif",size=12,color="#294b59"),
+            legend=dict(orientation="h",x=.5,xanchor="center",y=1.12),
+            hoverlabel=dict(bgcolor="white",font_size=13),
+        )
+        return result
+
     import math
     traces=[];lats=[];lons=[]
     for tr in fig.data:

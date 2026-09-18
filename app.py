@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF2-VISUAL-REFINED-20260918"
+BUILD_ID = "HF2-VISUAL-RELOAD-20260918"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -208,6 +208,13 @@ from globalhab_demo.research_panels import research_plot, research_table
 # Controls belong to this script run, not a shared module-global container.
 import globalhab_demo.ui_system as _ui_system
 _ui_system = importlib.reload(_ui_system)
+# Streamlit can rerun this entry point while Python retains imported UI modules.
+# Refresh both figure modules before any workspace binds their functions.
+importlib.invalidate_caches()
+import globalhab_demo.homepage_hifi as _homepage_hifi
+import globalhab_demo.research_figures as _research_figures
+_homepage_hifi = importlib.reload(_homepage_hifi)
+_research_figures = importlib.reload(_research_figures)
 install_plotly_theme = _ui_system.install_plotly_theme
 render_top_navigation = _ui_system.render_top_navigation
 render_workspace_header = _ui_system.render_workspace_header
@@ -547,6 +554,12 @@ workspace_mode = render_top_navigation(WORKSPACES)
 with st.container(key="top_controls"):
     control_panel = st.popover("⚙", help="地图、Case与运行参数")
 
+with control_panel, st.expander("运行版本", expanded=False):
+    st.code(BUILD_ID, language=None)
+    st.caption("首页与研究图形模块已在本次运行重新加载。")
+    st.text(f"启动入口：{Path(__file__).resolve()}")
+    st.text(f"首页模块：{Path(_homepage_hifi.__file__).resolve()}")
+
 with control_panel, st.expander("地图显示", expanded=False):
     map_backend_label = st.radio(
         "底图方式",
@@ -664,8 +677,7 @@ if case_list:
 else:
     active_case_id = None
 if workspace_mode == "项目总览":
-    from globalhab_demo.homepage_hifi import render as render_homepage
-    render_homepage(ROOT)
+    _homepage_hifi.render(ROOT)
     st.stop()
 if workspace_mode == "数据分析":
     render_workspace_header(

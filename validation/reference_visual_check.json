@@ -1,31 +1,19 @@
 {
-  "browser": "Chromium headless 131",
+  "build": "HF2-REFERENCE2-20260918",
+  "browser": "Chromium headless",
   "desktop_viewport": [
     1448,
     1086
   ],
-  "narrow_viewport": [
-    800,
-    1000
-  ],
-  "navigated_workspaces": [
-    "项目总览",
-    "自有数据分析",
-    "现场影像甄别",
-    "大模型结果解读"
-  ],
-  "app_exceptions": 0,
-  "checks": [
-    "导航按钮可点击",
-    "选中导航保持蓝色",
-    "首页热图类别日期正确显示",
-    "自有数据远程配置默认折叠",
-    "完整摘要展开查看",
-    "窄屏横向导航和流程滚动"
-  ],
-  "limitations": [
-    "远程服务没有凭证实调",
-    "研究与验证通过AppTest启动，未逐个运行全部训练流程",
-    "字体按访问设备字体回退，浏览器验证使用Noto Sans CJK SC"
-  ]
+  "header_bounds": {
+    "x": 0,
+    "width": 1448,
+    "height": 64
+  },
+  "all_workspaces_app_test_exceptions": 0,
+  "agent_detail_tab_selected": true,
+  "replay_detail_tab_selected": true,
+  "other_workspace_browser_exceptions": 0,
+  "scientific_data_retrained": false,
+  "note": "Case all link opens risk workspace and Case list. Remote API calls not executed."
 }

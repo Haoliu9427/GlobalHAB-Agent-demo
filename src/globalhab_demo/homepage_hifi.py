@@ -144,7 +144,7 @@ def _case_donut_html(counts: dict[str, int], total: int) -> str:
     )
     return f'''
     <div class="hf-card hf-case-panel">
-      <div class="hf-card-title-row"><div class="hf-card-title">Case 状态</div><div class="hf-card-action">状态汇总</div></div>
+      <div class="hf-card-title-row"><div class="hf-card-title">Case 状态</div><a class="hf-card-action" href="?workspace=研究与验证&section=风险研判&cases=1" target="_self">查看全部 →</a></div>
       <div class="hf-case-body">
         <div class="hf-donut" style="background:{donut}"><div><b>{total}</b><span>Case 总数</span></div></div>
         <div class="hf-case-legend">{legend}</div>
@@ -211,7 +211,8 @@ def _hero_and_upper_html(
 ) -> str:
     route = str(best.get("route") or "—")
     lag = best.get("lag_days")
-    candidate = f"{route}_{int(lag):02d}d" if lag is not None and str(lag).isdigit() else route
+    route_label = {"downstream":"沿流传播", "local":"局地变化", "upstream":"逆流对照"}.get(route, "传播候选")
+    candidate = f"{route_label} · {int(lag)}天" if lag is not None and str(lag).isdigit() else route_label
     cut_date = html.escape(str(best.get("cut_date") or "—"))
     ap = _safe_float(norway_card.get("model_average_precision"), np.nan)
     ap_text = f"{ap:.3f}" if np.isfinite(ap) else "—"
@@ -280,7 +281,7 @@ def _agent_trace_figure(root: Path) -> go.Figure:
         )
     fig.update_xaxes(title="试验步", dtick=1)
     fig.update_yaxes(title="Average Precision (AP)", rangemode="tozero")
-    return _base_layout(fig, height=238, showlegend=False)
+    return _base_layout(fig, height=230, showlegend=False)
 
 
 def _sa_site_heatmap(root: Path) -> go.Figure:
@@ -288,7 +289,7 @@ def _sa_site_heatmap(root: Path) -> go.Figure:
     fig = go.Figure()
     if raw.empty or not {"sample_date", "location", "k_cristata_cells_l"}.issubset(raw.columns):
         fig.add_annotation(text="暂无南澳回放数据", x=.5, y=.5, showarrow=False)
-        return _base_layout(fig, height=238, showlegend=False)
+        return _base_layout(fig, height=230, showlegend=False)
     raw = raw.copy()
     raw["sample_date"] = pd.to_datetime(raw["sample_date"], errors="coerce")
     raw["k_cristata_cells_l"] = pd.to_numeric(raw["k_cristata_cells_l"], errors="coerce").fillna(0).clip(lower=0)
@@ -321,7 +322,7 @@ def _sa_site_heatmap(root: Path) -> go.Figure:
     ))
     fig.update_xaxes(title="采样日期", type="category", tickangle=0, showgrid=False, tickvals=pivot.columns.tolist()[::3], ticktext=[d[5:] for d in pivot.columns.tolist()[::3]])
     fig.update_yaxes(title=None, autorange="reversed", showgrid=False, tickfont=dict(size=9, color="#6c8193"))
-    return _base_layout(fig, height=238, showlegend=False)
+    return _base_layout(fig, height=230, showlegend=False)
 
 
 def _evidence_matrix(root: Path) -> go.Figure:
@@ -387,7 +388,7 @@ def _evidence_matrix(root: Path) -> go.Figure:
     ))
     fig.update_xaxes(side="top", showgrid=False, tickfont=dict(size=9))
     fig.update_yaxes(autorange="reversed", showgrid=False, tickfont=dict(size=9))
-    return _base_layout(fig, height=238, showlegend=False)
+    return _base_layout(fig, height=230, showlegend=False)
 
 
 def _norway_heatmap(root: Path) -> go.Figure:
@@ -459,12 +460,12 @@ def _norway_panel_html(root: Path) -> str:
           <div class="hf-norway-corner"></div>{head}
           {''.join(body)}
         </div>
-        <div class="hf-bottom-message"><div class="hf-world-watermark"></div><div>跨越海域的知识迁移<br><b>服务于更安全的海洋</b></div></div>
+        <div class="hf-bottom-message"><img class="hf-world-watermark" alt="世界海陆轮廓" src="{_asset_data_uri(root / "assets" / "world_outline.svg")}"><div>跨越海域的知识迁移<br><b>服务于更安全的海洋</b></div></div>
       </div>
     </div>'''
 
-def _panel_header(title: str, action: str = "") -> None:
-    action_html = f'<span>{html.escape(action)}</span>' if action else ""
+def _panel_header(title: str, action: str = "", section: str = "") -> None:
+    action_html = f'<a href="?workspace={quote("研究与验证")}&section={quote(section)}" target="_self">查看详情 →</a>' if section else (f'<span>{html.escape(action)}</span>' if action else "")
     st.markdown(f'<div class="hf-viz-title"><b>{html.escape(title)}</b>{action_html}</div>', unsafe_allow_html=True)
 
 
@@ -479,7 +480,7 @@ def render(root: Any) -> None:
         [data-testid="stSidebarCollapsedControl"] {display:none !important;}
         [data-testid="stAppViewContainer"] > .main {margin-left:0 !important;}
         </style>
-        <div id="globalhab-build-hf2" data-build="HF2-REFINED-20260918"></div>
+        <div id="globalhab-build-hf2" data-build="HF2-REFERENCE2-20260918"></div>
         """,
         unsafe_allow_html=True,
     )
@@ -499,15 +500,15 @@ def render(root: Any) -> None:
     c1, c2, c3 = st.columns([1.0, 1.07, 1.17], gap="medium")
     with c1:
         with st.container(key="hf_agent_panel"):
-            _panel_header("Agent 探索轨迹", "合成探索")
+            _panel_header("Agent 探索轨迹", section="探索与验证")
             st.plotly_chart(_agent_trace_figure(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_agent_chart")
     with c2:
         with st.container(key="hf_sa_panel"):
-            _panel_header("南澳真实事件回放", "qPCR · 空白为未采样")
+            _panel_header("南澳真实事件回放", section="真实事件回放")
             st.plotly_chart(_sa_site_heatmap(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_sa_chart")
     with c3:
         with st.container(key="hf_evidence_panel"):
-            _panel_header("环境因子与迁移验证")
+            _panel_header("环境因子与迁移验证", section="科学解释")
             st.plotly_chart(_evidence_matrix(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_evidence_chart")
 
     st.markdown(_norway_panel_html(root), unsafe_allow_html=True)

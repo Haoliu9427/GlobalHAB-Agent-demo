@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF2-REFINED-20260918"
+BUILD_ID = "HF2-REFERENCE2-20260918"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -203,7 +203,7 @@ st.markdown(
 )
 
 from globalhab_demo.map_style import style_map, draw_map
-from globalhab_demo.ui_system import install_plotly_theme, render_top_navigation, render_workspace_header
+from globalhab_demo.ui_system import install_plotly_theme, render_top_navigation, render_workspace_header, get_control_panel
 
 install_plotly_theme()
 st.markdown("<style>" + (ROOT / "assets" / "interface.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
@@ -537,16 +537,7 @@ def real_qpcr_map(frame: pd.DataFrame) -> go.Figure:
 WORKSPACES = ["项目总览", "研究与验证", "自有数据分析", "现场影像甄别", "大模型结果解读"]
 workspace_mode = render_top_navigation(WORKSPACES)
 
-st.sidebar.markdown(
-    """
-    <div class="sidebar-control-head" data-build="HF2-REFINED-20260918">
-      <b>运行控制</b>
-      <span>地图、Case 与当前工作区参数</span>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-with st.sidebar.expander("地图显示", expanded=False):
+with get_control_panel(), st.expander("地图显示", expanded=False):
     map_backend_label = st.radio(
         "底图方式",
         ["OpenStreetMap", "内置矢量底图"],
@@ -555,10 +546,23 @@ with st.sidebar.expander("地图显示", expanded=False):
     st.session_state["map_backend"] = "geo" if map_backend_label.startswith("内置") else "osm"
 
 case_list = list_cases(ROOT)
+if st.query_params.get("cases") == "1":
+    st.session_state["show_case_index"] = True
+    del st.query_params["cases"]
+if st.session_state.get("show_case_index"):
+    with st.expander("全部 Case", expanded=True):
+        if case_list:
+            st.dataframe(pd.DataFrame([{"Case": c.get("case_id", c.get("id", "")), "状态": c.get("status", ""), "创建时间": c.get("created_at", "")} for c in case_list]), hide_index=True, use_container_width=True)
+        else:
+            st.info("暂无 Case。可在风险研判中创建现场复核任务。")
+        if st.button("收起 Case 列表", key="close_case_index"):
+            st.session_state["show_case_index"] = False
+            st.rerun()
+
 active_case_id = st.session_state.get("active_case_id")
 if case_list:
     counts = case_status_counts(ROOT)
-    with st.sidebar.expander("Case / 现场任务", expanded=bool(active_case_id)):
+    with get_control_panel(), st.expander("Case / 现场任务", expanded=bool(active_case_id)):
         st.caption(
             f"待复核 {counts.get('pending_review',0)} · 处理中 {counts.get('in_progress',0)} · "
             f"视觉DEFER {counts.get('visual_defer',0)} · 已确认 {counts.get('confirmed',0)}"
@@ -676,7 +680,7 @@ render_workspace_header(
     "选择研究任务，查看地图、实验与验证结果",
     kicker="Research & validation",
 )
-with st.sidebar:
+with get_control_panel():
     st.markdown("## 运行设置")
     days = st.number_input(
         "数据序列长度（天）", min_value=365, max_value=900, value=720, step=1,
@@ -707,11 +711,11 @@ if run_clicked or "exploration" not in st.session_state:
                 int(days), int(seed), budget, holdout_region, test_fraction
             )
     except ValueError as exc:
-        st.sidebar.error(
+        st.error(
             "当前参数组合无法形成同时含事件与非事件的阻断测试窗。"
             "请调整序列长度、随机种子、留出区域或前向测试比例后重算。"
         )
-        st.sidebar.caption(f"计算信息：{exc}")
+        st.caption(f"计算信息：{exc}")
         if "exploration" not in st.session_state:
             with st.spinner("正在载入稳定默认试跑……"):
                 st.session_state["exploration"] = cached_exploration(
@@ -727,7 +731,7 @@ if run_clicked or "exploration" not in st.session_state:
 
 active_config = st.session_state.get("exploration_config", requested_config)
 if active_config != requested_config:
-    st.sidebar.warning("设置已经改变。当前页面仍显示上一轮结果，请点击“应用设置并重新计算”。")
+    st.warning("设置已经改变。当前页面仍显示上一轮结果，请点击“应用设置并重新计算”。")
 
 result = st.session_state["exploration"]
 frame = result["frame"]
@@ -868,7 +872,7 @@ with st.container(key="research_modules"):
     tab_alert, tab_real, tab_bio, tab_methods, tab_agent, tab_evidence, tab_training = st.tabs([
         "风险研判", "真实事件回放", "生物响应沙盘",
         "科学解释", "探索与验证", "数据来源与复核", "真实数据训练与验证",
-    ])
+    ], default=st.session_state.get("research_section", "风险研判"))
 
 with tab_training:
     from globalhab_demo.real_training.ui import render as render_real_training

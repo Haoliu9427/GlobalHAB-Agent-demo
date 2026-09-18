@@ -25,3 +25,12 @@
 ## 检查
 五个工作区均经过 Streamlit AppTest 启动检查，未出现应用异常；记录在 validation/reference_ui_smoke.json。
 启动检查不等同于真实API调用或模型重新训练。浏览器视觉检查结果另见 validation/reference_visual_check.json（若存在）。
+
+## 第二轮修复 HF2-REFERENCE2-20260918
+- 全部页面共享全宽导航，设置改为右上角齿轮弹出面板；没有常驻侧栏挤压工作区。
+- 当前候选采用中文显示，四张概览卡支持换行，不再省略内容。
+- 查看详情可分别进入探索与验证、真实事件回放、科学解释；查看全部进入风险研判，并展开Case列表；日常Case操作仍在右上角设置中。
+- 顶部搜索支持按名称查找工作区。
+- Agent概览图取消冗余图例，横轴保留试验步；南澳热图显式使用类别日期轴和普通数值数组。
+- 世界底图采用Natural Earth 110m真实陆地轮廓（public domain），来源 https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_110m_land.geojson 。
+- 参考图的示例指标、完整填色热图与相关性矩阵未作为实验数据复制；实际观测缺测仍显示为空白。

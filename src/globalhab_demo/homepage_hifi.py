@@ -144,7 +144,7 @@ def _case_donut_html(counts: dict[str, int], total: int) -> str:
     )
     return f'''
     <div class="hf-card hf-case-panel">
-      <div class="hf-card-title-row"><div class="hf-card-title">Case 状态</div><a class="hf-card-action" href="?workspace=研究验证&section=风险研判&cases=1" target="_self">查看全部 →</a></div>
+      <div class="hf-card-title-row"><div class="hf-card-title">Case状态</div><a class="hf-card-action" href="?workspace=研究验证&section=风险研判&cases=1" target="_self">查看全部 →</a></div>
       <div class="hf-case-body">
         <div class="hf-donut" style="background:{donut}"><div><b>{total}</b><span>Case 总数</span></div></div>
         <div class="hf-case-legend">{legend}</div>
@@ -153,27 +153,37 @@ def _case_donut_html(counts: dict[str, int], total: int) -> str:
 
 
 def _research_flow_html() -> str:
-    steps = [
-        ("database", "多源观测", "卫星 / 现场 / 模型", "多源数据汇聚", "blue"),
-        ("search", "路由与异常识别", "多尺度识别", "时空覆盖诊断", "blue"),
-        ("science", "ST / STS 科学推理", "时滞 / 方向 / 阻断预测", "空间溢出效应", "teal"),
-        ("doc", "证据落地与验证", "Case 现场复核", "影像 / 实验室证据", "blue"),
-        ("globe", "迁移性评估", "时序 / 空间迁移", "跨区域验证", "teal"),
-    ]
-    nodes: list[str] = []
-    for idx, (icon, title, line1, line2, accent) in enumerate(steps, 1):
-        nodes.append(
-            f'<div class="hf-research-node hf-node-{accent}"><div class="hf-research-icon">{_svg_icon(icon)}</div>'
-            f'<div class="hf-research-title"><em>{idx}.</em> {title}</div>'
-            f'<div class="hf-research-meta">{line1}<br>{line2}</div></div>'
-        )
-        if idx < len(steps):
-            nodes.append('<div class="hf-flow-arrow"><span></span></div>')
-    return f'''
-    <div class="hf-card hf-research-panel">
-      <div class="hf-card-title-row hf-title-inline"><div><div class="hf-card-title">研究思路概览</div><div class="hf-card-subtitle">从多源观测到可迁移的科学结论</div></div><a class="hf-card-action" href="?workspace={quote("数据分析")}" target="_self">发起研究任务 →</a></div>
-      <div class="hf-research-flow">{"".join(nodes)}</div>
-    </div>'''
+    import math
+    labels = ["多源观测", "异常识别", "传播推理", "现场复核", "迁移验证"]
+    sections = ["数据来源与复核", "科学解释", "探索与验证", "真实事件回放", "真实数据训练与验证"]
+    colors = ["#087E9B", "#1696B0", "#36AFAF", "#237DB0", "#195C87"]
+    def xy(r, degrees):
+        angle = math.radians(degrees)
+        return 180+r*math.cos(angle), 155+r*math.sin(angle)
+    pieces=[]
+    for i,(label,section,color) in enumerate(zip(labels,sections,colors)):
+        start=-126+i*72+2;end=start+68
+        x1,y1=xy(132,start);x2,y2=xy(132,end)
+        x3,y3=xy(70,end);x4,y4=xy(70,start)
+        tx,ty=xy(101,(start+end)/2)
+        path=f"M{x1:.2f},{y1:.2f} A132,132 0 0 1 {x2:.2f},{y2:.2f} L{x3:.2f},{y3:.2f} A70,70 0 0 0 {x4:.2f},{y4:.2f} Z"
+        href=f"?workspace={quote('研究验证')}&section={quote(section)}"
+        pieces.append(f'<a href="{href}" target="_self" aria-label="{label}"><title>{label} · 查看对应工作区</title><path d="{path}" fill="{color}"/><text x="{tx:.2f}" y="{ty+5:.2f}" text-anchor="middle">{label}</text></a>')
+    return f'''<div class="hf-card hf-research-panel hf-sector-panel">
+      <div class="hf-card-title">研究思路概览</div>
+      <svg class="hf-research-wheel" viewBox="0 0 360 310" role="img" aria-label="研究流程：多源观测、异常识别、传播推理、现场复核、迁移验证">
+      {''.join(pieces)}
+      <circle cx="180" cy="155" r="60" fill="#F0F8FC"/>
+      <text class="wheel-center-title" x="180" y="151" text-anchor="middle">科学Agent</text>
+      <text class="wheel-center-sub" x="180" y="174" text-anchor="middle">观测 · 推理 · 验证</text>
+      </svg></div>'''
+
+
+def _start_task_html() -> str:
+    return f'''<section class="hf-task-launch" aria-label="发起研究任务">
+      <div class="hf-launch-copy"><b>开始一项研究</b><p>提出目标，上传观测与影像。</p></div>
+      <a href="?workspace={quote('数据分析')}&assistant=1" target="_self" class="hf-launch-button">发起研究任务 <span aria-hidden="true">→</span></a>
+    </section>'''
 
 
 def _workspace_flow_html(own_runs: int, library_count: int) -> str:
@@ -235,7 +245,7 @@ def _hero_and_upper_html(
         <div class="hf-home-banner"{banner_style}></div>
       </section>
       <div class="hf-kpi-grid">{kpis}</div>
-      <div class="hf-upper-grid">{_research_flow_html()}{_case_donut_html(case_counts, case_total)}</div>
+      <div class="hf-upper-grid">{_research_flow_html()}<div class="hf-overview-actions">{_case_donut_html(case_counts, case_total)}{_start_task_html()}</div></div>
       {_workspace_flow_html(own_runs, library_count)}
     </div>'''
 
@@ -481,7 +491,7 @@ def render(root: Any) -> None:
         [data-testid="stSidebarCollapsedControl"] {display:none !important;}
         [data-testid="stAppViewContainer"] > .main {margin-left:0 !important;}
         </style>
-        <div id="globalhab-build-hf2" data-build="HF2-AGENT-20260918"></div>
+        <div id="globalhab-build-hf2" data-build="HF2-SECTOR-20260918"></div>
         """,
         unsafe_allow_html=True,
     )

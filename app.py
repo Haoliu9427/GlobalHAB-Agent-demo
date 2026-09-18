@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF2-AGENT-20260918"
+BUILD_ID = "HF2-SECTOR-20260918"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -672,6 +672,9 @@ if workspace_mode == "数据分析":
         "提出需求 · 联合证据 · 执行分析",
         kicker="Own observations",
     )
+    if st.query_params.get("assistant") == "1":
+        st.session_state["analysis_mode"] = "研究助手"
+        del st.query_params["assistant"]
     analysis_mode = st.radio("分析方式", ["研究助手", "自主配置"], horizontal=True, key="analysis_mode")
     if analysis_mode == "研究助手":
         from globalhab_demo.research_assistant import render as render_assistant

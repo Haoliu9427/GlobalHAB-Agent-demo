@@ -551,12 +551,10 @@ with st.sidebar.container(key="workspace_nav"):
 with st.sidebar.expander("地图显示", expanded=False):
     map_backend_label = st.radio(
         "底图方式",
-        ["OpenStreetMap", "内置矢量底图（无需外部瓦片）"],
+        ["OpenStreetMap", "内置矢量底图"],
         key="map_backend_label",
-        help="内置矢量底图不请求OpenStreetMap瓦片，适合大陆网络或离线演示环境。",
     )
     st.session_state["map_backend"] = "geo" if map_backend_label.startswith("内置") else "osm"
-    st.caption("手机正式版建议使用高德Android SDK；科学坐标仍保留WGS84，仅显示层转换。")
 
 case_list = list_cases(ROOT)
 active_case_id = st.session_state.get("active_case_id")

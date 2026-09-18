@@ -1,17 +1,24 @@
-"""Integrated homepage for the GlobalHAB-Agent workspaces.
+"""Interactive overview for the GlobalHAB-Agent workspaces.
 
-The homepage only reads registered outputs/session state. It does not recompute
-scientific results or allow the language model layer to modify numerical evidence.
+The homepage reads registered outputs/session state only. It visualises the
+existing research, validation, case and interpretation workflow without
+recomputing scientific results.
 """
 from __future__ import annotations
 
-import html
 import json
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
+
+PLOTLY_CONFIG = {
+    "displayModeBar": False,
+    "responsive": True,
+    "scrollZoom": False,
+}
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -21,30 +28,34 @@ def _read_json(path: Path) -> dict[str, Any]:
         return {}
 
 
-def _fmt(value: Any, digits: int = 3, fallback: str = "—") -> str:
+def _read_csv(path: Path) -> pd.DataFrame:
     try:
-        return f"{float(value):.{digits}f}"
+        return pd.read_csv(path)
     except Exception:
-        return fallback
+        return pd.DataFrame()
 
 
 def _workspace_jump(label: str, key: str) -> None:
-    if st.button("进入工作区", key=key, use_container_width=True):
+    if st.button(label, key=key, use_container_width=True):
         st.session_state["_workspace_jump"] = label
         st.rerun()
 
 
-def _case_summary(root: Path) -> tuple[int, int, int]:
+def _case_state(root: Path) -> tuple[int, int, int, dict[str, int]]:
     try:
         from globalhab_demo.case_manager import case_status_counts, list_cases
 
         cases = list_cases(root)
         counts = case_status_counts(root)
-        pending = int(counts.get("pending_review", 0)) + int(counts.get("in_progress", 0)) + int(counts.get("visual_defer", 0))
+        pending = (
+            int(counts.get("pending_review", 0))
+            + int(counts.get("in_progress", 0))
+            + int(counts.get("visual_defer", 0))
+        )
         evidence = sum(len(c.get("evidence") or []) for c in cases)
-        return len(cases), pending, evidence
+        return len(cases), pending, evidence, {str(k): int(v) for k, v in counts.items()}
     except Exception:
-        return 0, 0, 0
+        return 0, 0, 0, {}
 
 
 def _visual_library_count(root: Path) -> int:
@@ -57,180 +68,278 @@ def _visual_library_count(root: Path) -> int:
         return 0
 
 
-def _own_data_status(root: Path) -> tuple[str, str]:
-    current = st.session_state.get("user_result")
-    if current is not None:
-        return "本次会话已有结果", "可继续比较模型、下载记录或送入结果解读"
+def _registered_user_runs(root: Path) -> int:
     base = root / "outputs" / "real_training"
-    runs = [p for p in base.glob("*") if p.is_dir() and (p / "metrics.csv").exists()] if base.exists() else []
-    if runs:
-        return f"已登记 {len(runs)} 组历史任务", "当前没有新的用户上传结果"
-    return "等待用户数据", "上传带时间、位置和观测标签的现场数据后开始分析"
+    if not base.exists():
+        return 0
+    return len([p for p in base.glob("*") if p.is_dir() and (p / "metrics.csv").exists()])
 
 
-def _llm_status() -> tuple[str, str]:
-    decoded = st.session_state.get("llm_interpretation")
-    if decoded:
-        return "本次会话已有解读", "语言模型只读取已登记结果摘要，不重算科学指标"
-    return "等待结果来源", "可读取研究结果、完整 Case、现场甄别或用户数据分析结果"
+def _layout(fig: go.Figure, *, height: int, margin_t: int = 46) -> go.Figure:
+    fig.update_layout(
+        height=height,
+        margin=dict(l=18, r=18, t=margin_t, b=18),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Microsoft YaHei, Arial", color="#234857", size=12),
+        hoverlabel=dict(font_size=12, font_family="Microsoft YaHei, Arial"),
+        title=dict(font=dict(size=16, color="#173f52"), x=0.02, xanchor="left"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+    return fig
 
 
-def _architecture_html() -> str:
-    return """
-    <div class="agent-architecture" role="img" aria-label="GlobalHAB-Agent方法与数据流框架">
-      <div class="arch-stage arch-input">
-        <div class="arch-kicker">01 · 输入</div>
-        <div class="arch-title">多源观测与任务上下文</div>
-        <div class="arch-body">环境时序 · SST/MHW · 营养盐 · 流场/输运 · HAB/qPCR · 经纬度与时间 · 现场影像 · 养殖信息 · 用户CSV/模型结果</div>
-      </div>
-      <div class="arch-arrow">→</div>
-      <div class="arch-stage">
-        <div class="arch-kicker">02 · 感知与质控</div>
-        <div class="arch-title">异常检测 + 数据质量门控</div>
-        <div class="arch-body">多尺度异常、缺失/样本支持检查、现场影像质量、时空可用性。输出可计算的数据状态与候选事件。</div>
-      </div>
-      <div class="arch-arrow">→</div>
-      <div class="arch-stage arch-core">
-        <div class="arch-kicker">03 · 科学推理内核</div>
-        <div class="arch-title">Adaptive Router → ST / STS</div>
-        <div class="arch-body"><b>ST</b>：Shock识别 + Transmission时滞/方向检验（TE/CTE、阻断预测）。<br><b>STS</b>：在ST基础上加入Spillover空间效应分解（Spatial Durbin）。路由器按数据条件选择可用分支，而非固定把所有方法全部执行。</div>
-      </div>
-      <div class="arch-arrow">→</div>
-      <div class="arch-stage arch-agent">
-        <div class="arch-kicker">04 · Agent决策循环</div>
-        <div class="arch-title">候选假设 → 试验 → 反馈</div>
-        <div class="arch-body">在 route × lag × model 候选空间内按预算选择下一项试验；接收AP/校准/负对照等反馈，保留最有证据的候选，同时记录全过程。</div>
-      </div>
-      <div class="arch-arrow">→</div>
-      <div class="arch-stage">
-        <div class="arch-kicker">05 · 证据落地</div>
-        <div class="arch-title">真实回放 · 前向验证 · Case</div>
-        <div class="arch-body">南澳/挪威/现场数据独立验证；候选区进入Case队列，与影像、实验室证据和生物响应沙盘连接。</div>
-      </div>
-      <div class="arch-arrow">→</div>
-      <div class="arch-stage arch-output">
-        <div class="arch-kicker">06 · 输出</div>
-        <div class="arch-title">风险排序与可审计解释</div>
-        <div class="arch-body">候选海域、时滞、证据强度、验证指标、现场复核状态、响应情景与结构化解读；保留适用边界，不自动等同于业务预报。</div>
-      </div>
-    </div>
-    <div class="arch-feedback">
-      <span>反馈回路</span>
-      现场影像/实验室证据和用户数据可回写 Case 与训练库，形成后续模型更新；大模型仅负责解释，不进入数值计算闭环。
-    </div>
-    """
+def _workspace_flow_figure() -> go.Figure:
+    labels = ["项目总览", "研究与验证", "自有数据分析", "现场影像甄别", "大模型结果解读"]
+    source = [0, 0, 0, 0, 1, 1, 2, 3]
+    target = [1, 2, 3, 4, 3, 4, 4, 4]
+    values = [1] * len(source)
+    fig = go.Figure(
+        go.Sankey(
+            arrangement="snap",
+            node=dict(
+                pad=22,
+                thickness=18,
+                line=dict(color="#b8d4da", width=1),
+                label=labels,
+                color=["#173f52", "#2b7c91", "#5a9fa4", "#55a6a0", "#7694b2"],
+                hovertemplate="%{label}<extra></extra>",
+            ),
+            link=dict(
+                source=source,
+                target=target,
+                value=values,
+                color="rgba(74,145,157,0.18)",
+                hoverinfo="skip",
+            ),
+        )
+    )
+    fig.update_layout(title="工作区联动", height=310)
+    return _layout(fig, height=310)
+
+
+def _case_donut(counts: dict[str, int], total: int, evidence_total: int) -> go.Figure:
+    mapping = [
+        ("待复核", "pending_review"),
+        ("处理中", "in_progress"),
+        ("视觉复核", "visual_screened"),
+        ("视觉DEFER", "visual_defer"),
+        ("实验室待确认", "lab_pending"),
+        ("已确认", "confirmed"),
+        ("已归档", "archived"),
+    ]
+    labels = [label for label, key in mapping if counts.get(key, 0) > 0]
+    values = [counts.get(key, 0) for _, key in mapping if counts.get(key, 0) > 0]
+    if not values:
+        labels, values = ["暂无Case"], [1]
+    fig = go.Figure(
+        go.Pie(
+            labels=labels,
+            values=values,
+            hole=0.68,
+            sort=False,
+            textinfo="none",
+            hovertemplate="%{label}<br>%{value} 个<extra></extra>" if total else "%{label}<extra></extra>",
+            marker=dict(line=dict(color="white", width=2)),
+        )
+    )
+    fig.add_annotation(
+        x=0.5,
+        y=0.55,
+        text=f"<b>{total}</b>",
+        showarrow=False,
+        font=dict(size=29, color="#173f52"),
+    )
+    fig.add_annotation(
+        x=0.5,
+        y=0.41,
+        text=f"Case · {evidence_total} 条证据",
+        showarrow=False,
+        font=dict(size=11, color="#5e747d"),
+    )
+    fig.update_layout(title="Case 状态", showlegend=True)
+    return _layout(fig, height=310)
+
+
+def _agent_trace_figure(root: Path) -> go.Figure:
+    df = _read_csv(root / "outputs" / "agent_log.csv")
+    fig = go.Figure()
+    if not df.empty and {"step", "pr_auc"}.issubset(df.columns):
+        custom = df[[c for c in ["route", "lag_days", "model", "utility", "status"] if c in df.columns]].astype(str).to_numpy()
+        fig.add_trace(
+            go.Scatter(
+                x=df["step"],
+                y=df["pr_auc"],
+                mode="lines+markers",
+                line=dict(width=2.2, color="#2b7c91"),
+                marker=dict(size=10, color=df["pr_auc"], colorscale="Teal", showscale=False, line=dict(color="white", width=1)),
+                customdata=custom,
+                hovertemplate=(
+                    "Step %{x}<br>AP %{y:.3f}<br>"
+                    "路径 %{customdata[0]} · 时滞 %{customdata[1]} d<br>"
+                    "模型 %{customdata[2]} · Utility %{customdata[3]}<extra></extra>"
+                ),
+                name="Agent search",
+            )
+        )
+        best_i = int(df["pr_auc"].astype(float).idxmax())
+        fig.add_annotation(
+            x=df.loc[best_i, "step"],
+            y=df.loc[best_i, "pr_auc"],
+            text="当前候选",
+            showarrow=True,
+            arrowhead=2,
+            ax=36,
+            ay=-38,
+            bgcolor="rgba(255,255,255,.9)",
+            bordercolor="#b9d8dc",
+        )
+    fig.update_xaxes(title="试验步", dtick=1, gridcolor="rgba(64,110,120,.10)")
+    fig.update_yaxes(title="Average Precision", rangemode="tozero", gridcolor="rgba(64,110,120,.10)")
+    fig.update_layout(title="Agent 探索轨迹", showlegend=False)
+    return _layout(fig, height=340)
+
+
+def _sa_replay_figure(root: Path) -> go.Figure:
+    df = _read_csv(root / "outputs" / "sa_real_replay_timeline.csv")
+    fig = go.Figure()
+    if not df.empty and {"sample_date", "k_cristata_peak_cells_l"}.issubset(df.columns):
+        df = df.copy()
+        df["sample_date"] = pd.to_datetime(df["sample_date"], errors="coerce")
+        df = df.dropna(subset=["sample_date"]).sort_values("sample_date")
+        marker_size = 8 + 2.5 * pd.to_numeric(df.get("samples", 1), errors="coerce").fillna(1).clip(1, 8)
+        fig.add_trace(
+            go.Scatter(
+                x=df["sample_date"],
+                y=df["k_cristata_peak_cells_l"],
+                mode="lines+markers",
+                line=dict(width=2, color="#428d94"),
+                marker=dict(size=marker_size, color="#63aaa6", line=dict(color="white", width=1)),
+                customdata=df[[c for c in ["samples", "locations", "k_cristata_detection_share"] if c in df.columns]].to_numpy(),
+                hovertemplate=(
+                    "%{x|%Y-%m-%d}<br>峰值 %{y:.2e} cells/L<br>"
+                    "样本 %{customdata[0]} · 站点 %{customdata[1]}<br>"
+                    "检出比例 %{customdata[2]:.0%}<extra></extra>"
+                ),
+                name="K. cristata",
+            )
+        )
+    fig.update_xaxes(title=None, gridcolor="rgba(64,110,120,.08)")
+    fig.update_yaxes(title="cells/L", type="log", gridcolor="rgba(64,110,120,.10)")
+    fig.update_layout(title="南澳真实事件回放", showlegend=False)
+    return _layout(fig, height=340)
+
+
+def _norway_forward_figure(root: Path) -> go.Figure:
+    df = _read_csv(root / "outputs" / "norway_forward_benchmark_folds.csv")
+    fig = go.Figure()
+    if not df.empty and "test_window" in df.columns:
+        series = [
+            ("模型 AP", "model_average_precision"),
+            ("参考模型 AP", "reference_average_precision"),
+            ("季节基线 AP", "seasonal_average_precision"),
+        ]
+        for label, col in series:
+            if col in df.columns:
+                fig.add_trace(
+                    go.Bar(
+                        x=df["test_window"],
+                        y=df[col],
+                        name=label,
+                        hovertemplate=f"%{{x}}<br>{label} %{{y:.3f}}<extra></extra>",
+                    )
+                )
+    fig.update_xaxes(title=None, gridcolor="rgba(64,110,120,.05)")
+    fig.update_yaxes(title="Average Precision", rangemode="tozero", gridcolor="rgba(64,110,120,.10)")
+    fig.update_layout(title="挪威前向验证", barmode="group")
+    return _layout(fig, height=345)
+
+
+def _method_ring_figure() -> go.Figure:
+    labels = [
+        "Transferability<br>& Generalization",
+        "时序迁移", "空间迁移", "跨区域验证", "真实事件回放",
+        "温度 / MHW", "营养盐", "时滞 / TE-CTE",
+        "洋流 / 输运", "空间溢出 / SDM",
+        "挪威前向验证", "自有数据",
+        "南澳 Karenia", "现场影像", "生物响应",
+    ]
+    parents = [
+        "",
+        labels[0], labels[0], labels[0], labels[0],
+        "时序迁移", "时序迁移", "时序迁移",
+        "空间迁移", "空间迁移",
+        "跨区域验证", "跨区域验证",
+        "真实事件回放", "真实事件回放", "真实事件回放",
+    ]
+    values = [12, 3, 3, 3, 3, 1, 1, 1, 1.5, 1.5, 1.5, 1.5, 1, 1, 1]
+    fig = go.Figure(
+        go.Sunburst(
+            labels=labels,
+            parents=parents,
+            values=values,
+            branchvalues="total",
+            insidetextorientation="radial",
+            maxdepth=3,
+            hovertemplate="%{label}<extra></extra>",
+            marker=dict(line=dict(color="white", width=2)),
+        )
+    )
+    fig.update_layout(title="环境因子与迁移验证", uniformtext=dict(minsize=10, mode="hide"))
+    return _layout(fig, height=470)
 
 
 def render(root: Any) -> None:
     root = Path(root)
     discovery = _read_json(root / "outputs" / "discovery_card.json")
     norway = _read_json(root / "outputs" / "norway_forward_benchmark_card.json")
-    sa = _read_json(root / "outputs" / "sa_real_replay_card.json")
-
     best = discovery.get("best_candidate") or {}
-    case_total, case_pending, evidence_total = _case_summary(root)
+
+    case_total, case_pending, evidence_total, case_counts = _case_state(root)
     library_count = _visual_library_count(root)
-    own_state, own_note = _own_data_status(root)
-    llm_state, llm_note = _llm_status()
+    own_runs = _registered_user_runs(root)
 
     st.markdown(
         """
-        <div class="home-heading">
+        <div class="home-heading home-heading-visual">
           <div class="home-title">项目总览</div>
-          <div class="home-subtitle">把研究计算、用户数据、现场证据和结果解读放在同一条工作链上。</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # Compact, data-first status line. These are registered outputs, not live claims.
-    lag = best.get("lag_days")
-    route = best.get("route")
-    ap = norway.get("model_average_precision")
-    top10 = norway.get("top10_recall")
-    st.markdown(
-        f"""
-        <div class="home-status-grid">
-          <div class="home-stat"><span>当前方法候选</span><b>{html.escape(str(route or '—'))} / {html.escape(str(lag) + ' d' if lag is not None else '—')}</b><small>合成验证登记结果</small></div>
-          <div class="home-stat"><span>挪威前向验证 AP</span><b>{_fmt(ap)}</b><small>Top 10%召回 {_fmt((float(top10) * 100) if top10 is not None else None, 1)}%</small></div>
-          <div class="home-stat"><span>现场任务</span><b>{case_pending}</b><small>共 {case_total} 个Case · {evidence_total} 条证据</small></div>
-          <div class="home-stat"><span>影像训练库</span><b>{library_count}</b><small>用户登记影像记录</small></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # Small numeric strip: only the numbers needed to orient the charts below.
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("当前候选", f"{best.get('route', '—')} · {best.get('lag_days', '—')} d")
+    m2.metric("挪威 AP", f"{float(norway.get('model_average_precision', 0)):.3f}" if norway else "—")
+    m3.metric("待处理 Case", case_pending)
+    m4.metric("影像记录", library_count)
 
-    st.markdown("### 四个工作区")
-    c1, c2 = st.columns(2)
-    with c1:
-        with st.container(border=True, key="home_research_card"):
-            st.markdown("#### 研究与验证")
-            st.caption("从环境异常、时滞与空间溢出到真实事件回放和前向验证。")
-            if best:
-                st.markdown(
-                    f"**最新登记候选：** `{best.get('route','—')}` 路径，`{best.get('lag_days','—')} 天`时滞，"
-                    f"AP `{_fmt(best.get('pr_auc'))}`。"
-                )
-            if sa:
-                st.caption(f"南澳回放：{sa.get('observations','—')} 条观测 / {sa.get('sampling_dates','—')} 个采样日。")
-            _workspace_jump("研究与验证", "home_to_research")
+    left, right = st.columns([1.45, 1], gap="large")
+    with left:
+        st.plotly_chart(_workspace_flow_figure(), use_container_width=True, config=PLOTLY_CONFIG)
+    with right:
+        st.plotly_chart(_case_donut(case_counts, case_total, evidence_total), use_container_width=True, config=PLOTLY_CONFIG)
 
-        with st.container(border=True, key="home_vision_card"):
-            st.markdown("#### 现场影像甄别")
-            st.caption("把研究候选转成现场复核任务，登记影像、质量信息和实验室证据。")
-            st.markdown(f"**待处理 Case：** {case_pending}　　**影像库：** {library_count}")
-            st.caption("影像判断作为证据层，不直接覆盖研究模型的数值结果。")
-            _workspace_jump("现场影像甄别", "home_to_vision")
+    left, right = st.columns(2, gap="large")
+    with left:
+        st.plotly_chart(_agent_trace_figure(root), use_container_width=True, config=PLOTLY_CONFIG)
+    with right:
+        st.plotly_chart(_sa_replay_figure(root), use_container_width=True, config=PLOTLY_CONFIG)
 
-    with c2:
-        with st.container(border=True, key="home_own_card"):
-            st.markdown("#### 自有数据分析")
-            st.caption("将用户现场观测放入独立的训练/验证流程，避免与演示数据混在一起。")
-            st.markdown(f"**状态：** {own_state}")
-            st.caption(own_note)
-            _workspace_jump("自有数据分析", "home_to_own")
+    left, right = st.columns([1.1, 1], gap="large")
+    with left:
+        st.plotly_chart(_norway_forward_figure(root), use_container_width=True, config=PLOTLY_CONFIG)
+    with right:
+        st.plotly_chart(_method_ring_figure(), use_container_width=True, config=PLOTLY_CONFIG)
 
-        with st.container(border=True, key="home_llm_card"):
-            st.markdown("#### 大模型结果解读")
-            st.caption("读取已登记结果或完整 Case，形成面向科研与管理沟通的结构化说明。")
-            st.markdown(f"**状态：** {llm_state}")
-            st.caption(llm_note)
-            _workspace_jump("大模型结果解读", "home_to_llm")
-
-    st.markdown("### Agent 方法框架")
-    st.markdown(
-        "这里把 Agent 定义为一条可审计的科学工作链：**方法路由负责选择工具，ST/STS负责科学推理，Hypothesis Agent负责在有限预算下选择下一项试验，Case与现场证据负责把候选带回现实数据。**",
-    )
-    st.markdown(_architecture_html(), unsafe_allow_html=True)
-
-    framework_png = root / "assets" / "GlobalHAB-Agent_method_framework.png"
-    framework_svg = root / "assets" / "GlobalHAB-Agent_method_framework.svg"
-    with st.expander("框架图文件（用于PPT或说明文档）", expanded=False):
-        if framework_png.exists():
-            st.image(str(framework_png), width="stretch")
-            st.download_button(
-                "下载PNG框架图", framework_png.read_bytes(),
-                file_name="GlobalHAB-Agent_method_framework.png", mime="image/png",
-                use_container_width=True, key="home_download_framework_png",
-            )
-        if framework_svg.exists():
-            st.download_button(
-                "下载SVG矢量框架图", framework_svg.read_bytes(),
-                file_name="GlobalHAB-Agent_method_framework.svg", mime="image/svg+xml",
-                use_container_width=True, key="home_download_framework_svg",
-            )
-
-    with st.expander("输入、输出与兼容范围", expanded=False):
-        st.markdown(
-            """
-**输入层**：带时间与经纬度的表格/时序观测（CSV）、HAB或qPCR记录、SST/MHW与营养盐、流场或输运信息、现场影像、养殖情景参数，以及已经生成的CSV/JSON模型结果。Florida/HYCOM适配器内部还可解析小型NetCDF响应。
-
-**中间对象**：异常事件表、路由诊断、TE/CTE时滞网络、空间效应表、候选假设与Agent日志、真实事件回放、Case证据链、影像训练库。
-
-**输出层**：候选区域与时滞、风险排序、阻断验证指标、真实前向验证、现场复核状态、生物响应情景比较、可下载结果，以及基于这些已登记结果的大模型解读。
-
-**边界**：不同数据源允许走不同分支；没有流场时不强行解释输运，没有连续标签时采用事件回放而不是伪装成监督训练。大模型不修改数值结果，也不替代现场/实验室确认。
-            """
-        )
-
-    st.caption("Homepage读取现有工作区和已登记输出，不重新计算科学结果。")
+    # Minimal navigation: the homepage is a visual overview, not another documentation page.
+    nav1, nav2, nav3, nav4 = st.columns(4)
+    with nav1:
+        _workspace_jump("研究与验证", "home_to_research")
+    with nav2:
+        _workspace_jump(f"自有数据分析 · {own_runs}", "home_to_own")
+    with nav3:
+        _workspace_jump(f"现场影像甄别 · {case_pending}", "home_to_vision")
+    with nav4:
+        _workspace_jump("大模型结果解读", "home_to_llm")

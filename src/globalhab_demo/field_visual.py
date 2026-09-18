@@ -505,7 +505,7 @@ def _render_screening_tab(root: Any = None) -> None:
     else:
         st.caption("可直接上传影像；关联研究任务请先在风险研判中创建 Case。")
 
-    input_col, meta_col = st.columns([1, 1], gap="large")
+    input_col, meta_col = st.container(), st.container()
     with input_col, st.container(border=True, key="vision_input_card"):
         st.markdown("### 拍照或上传")
         source_mode = st.radio("图像来源", ["现场拍照", "上传图片"], horizontal=True, key="vision_source_mode")
@@ -592,7 +592,7 @@ def _render_screening_tab(root: Any = None) -> None:
     v = result["visual"]
     raw = st.session_state.get("field_visual_image_bytes")
     st.markdown("### 甄别结果")
-    preview_col, result_col = st.columns([1.05, 1.2], gap="large")
+    preview_col, result_col = st.container(), st.container()
     with preview_col, st.container(border=True, key="vision_preview_card"):
         if raw:
             st.image(raw, caption="本次分析照片", use_container_width=True)
@@ -657,7 +657,7 @@ def _render_screening_tab(root: Any = None) -> None:
             st.caption("透明规则基线仍会显示颜色/纹理辅助线索，但不会在自适应模式中冒充深度模型的最终结果。")
 
     st.markdown("### 05 · 下一步复核")
-    follow_col, boundary_col = st.columns(2, gap="large")
+    follow_col, boundary_col = st.container(), st.container()
     with follow_col, st.container(border=True, key="vision_follow_card"):
         st.markdown("#### 推荐补充证据")
         for x in result["recommended_follow_up"]:
@@ -781,13 +781,21 @@ def render(root: Any = None) -> None:
         kicker="Field evidence",
     )
     with st.container(key="vision_workspace_tabs"):
-        tab_screen, tab_data, tab_model = st.tabs([
+        tab_screen, tab_example, tab_video, tab_data, tab_model = st.tabs([
             "影像识别",
+            "示例体验",
+            "视频筛查",
             "我的影像数据",
             "模型训练与版本",
         ])
     with tab_screen:
         _render_screening_tab(root_path)
+    with tab_example:
+        from globalhab_demo.visual_examples import render_examples
+        render_examples(root_path)
+    with tab_video:
+        from globalhab_demo.visual_examples import render_video
+        render_video(root_path)
     with tab_data:
         render_library_tab(root_path)
     with tab_model:

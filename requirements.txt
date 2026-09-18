@@ -17,3 +17,6 @@ torchvision>=0.19,<1
 transformers>=4.46,<5
 safetensors>=0.4,<1
 
+
+# Local short-video frame decoding
+opencv-python-headless>=4.8,<5

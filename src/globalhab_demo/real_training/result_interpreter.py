@@ -67,6 +67,7 @@ def effective_remote_config(provider: str, endpoint: str, model_id: str, api_key
     return {"base_url": base_url, "model": model, "api_key": (api_key or "").strip()}
 
 BUILTIN_SOURCES = [
+    "本会话结果汇总",
     "项目核心发现（合成探索 + 负对照）",
     "模型Benchmark与结构模型审计",
     "挪威长期前向验证",
@@ -363,7 +364,10 @@ def render(root: Path) -> None:
         source = st.selectbox("结果来源", BUILTIN_SOURCES, key="llm_result_source")
         split = "test"
         summary = ""
-        if source == "项目核心发现（合成探索 + 负对照）":
+        if source == "本会话结果汇总":
+            from globalhab_demo.result_pool import render_selection
+            summary=render_selection()
+        elif source == "项目核心发现（合成探索 + 负对照）":
             summary = core_discovery_summary(root)
         elif source == "模型Benchmark与结构模型审计":
             summary = benchmark_summary(root)

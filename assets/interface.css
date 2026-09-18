@@ -1203,3 +1203,9 @@ button[role="tab"][aria-selected="true"]{color:#1c78c0!important;border-color:#c
  .home-topband{display:block;padding-bottom:12px;}
  .home-topband-right{text-align:left;margin-top:10px;}
 }
+
+/* Image workflow uses full-width stages; no forced column heights. */
+.st-key-vision_input_card,.st-key-vision_meta_card,
+.st-key-vision_preview_card,.st-key-vision_result_card{
+ min-height:0!important;height:auto!important;width:100%!important;
+}

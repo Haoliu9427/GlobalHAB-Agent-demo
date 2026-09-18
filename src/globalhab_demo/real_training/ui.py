@@ -35,6 +35,8 @@ def render(root):
         col.metric(title,f'{counts[key]:,}')
     splitname=st.radio('测试范围',df['split'].unique(),format_func=lambda x:'未见网格的未来样本' if x=='spatial_test' else '已见区域的未来样本',horizontal=True,key='real_eval_split')
     subset=df[df['split']==splitname]
+    from globalhab_demo.result_pool import register
+    register('真实数据验证','已存真实观测实验',{'task':folder.name,'split':splitname,'metrics':subset.to_dict('records')})
     summary=subset.groupby('model',sort=False).agg(AP=('AP','mean'),AP_std=('AP','std'),Brier=('Brier','mean'),ECE=('ECE','mean'),seconds=('seconds','mean'),parameters=('parameters','max')).reset_index()
     figure=px.scatter(summary,x='AP',y='model',error_x='AP_std',color='AP',color_continuous_scale=['#9ecfd9','#087d95'],title='同一留出集：模型排名与种子波动',labels={'AP':'AP · 越高越好','model':''})
     figure.update_traces(marker=dict(size=14))

@@ -150,6 +150,8 @@ def render(root):
             st.download_button('下载数据模板',','.join(REQUIRED)+'\n',file_name='observations_template.csv')
         with c2:
             photo=st.file_uploader('现场影像 · 可选',type=['png','jpg','jpeg'],key='ra_image')
+            use_example_image=st.checkbox('同时体验合成水色图筛查',key='ra_example_image') if demo else False
+            if use_example_image:st.caption('合成测试图，仅体验筛查流程，不是真实观测，也不作为模型训练证据。')
             station=st.text_input('影像站点编号',key='ra_station')
             date=st.date_input('拍摄日期',key='ra_date')
             surface=st.checkbox('照片主体是海面或水体',value=True,key='ra_surface')
@@ -162,6 +164,9 @@ def render(root):
     if not demo and not upload:
         st.info('没有CSV？可切换到使用示例数据。只有照片时，请使用顶部的影像识别工作区。');return
     raw=demonstration_csv() if demo else upload.getvalue();image_bytes=photo.getvalue() if photo else None
+    if use_example_image and not photo:
+        from globalhab_demo.visual_examples import sample_image
+        image_bytes=sample_image('绿色')
     if image_bytes and len(image_bytes)>15*1024*1024:st.error('影像超过15MB，请缩小后上传。');return
     signature=hashlib.sha256(raw+(image_bytes or b'')+json.dumps([goal,horizon,budget,future,description,station,str(date),surface,VERSION],ensure_ascii=False).encode()).hexdigest()
     if st.button('检查数据并生成计划',type='primary',key='ra_plan'):
@@ -193,7 +198,10 @@ def render(root):
         progress=st.status('研究任务执行中',expanded=True)
         try:
             result=execute_task(raw,plan,image_bytes,progress.write,root)
-            st.session_state['ra_result']=(signature,result);progress.update(label='研究任务完成',state='complete',expanded=False)
+            st.session_state['ra_result']=(signature,result)
+            from globalhab_demo.result_pool import register
+            register('研究助手','合成示例' if demo else '用户观测',{'metrics':result['table'].to_dict('records'),'plan':plan,'evidence':result['evidence']})
+            progress.update(label='研究任务完成',state='complete',expanded=False)
         except Exception as exc:
             progress.update(label='任务未完成',state='error');st.error(str(exc))
     result=st.session_state.get('ra_result')
@@ -202,8 +210,9 @@ def render(root):
     if demo:st.warning('以下为合成示例运行结果，仅供体验流程。')
     tabs=st.tabs(['分析结论','执行轨迹','多模态证据'])
     with tabs[0]:
-        st.write(r['interpretation'])
-        if not r['table'].empty:st.dataframe(r['table'],hide_index=True)
+        from globalhab_demo.result_charts import render_metrics
+        render_metrics(r['table'],r['interpretation'])
+        if r['table'].empty:st.write(r['interpretation'])
         if not r['review'].empty:st.dataframe(r['review'].head(30),hide_index=True)
         if not r['forecast'].empty:
             capacity=st.slider('优先复核比例（不重新训练）',5,50,20,5,key='ra_capacity')

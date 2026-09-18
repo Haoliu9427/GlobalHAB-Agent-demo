@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF2-VISUAL-20260918"
+BUILD_ID = "HF2-MULTIMODAL-20260918"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -945,6 +945,8 @@ with tab_alert:
         issue_date, horizon_days, mhw, nitrate, phosphate, silicate, transport
     )
     top = scenario.iloc[0]
+    from globalhab_demo.result_pool import register
+    register('风险研判','合成环境情景；非实时预报',{'issue_date':issue_date,'horizon_days':horizon_days,'ranking':scenario.to_dict('records')})
 
     with st.container(border=True, key="field_task_from_research"):
         st.markdown("#### 现场复核任务")
@@ -1133,6 +1135,9 @@ with tab_real:
         )
         real_card = sa_full_replay["card"]
         norway_card = norway_full_replay["card"]
+        from globalhab_demo.result_pool import register
+        register('真实事件回放','已存真实观测回放',{'south_australia':real_card,'norway':norway_card,'norway_benchmark':norway_benchmark['summary']})
+
 
     with st.container(border=True, key="research_section_tab_real_1"):
         case_choice = st.selectbox(
@@ -1804,420 +1809,430 @@ with tab_real:
             else:
                 st.info("上传观测与流场CSV后进行质量检查；满足时间、空间、事件和流场覆盖条件后可运行前向验证。")
 
+robustness_card = None
 with tab_bio:
-    with st.container(border=True, key="research_section_tab_bio_0"):
-        st.markdown("### 网箱鱼生物响应沙盘")
-        st.markdown(
-            '<div class="signal"><b>区域化网箱鱼响应情景：</b>本沙盘将藻华、高温、溶解氧、'
-            '养殖密度和计划投喂转化为网箱鱼的相对生理压力轨迹，并并列比较监测、降低投喂、增氧和'
-            '转移准备。参数用于情景比较，尚未按具体鱼种或场站进行标定。</div>',
-            unsafe_allow_html=True,
-        )
-
-        production_regions = production_region_frame()
-        cage_region_names = [
-            name for name, profile in BIO_PRODUCTION_REGIONS.items()
-            if profile["cage_sandbox"]
-        ]
-        selected_bio_region = st.selectbox(
-            "网箱鱼情景海区", cage_region_names,
-            index=cage_region_names.index("智利巴塔哥尼亚峡湾"),
-            help="仅列入具有海水网箱养殖背景的代表海区。捕捞渔场仍显示在地图上，但不套用网箱鱼生理模型。",
-        )
-        region_profile = BIO_PRODUCTION_REGIONS[selected_bio_region]
-        research_plot(
-            production_region_map(production_regions[production_regions["cage_sandbox"]].copy(), selected_bio_region),
-            width="stretch", config={"displayModeBar": False},
-        )
-        st.caption("地图与菜单均仅显示可进入网箱鱼沙盘的海区。")
-        with st.expander("全球渔业背景（不进入网箱鱼模拟）"):
-            research_plot(production_region_map(production_regions, selected_bio_region),width="stretch",config={"displayModeBar":False})
-            st.caption("捕捞及贝类区域仅提供背景；没有套用网箱鱼生理参数。")
-
-        bio_control, bio_result = st.columns([1.0, 2.15], gap="large")
-        with bio_control:
-            bio_options = ["区域背景情景"] + list(BIO_SCENARIO_PRESETS)
-            bio_preset_name = st.selectbox(
-                "压力情景", bio_options, index=0
-            )
-            if bio_preset_name == "区域背景情景":
-                bio_preset = region_profile
-                bio_source_note = (
-                    f"代表对象：{region_profile['representative_stock']}。"
-                    "初始值为区域情景参数，可调整；不对应实时场站观测或运营阈值。"
-                )
-            else:
-                bio_preset = BIO_SCENARIO_PRESETS[bio_preset_name]
-                bio_source_note = str(bio_preset["source_note"])
-            bio_key = f"{selected_bio_region}_{bio_preset_name}"
-            hab_pressure = st.slider(
-                "藻华危害压力（0–100）", 0.0, 100.0,
-                float(bio_preset["hab_pressure"]), 1.0,
-                key=f"bio_hab_{bio_key}",
-                help="无量纲外部压力。真实事件锚点仅表示所选回放内的相对峰值，不对应毒素或死亡阈值。",
-            )
-            bio_mhw = st.slider(
-                "海洋热浪强度（°C）", 0.0, 5.0,
-                float(bio_preset["mhw_intensity_c"]), .1,
-                key=f"bio_mhw_{bio_key}",
-            )
-            bio_do = st.slider(
-                "场景溶解氧（mg L⁻¹）", 1.0, 10.0,
-                float(bio_preset["dissolved_oxygen_mg_l"]), .1,
-                key=f"bio_do_{bio_key}",
-                help="情景输入，不对应实时养殖场观测。",
-            )
-            bio_density = st.slider(
-                "养殖密度（kg m⁻³）", 2.0, 45.0,
-                float(bio_preset["stocking_density_kg_m3"]), 1.0,
-                key=f"bio_density_{bio_key}",
-                help="用于模拟密度相关氧负荷，不作为养殖密度建议。",
-            )
-            bio_feed = st.slider(
-                "计划投喂水平（%）", 0.0, 120.0,
-                float(bio_preset["planned_feeding_pct"]), 5.0,
-                key=f"bio_feed_{bio_key}",
-            )
-            bio_duration = st.slider(
-                "藻华压力持续时间（小时）", 12, 72,
-                int(bio_preset["hab_duration_hours"]), 6,
-                key=f"bio_duration_{bio_key}",
-            )
-            bio_horizon = st.radio(
-                "模拟时间", [48, 72, 96], index=1, horizontal=True,
-                format_func=lambda value: f"{value}小时",
-            )
-            st.caption(bio_source_note)
-
-        bio_simulation = compare_interventions(
-            hab_pressure=hab_pressure,
-            mhw_intensity_c=bio_mhw,
-            dissolved_oxygen_mg_l=bio_do,
-            stocking_density_kg_m3=bio_density,
-            planned_feeding_pct=bio_feed,
-            hab_duration_hours=min(bio_duration, bio_horizon),
-            horizon_hours=bio_horizon,
-        )
-        bio_robustness = evaluate_intervention_robustness(
-            hab_pressure=hab_pressure,
-            mhw_intensity_c=bio_mhw,
-            dissolved_oxygen_mg_l=bio_do,
-            stocking_density_kg_m3=bio_density,
-            planned_feeding_pct=bio_feed,
-            hab_duration_hours=min(bio_duration, bio_horizon),
-            horizon_hours=bio_horizon,
-        )
-        bio_summary = bio_simulation["summary"]
-        bio_trajectories = bio_simulation["trajectories"]
-        lowest = bio_summary.iloc[0]
-        baseline = bio_summary[bio_summary["intervention"].eq("维持监测")].iloc[0]
-        transfer = bio_summary[
-            bio_summary["intervention"].eq("转移准备（未执行）")
-        ].iloc[0]
-
-        with bio_result:
-            if bio_preset_name.startswith("南澳"):
-                anchor_text = (
-                    f"真实藻华锚点：K. cristata现场qPCR峰值 "
-                    f"{real_card['peak_k_cristata']['cells_l']:,.0f} cells L⁻¹ · "
-                    f"{real_card['peak_k_cristata']['location']} · "
-                    f"{real_card['peak_k_cristata']['date']}。仅在回放内部归一化为100。"
-                )
-            elif bio_preset_name.startswith("挪威"):
-                anchor_text = (
-                    f"真实藻华锚点：D. acuta最高监测值 "
-                    f"{norway_card['peak_d_acuta']['cells_l']:,.0f} cells L⁻¹ · "
-                    f"{norway_card['peak_d_acuta']['region']} · "
-                    f"{norway_card['peak_d_acuta']['date']}。仅在回放内部归一化为100。"
-                )
-            elif bio_preset_name == "区域背景情景":
-                anchor_text = (
-                    f"{selected_bio_region} · {region_profile['representative_stock']}。"
-                    "区域名称和生产对象提供情景背景，环境与养殖参数为可调整初始值。"
-                )
-            else:
-                anchor_text = "当前输入为可调整情景参数，未对应具体养殖场观测。"
+    bio_object=st.radio("分析对象",["网箱鱼", "贝类养殖", "海藻养殖", "捕捞资源"],horizontal=True,key="bio_object")
+    if bio_object != "网箱鱼":
+        from globalhab_demo.exposure_sandbox import render as render_exposure
+        render_exposure(bio_object,ROOT)
+    else:
+        with st.container(border=True, key="research_section_tab_bio_0"):
+            st.markdown("### 网箱鱼生物响应沙盘")
             st.markdown(
-                f'<div class="case-card"><span class="case-badge">数据来源</span><br>'
-                f'{html.escape(anchor_text)}</div>', unsafe_allow_html=True,
+                '<div class="signal"><b>区域化网箱鱼响应情景：</b>本沙盘将藻华、高温、溶解氧、'
+                '养殖密度和计划投喂转化为网箱鱼的相对生理压力轨迹，并并列比较监测、降低投喂、增氧和'
+                '转移准备。参数用于情景比较，尚未按具体鱼种或场站进行标定。</div>',
+                unsafe_allow_html=True,
             )
-            kpi_grid([
-                ("当前生产情景", selected_bio_region, str(region_profile["representative_stock"])),
-                ("基准峰值压力", f"{baseline['peak_pressure_index']:.1f}/100", "维持监测情景"),
-                ("最低压力情景", str(lowest["intervention"]), "情景比较结果"),
-            ])
-            kpi_grid([
-                ("累计压力变化", f"−{lowest['pressure_load_reduction_vs_baseline_pct']:.1f}%", "相对维持监测基准"),
-                ("摄食机会保留", f"{lowest['mean_feeding_opportunity_pct']:.1f}%", "模型中的相对摄食代理"),
-                ("最低有效DO", f"{lowest['minimum_effective_do_mg_l']:.2f}", "mg L⁻¹ · 场景代理"),
-            ])
 
-        bio_steps = [
-            ("海区与环境", f"{selected_bio_region} · HAB {hab_pressure:.0f} · MHW {bio_mhw:.1f}°C"),
-            ("养殖对象", f"{region_profile['representative_stock']} · 密度 {bio_density:.0f} kg m⁻³"),
-            ("当前响应", f"峰值 {baseline['peak_pressure_index']:.1f}/100 · 最低DO {baseline['minimum_effective_do_mg_l']:.2f}"),
-            ("情景比较", f"{lowest['intervention']} · 累计压力 −{lowest['pressure_load_reduction_vs_baseline_pct']:.1f}%"),
-            ("准备状态", f"转移准备 {transfer['response_readiness_hours']}小时 · 不外推死亡率"),
-        ]
-        step_cards = "".join(
-            '<div class="risk-step">'
-            f'<div class="risk-step-title">{title}</div>'
-            f'<div class="risk-step-value">{value}</div>'
-            '</div>'
-            for title, value in bio_steps
-        )
-        st.markdown(
-            '<div class="risk-bridge"><div class="risk-bridge-title">网箱鱼响应概览</div>'
-            '<div class="risk-bridge-subtitle">模型沿时间推进复合压力，并在相同外部条件下比较干预方案。</div>'
-            f'<div class="risk-chain">{step_cards}</div></div>', unsafe_allow_html=True,
-        )
+            production_regions = production_region_frame()
+            cage_region_names = [
+                name for name, profile in BIO_PRODUCTION_REGIONS.items()
+                if profile["cage_sandbox"]
+            ]
+            selected_bio_region = st.selectbox(
+                "网箱鱼情景海区", cage_region_names,
+                index=cage_region_names.index("智利巴塔哥尼亚峡湾"),
+                help="仅列入具有海水网箱养殖背景的代表海区。捕捞渔场仍显示在地图上，但不套用网箱鱼生理模型。",
+            )
+            region_profile = BIO_PRODUCTION_REGIONS[selected_bio_region]
+            research_plot(
+                production_region_map(production_regions[production_regions["cage_sandbox"]].copy(), selected_bio_region),
+                width="stretch", config={"displayModeBar": False},
+            )
+            st.caption("地图与菜单均仅显示可进入网箱鱼沙盘的海区。")
+            with st.expander("全球渔业背景（不进入网箱鱼模拟）"):
+                research_plot(production_region_map(production_regions, selected_bio_region),width="stretch",config={"displayModeBar":False})
+                st.caption("捕捞及贝类区域仅提供背景；没有套用网箱鱼生理参数。")
 
-    with st.container(border=True, key="research_section_tab_bio_1"):
-        selected_interventions = st.multiselect(
-            "选择需要比较的干预轨迹",
-            list(INTERVENTIONS),
-            default=list(INTERVENTIONS),
-        )
-        if not selected_interventions:
-            selected_interventions = ["维持监测"]
-        bio_plot_data = bio_trajectories[
-            bio_trajectories["intervention"].isin(selected_interventions)
-        ]
-        trajectory_chart = px.line(
-            bio_plot_data,
-            x="hour",
-            y="relative_physiological_pressure",
-            color="intervention",
-            title="不同干预情景下的相对生理压力轨迹",
-            labels={
-                "hour": "模拟时间（小时）",
-                "relative_physiological_pressure": "相对生理压力指数（0–100）",
-                "intervention": "干预情景",
-            },
-        )
-        trajectory_chart.update_layout(
-            height=440, margin={"l": 5, "r": 5, "t": 55, "b": 5},
-            legend={"orientation": "h", "y": -0.20},
-            hovermode="x unified",
-        )
-        trajectory_chart.update_yaxes(range=[0, 100])
-        research_plot(trajectory_chart, width="stretch", config={"displayModeBar": False})
+            bio_control, bio_result = st.columns([1.0, 2.15], gap="large")
+            with bio_control:
+                bio_options = ["区域背景情景"] + list(BIO_SCENARIO_PRESETS)
+                bio_preset_name = st.selectbox(
+                    "压力情景", bio_options, index=0
+                )
+                if bio_preset_name == "区域背景情景":
+                    bio_preset = region_profile
+                    bio_source_note = (
+                        f"代表对象：{region_profile['representative_stock']}。"
+                        "初始值为区域情景参数，可调整；不对应实时场站观测或运营阈值。"
+                    )
+                else:
+                    bio_preset = BIO_SCENARIO_PRESETS[bio_preset_name]
+                    bio_source_note = str(bio_preset["source_note"])
+                bio_key = f"{selected_bio_region}_{bio_preset_name}"
+                hab_pressure = st.slider(
+                    "藻华危害压力（0–100）", 0.0, 100.0,
+                    float(bio_preset["hab_pressure"]), 1.0,
+                    key=f"bio_hab_{bio_key}",
+                    help="无量纲外部压力。真实事件锚点仅表示所选回放内的相对峰值，不对应毒素或死亡阈值。",
+                )
+                bio_mhw = st.slider(
+                    "海洋热浪强度（°C）", 0.0, 5.0,
+                    float(bio_preset["mhw_intensity_c"]), .1,
+                    key=f"bio_mhw_{bio_key}",
+                )
+                bio_do = st.slider(
+                    "场景溶解氧（mg L⁻¹）", 1.0, 10.0,
+                    float(bio_preset["dissolved_oxygen_mg_l"]), .1,
+                    key=f"bio_do_{bio_key}",
+                    help="情景输入，不对应实时养殖场观测。",
+                )
+                bio_density = st.slider(
+                    "养殖密度（kg m⁻³）", 2.0, 45.0,
+                    float(bio_preset["stocking_density_kg_m3"]), 1.0,
+                    key=f"bio_density_{bio_key}",
+                    help="用于模拟密度相关氧负荷，不作为养殖密度建议。",
+                )
+                bio_feed = st.slider(
+                    "计划投喂水平（%）", 0.0, 120.0,
+                    float(bio_preset["planned_feeding_pct"]), 5.0,
+                    key=f"bio_feed_{bio_key}",
+                )
+                bio_duration = st.slider(
+                    "藻华压力持续时间（小时）", 12, 72,
+                    int(bio_preset["hab_duration_hours"]), 6,
+                    key=f"bio_duration_{bio_key}",
+                )
+                bio_horizon = st.radio(
+                    "模拟时间", [48, 72, 96], index=1, horizontal=True,
+                    format_func=lambda value: f"{value}小时",
+                )
+                st.caption(bio_source_note)
 
-        bc1, bc2 = st.columns([1.25, 1.0], gap="large")
-        with bc1:
-            error_plus = (
-                bio_summary["peak_pressure_upper"] - bio_summary["peak_pressure_index"]
+            bio_simulation = compare_interventions(
+                hab_pressure=hab_pressure,
+                mhw_intensity_c=bio_mhw,
+                dissolved_oxygen_mg_l=bio_do,
+                stocking_density_kg_m3=bio_density,
+                planned_feeding_pct=bio_feed,
+                hab_duration_hours=min(bio_duration, bio_horizon),
+                horizon_hours=bio_horizon,
             )
-            error_minus = (
-                bio_summary["peak_pressure_index"] - bio_summary["peak_pressure_lower"]
+            bio_robustness = evaluate_intervention_robustness(
+                hab_pressure=hab_pressure,
+                mhw_intensity_c=bio_mhw,
+                dissolved_oxygen_mg_l=bio_do,
+                stocking_density_kg_m3=bio_density,
+                planned_feeding_pct=bio_feed,
+                hab_duration_hours=min(bio_duration, bio_horizon),
+                horizon_hours=bio_horizon,
             )
-            pressure_bar = go.Figure(go.Bar(
-                x=bio_summary["intervention"],
-                y=bio_summary["peak_pressure_index"],
-                marker_color=["#2cb7b1", "#4d9ce0", "#d08a32", "#4d9ce0", "#6f93aa"],
-                error_y={
-                    "type": "data", "array": error_plus, "arrayminus": error_minus,
-                    "visible": True, "color": "#3f5860",
-                },
-                customdata=bio_summary[[
-                    "mean_feeding_opportunity_pct", "minimum_effective_do_mg_l",
-                    "pressure_load_reduction_vs_baseline_pct",
-                ]],
-                hovertemplate=(
-                    "<b>%{x}</b><br>峰值压力：%{y:.1f}/100"
-                    "<br>摄食机会：%{customdata[0]:.1f}%"
-                    "<br>最低有效DO：%{customdata[1]:.2f} mg L⁻¹"
-                    "<br>累计压力变化：%{customdata[2]:.1f}%<extra></extra>"
-                ),
-            ))
-            pressure_bar.update_layout(
-                title="峰值压力与±15%参数敏感性包络", height=390,
-                margin={"l": 5, "r": 5, "t": 55, "b": 95},
-                xaxis={"tickangle": -18}, yaxis={"title": "相对压力指数", "range": [0, 100]},
+            bio_summary = bio_simulation["summary"]
+            from globalhab_demo.result_pool import register
+            register('网箱鱼沙盘','科学原型情景',{'region':selected_bio_region,'summary':bio_summary.to_dict('records')})
+            bio_trajectories = bio_simulation["trajectories"]
+            lowest = bio_summary.iloc[0]
+            baseline = bio_summary[bio_summary["intervention"].eq("维持监测")].iloc[0]
+            transfer = bio_summary[
+                bio_summary["intervention"].eq("转移准备（未执行）")
+            ].iloc[0]
+
+            with bio_result:
+                if bio_preset_name.startswith("南澳"):
+                    anchor_text = (
+                        f"真实藻华锚点：K. cristata现场qPCR峰值 "
+                        f"{real_card['peak_k_cristata']['cells_l']:,.0f} cells L⁻¹ · "
+                        f"{real_card['peak_k_cristata']['location']} · "
+                        f"{real_card['peak_k_cristata']['date']}。仅在回放内部归一化为100。"
+                    )
+                elif bio_preset_name.startswith("挪威"):
+                    anchor_text = (
+                        f"真实藻华锚点：D. acuta最高监测值 "
+                        f"{norway_card['peak_d_acuta']['cells_l']:,.0f} cells L⁻¹ · "
+                        f"{norway_card['peak_d_acuta']['region']} · "
+                        f"{norway_card['peak_d_acuta']['date']}。仅在回放内部归一化为100。"
+                    )
+                elif bio_preset_name == "区域背景情景":
+                    anchor_text = (
+                        f"{selected_bio_region} · {region_profile['representative_stock']}。"
+                        "区域名称和生产对象提供情景背景，环境与养殖参数为可调整初始值。"
+                    )
+                else:
+                    anchor_text = "当前输入为可调整情景参数，未对应具体养殖场观测。"
+                st.markdown(
+                    f'<div class="case-card"><span class="case-badge">数据来源</span><br>'
+                    f'{html.escape(anchor_text)}</div>', unsafe_allow_html=True,
+                )
+                kpi_grid([
+                    ("当前生产情景", selected_bio_region, str(region_profile["representative_stock"])),
+                    ("基准峰值压力", f"{baseline['peak_pressure_index']:.1f}/100", "维持监测情景"),
+                    ("最低压力情景", str(lowest["intervention"]), "情景比较结果"),
+                ])
+                kpi_grid([
+                    ("累计压力变化", f"−{lowest['pressure_load_reduction_vs_baseline_pct']:.1f}%", "相对维持监测基准"),
+                    ("摄食机会保留", f"{lowest['mean_feeding_opportunity_pct']:.1f}%", "模型中的相对摄食代理"),
+                    ("最低有效DO", f"{lowest['minimum_effective_do_mg_l']:.2f}", "mg L⁻¹ · 场景代理"),
+                ])
+
+            bio_steps = [
+                ("海区与环境", f"{selected_bio_region} · HAB {hab_pressure:.0f} · MHW {bio_mhw:.1f}°C"),
+                ("养殖对象", f"{region_profile['representative_stock']} · 密度 {bio_density:.0f} kg m⁻³"),
+                ("当前响应", f"峰值 {baseline['peak_pressure_index']:.1f}/100 · 最低DO {baseline['minimum_effective_do_mg_l']:.2f}"),
+                ("情景比较", f"{lowest['intervention']} · 累计压力 −{lowest['pressure_load_reduction_vs_baseline_pct']:.1f}%"),
+                ("准备状态", f"转移准备 {transfer['response_readiness_hours']}小时 · 不外推死亡率"),
+            ]
+            step_cards = "".join(
+                '<div class="risk-step">'
+                f'<div class="risk-step-title">{title}</div>'
+                f'<div class="risk-step-value">{value}</div>'
+                '</div>'
+                for title, value in bio_steps
             )
-            research_plot(pressure_bar, width="stretch", config={"displayModeBar": False})
-        with bc2:
-            tradeoff_chart = px.scatter(
-                bio_summary,
-                x="mean_feeding_opportunity_pct",
-                y="pressure_load_reduction_vs_baseline_pct",
+            st.markdown(
+                '<div class="risk-bridge"><div class="risk-bridge-title">网箱鱼响应概览</div>'
+                '<div class="risk-bridge-subtitle">模型沿时间推进复合压力，并在相同外部条件下比较干预方案。</div>'
+                f'<div class="risk-chain">{step_cards}</div></div>', unsafe_allow_html=True,
+            )
+
+        with st.container(border=True, key="research_section_tab_bio_1"):
+            selected_interventions = st.multiselect(
+                "选择需要比较的干预轨迹",
+                list(INTERVENTIONS),
+                default=list(INTERVENTIONS),
+            )
+            if not selected_interventions:
+                selected_interventions = ["维持监测"]
+            bio_plot_data = bio_trajectories[
+                bio_trajectories["intervention"].isin(selected_interventions)
+            ]
+            trajectory_chart = px.line(
+                bio_plot_data,
+                x="hour",
+                y="relative_physiological_pressure",
                 color="intervention",
-                size=(20 - bio_summary["response_readiness_hours"]).clip(lower=2),
-                title="压力缓解—摄食机会权衡",
+                title="不同干预情景下的相对生理压力轨迹",
                 labels={
-                    "mean_feeding_opportunity_pct": "摄食机会保留（%）",
-                    "pressure_load_reduction_vs_baseline_pct": "累计压力降低（%）",
+                    "hour": "模拟时间（小时）",
+                    "relative_physiological_pressure": "相对生理压力指数（0–100）",
                     "intervention": "干预情景",
                 },
-                hover_data={"response_readiness_hours": True},
             )
-            tradeoff_chart.update_layout(
-                height=390, margin={"l": 5, "r": 5, "t": 55, "b": 5},
-                showlegend=False,
+            trajectory_chart.update_layout(
+                height=440, margin={"l": 5, "r": 5, "t": 55, "b": 5},
+                legend={"orientation": "h", "y": -0.20},
+                hovermode="x unified",
             )
-            research_plot(tradeoff_chart, width="stretch", config={"displayModeBar": False})
+            trajectory_chart.update_yaxes(range=[0, 100])
+            research_plot(trajectory_chart, width="stretch", config={"displayModeBar": False})
 
-    with st.container(border=True, key="research_section_tab_bio_2"):
-        st.markdown("#### 参数扰动下的稳定性")
-        robustness_summary = bio_robustness["summary"]
-        robustness_card = bio_robustness["card"]
-        st.markdown(
-            '<div class="signal">HAB压力±10%、MHW±0.4°C、DO±0.5 mg L⁻¹和密度±10%组合形成81个邻近情景，并计算各干预的帕累托出现率。</div>',
-            unsafe_allow_html=True,
-        )
-        robustness_chart = px.scatter(
-            robustness_summary,
-            x="median_feeding_opportunity_pct",
-            y="median_pressure_reduction_pct",
-            size="pareto_frequency",
-            color="intervention",
-            title="81个邻近输入情景下的干预稳健性",
-            labels={
-                "median_feeding_opportunity_pct": "中位摄食机会保留（%）",
-                "median_pressure_reduction_pct": "中位累计压力降低（%）",
-                "pareto_frequency": "帕累托出现率（%）",
-                "intervention": "干预情景",
-            },
-            hover_data={
-                "worst_case_pressure_reduction_pct": ":.1f",
-                "best_case_pressure_reduction_pct": ":.1f",
-                "lowest_pressure_frequency": ":.1f",
-            },
-        )
-        robustness_chart.update_layout(
-            height=410, margin={"l": 5, "r": 5, "t": 55, "b": 5}, showlegend=False,
-        )
-        research_plot(robustness_chart, width="stretch", config={"displayModeBar": False})
-        research_table(
-            robustness_summary,
-            width="stretch",
-            hide_index=True,
-            column_config={
-                "intervention": "干预情景",
-                "scenarios": "扰动情景数",
-                "median_pressure_reduction_pct": st.column_config.NumberColumn(
-                    "中位压力降低（%）", format="%.1f"
-                ),
-                "worst_case_pressure_reduction_pct": st.column_config.NumberColumn(
-                    "最弱情景变化（%）", format="%.1f"
-                ),
-                "best_case_pressure_reduction_pct": st.column_config.NumberColumn(
-                    "最强情景变化（%）", format="%.1f"
-                ),
-                "median_feeding_opportunity_pct": st.column_config.NumberColumn(
-                    "中位摄食机会（%）", format="%.1f"
-                ),
-                "lowest_pressure_frequency": st.column_config.NumberColumn(
-                    "最低压力出现率（%）", format="%.1f"
-                ),
-                "pareto_frequency": st.column_config.ProgressColumn(
-                    "帕累托出现率（%）", min_value=0, max_value=100, format="%.1f"
-                ),
-            },
-        )
-        st.caption(
-            "帕累托出现率表示方案在“降低相对压力”和“保留摄食机会”两目标下处于非劣解的频率，不表示现场有效率或推荐概率。"
-        )
+            bc1, bc2 = st.columns([1.25, 1.0], gap="large")
+            with bc1:
+                error_plus = (
+                    bio_summary["peak_pressure_upper"] - bio_summary["peak_pressure_index"]
+                )
+                error_minus = (
+                    bio_summary["peak_pressure_index"] - bio_summary["peak_pressure_lower"]
+                )
+                pressure_bar = go.Figure(go.Bar(
+                    x=bio_summary["intervention"],
+                    y=bio_summary["peak_pressure_index"],
+                    marker_color=["#2cb7b1", "#4d9ce0", "#d08a32", "#4d9ce0", "#6f93aa"],
+                    error_y={
+                        "type": "data", "array": error_plus, "arrayminus": error_minus,
+                        "visible": True, "color": "#3f5860",
+                    },
+                    customdata=bio_summary[[
+                        "mean_feeding_opportunity_pct", "minimum_effective_do_mg_l",
+                        "pressure_load_reduction_vs_baseline_pct",
+                    ]],
+                    hovertemplate=(
+                        "<b>%{x}</b><br>峰值压力：%{y:.1f}/100"
+                        "<br>摄食机会：%{customdata[0]:.1f}%"
+                        "<br>最低有效DO：%{customdata[1]:.2f} mg L⁻¹"
+                        "<br>累计压力变化：%{customdata[2]:.1f}%<extra></extra>"
+                    ),
+                ))
+                pressure_bar.update_layout(
+                    title="峰值压力与±15%参数敏感性包络", height=390,
+                    margin={"l": 5, "r": 5, "t": 55, "b": 95},
+                    xaxis={"tickangle": -18}, yaxis={"title": "相对压力指数", "range": [0, 100]},
+                )
+                research_plot(pressure_bar, width="stretch", config={"displayModeBar": False})
+            with bc2:
+                tradeoff_chart = px.scatter(
+                    bio_summary,
+                    x="mean_feeding_opportunity_pct",
+                    y="pressure_load_reduction_vs_baseline_pct",
+                    color="intervention",
+                    size=(20 - bio_summary["response_readiness_hours"]).clip(lower=2),
+                    title="压力缓解—摄食机会权衡",
+                    labels={
+                        "mean_feeding_opportunity_pct": "摄食机会保留（%）",
+                        "pressure_load_reduction_vs_baseline_pct": "累计压力降低（%）",
+                        "intervention": "干预情景",
+                    },
+                    hover_data={"response_readiness_hours": True},
+                )
+                tradeoff_chart.update_layout(
+                    height=390, margin={"l": 5, "r": 5, "t": 55, "b": 5},
+                    showlegend=False,
+                )
+                research_plot(tradeoff_chart, width="stretch", config={"displayModeBar": False})
 
-    with st.container(border=True, key="research_section_tab_bio_3"):
-        st.markdown("#### 干预情景对照表")
-        bio_display = bio_summary[[
-            "intervention", "peak_pressure_index", "peak_pressure_lower",
-            "peak_pressure_upper", "pressure_load_reduction_vs_baseline_pct",
-            "mean_feeding_opportunity_pct", "minimum_effective_do_mg_l",
-            "response_readiness_hours", "pressure_band", "scenario_interpretation",
-        ]].copy()
-        research_table(
-            bio_display, width="stretch", hide_index=True,
-            column_config={
-                "intervention": "干预情景",
-                "peak_pressure_index": st.column_config.ProgressColumn(
-                    "峰值压力", min_value=0, max_value=100, format="%.1f"
-                ),
-                "peak_pressure_lower": st.column_config.NumberColumn("敏感性下界", format="%.1f"),
-                "peak_pressure_upper": st.column_config.NumberColumn("敏感性上界", format="%.1f"),
-                "pressure_load_reduction_vs_baseline_pct": st.column_config.NumberColumn(
-                    "累计压力变化（%）", format="%.1f"
-                ),
-                "mean_feeding_opportunity_pct": st.column_config.NumberColumn(
-                    "摄食机会保留（%）", format="%.1f"
-                ),
-                "minimum_effective_do_mg_l": st.column_config.NumberColumn(
-                    "最低有效DO", format="%.2f"
-                ),
-                "response_readiness_hours": "准备响应时间（h）",
-                "pressure_band": "展示分档",
-                "scenario_interpretation": st.column_config.TextColumn("情景解释", width="large"),
-            },
-        )
-        st.info(
-            "“转移准备（未执行）”与“维持监测”的生理轨迹相同是预期结果：准备本身只缩短响应时间，"
-            "在实际转移发生前不会减少藻华暴露。"
-        )
-
-        with st.expander("模型设定、参数与输入说明"):
+        with st.container(border=True, key="research_section_tab_bio_2"):
+            st.markdown("#### 参数扰动下的稳定性")
+            robustness_summary = bio_robustness["summary"]
+            robustness_card = bio_robustness["card"]
             st.markdown(
-                "综合挑战由HAB、热异常、低氧、密度及三个交互项加权组成。压力状态按小时更新："
+                '<div class="signal">HAB压力±10%、MHW±0.4°C、DO±0.5 mg L⁻¹和密度±10%组合形成81个邻近情景，并计算各干预的帕累托出现率。</div>',
+                unsafe_allow_html=True,
             )
-            st.latex(
-                r"P_{t+1}=\operatorname{clip}\left[P_t+1.45C_t(1-P_t/100)"
-                r"-0.55(1-C_t)P_t/100,\ 0,\ 100\right]"
+            robustness_chart = px.scatter(
+                robustness_summary,
+                x="median_feeding_opportunity_pct",
+                y="median_pressure_reduction_pct",
+                size="pareto_frequency",
+                color="intervention",
+                title="81个邻近输入情景下的干预稳健性",
+                labels={
+                    "median_feeding_opportunity_pct": "中位摄食机会保留（%）",
+                    "median_pressure_reduction_pct": "中位累计压力降低（%）",
+                    "pareto_frequency": "帕累托出现率（%）",
+                    "intervention": "干预情景",
+                },
+                hover_data={
+                    "worst_case_pressure_reduction_pct": ":.1f",
+                    "best_case_pressure_reduction_pct": ":.1f",
+                    "lowest_pressure_frequency": ":.1f",
+                },
+            )
+            robustness_chart.update_layout(
+                height=410, margin={"l": 5, "r": 5, "t": 55, "b": 5}, showlegend=False,
+            )
+            research_plot(robustness_chart, width="stretch", config={"displayModeBar": False})
+            research_table(
+                robustness_summary,
+                width="stretch",
+                hide_index=True,
+                column_config={
+                    "intervention": "干预情景",
+                    "scenarios": "扰动情景数",
+                    "median_pressure_reduction_pct": st.column_config.NumberColumn(
+                        "中位压力降低（%）", format="%.1f"
+                    ),
+                    "worst_case_pressure_reduction_pct": st.column_config.NumberColumn(
+                        "最弱情景变化（%）", format="%.1f"
+                    ),
+                    "best_case_pressure_reduction_pct": st.column_config.NumberColumn(
+                        "最强情景变化（%）", format="%.1f"
+                    ),
+                    "median_feeding_opportunity_pct": st.column_config.NumberColumn(
+                        "中位摄食机会（%）", format="%.1f"
+                    ),
+                    "lowest_pressure_frequency": st.column_config.NumberColumn(
+                        "最低压力出现率（%）", format="%.1f"
+                    ),
+                    "pareto_frequency": st.column_config.ProgressColumn(
+                        "帕累托出现率（%）", min_value=0, max_value=100, format="%.1f"
+                    ),
+                },
             )
             st.caption(
-                "Cₜ为0–1综合挑战，Pₜ为0–100相对生理压力。平滑中心和权重均在下表列出，"
-                "但尚未通过具体鱼种的死亡、生长或代谢数据进行现场标定。"
+                "帕累托出现率表示方案在“降低相对压力”和“保留摄食机会”两目标下处于非劣解的频率，不表示现场有效率或推荐概率。"
             )
-            sandbox_evidence_rows = [
-                ["藻华危害压力", "真实回放相对峰值" if "真实" in bio_preset_name else "情景参数", "危害外部输入"],
-                ["MHW强度", "情景假设", "热压力输入"],
-                ["溶解氧", "情景假设", "低氧压力输入"],
-                ["养殖密度", "情景假设", "密度与耗氧代理"],
-                ["计划投喂", "情景假设", "摄食与代谢负荷代理"],
-                ["生物响应参数", "未标定参数", "需用物种/场站数据再标定"],
-            ]
-            evidence_frame = pd.DataFrame(
-                sandbox_evidence_rows, columns=["模型输入", "证据属性", "在沙盘中的作用"]
-            )
-            research_table(evidence_frame, width="stretch", hide_index=True)
-            research_table(bio_simulation["parameters"], width="stretch", hide_index=True)
 
-        bd1, bd2, bd3, bd4 = st.columns(4)
-        bd1.download_button(
-            "下载响应轨迹", bio_trajectories.to_csv(index=False).encode("utf-8-sig"),
-            "cage_fish_response_trajectories.csv", "text/csv",
-        )
-        bd2.download_button(
-            "下载干预对照", bio_summary.to_csv(index=False).encode("utf-8-sig"),
-            "cage_fish_intervention_comparison.csv", "text/csv",
-        )
-        bd3.download_button(
-            "下载模型参数", bio_simulation["parameters"].to_csv(index=False).encode("utf-8-sig"),
-            "cage_fish_sandbox_parameters.csv", "text/csv",
-        )
-        bd4.download_button(
-            "下载沙盘卡", json.dumps(
-                bio_simulation["scenario_card"], ensure_ascii=False, indent=2
-            ).encode("utf-8"),
-            "cage_fish_sandbox_card.json", "application/json",
-        )
-        st.download_button(
-            "下载81情景稳健性结果",
-            bio_robustness["detail"].to_csv(index=False).encode("utf-8-sig"),
-            "cage_fish_intervention_robustness.csv", "text/csv",
-        )
-        st.warning(
-            "本模块输出相对压力与情景对照，不计算死亡率、生物量损失或毒素浓度；现场措施需结合实测DO、鱼群状态、设备能力和管理要求。"
-        )
-        with st.expander("方法与统计口径", expanded=False):
-            st.caption(
-                "架构参考：[Føre等，Computers and Electronics in Agriculture（2024）]"
-                "(https://doi.org/10.1016/j.compag.2024.108676)与"
-                "[Lima等，Open Research Europe（2023）]"
-                "(https://open-research-europe.ec.europa.eu/articles/2-16)。"
-                "文献用于支持“环境—生物状态—运营对照”的结构设计，不构成当前参数的鱼种标定。"
+        with st.container(border=True, key="research_section_tab_bio_3"):
+            st.markdown("#### 干预情景对照表")
+            bio_display = bio_summary[[
+                "intervention", "peak_pressure_index", "peak_pressure_lower",
+                "peak_pressure_upper", "pressure_load_reduction_vs_baseline_pct",
+                "mean_feeding_opportunity_pct", "minimum_effective_do_mg_l",
+                "response_readiness_hours", "pressure_band", "scenario_interpretation",
+            ]].copy()
+            research_table(
+                bio_display, width="stretch", hide_index=True,
+                column_config={
+                    "intervention": "干预情景",
+                    "peak_pressure_index": st.column_config.ProgressColumn(
+                        "峰值压力", min_value=0, max_value=100, format="%.1f"
+                    ),
+                    "peak_pressure_lower": st.column_config.NumberColumn("敏感性下界", format="%.1f"),
+                    "peak_pressure_upper": st.column_config.NumberColumn("敏感性上界", format="%.1f"),
+                    "pressure_load_reduction_vs_baseline_pct": st.column_config.NumberColumn(
+                        "累计压力变化（%）", format="%.1f"
+                    ),
+                    "mean_feeding_opportunity_pct": st.column_config.NumberColumn(
+                        "摄食机会保留（%）", format="%.1f"
+                    ),
+                    "minimum_effective_do_mg_l": st.column_config.NumberColumn(
+                        "最低有效DO", format="%.2f"
+                    ),
+                    "response_readiness_hours": "准备响应时间（h）",
+                    "pressure_band": "展示分档",
+                    "scenario_interpretation": st.column_config.TextColumn("情景解释", width="large"),
+                },
             )
+            st.info(
+                "“转移准备（未执行）”与“维持监测”的生理轨迹相同是预期结果：准备本身只缩短响应时间，"
+                "在实际转移发生前不会减少藻华暴露。"
+            )
+
+            with st.expander("模型设定、参数与输入说明"):
+                st.markdown(
+                    "综合挑战由HAB、热异常、低氧、密度及三个交互项加权组成。压力状态按小时更新："
+                )
+                st.latex(
+                    r"P_{t+1}=\operatorname{clip}\left[P_t+1.45C_t(1-P_t/100)"
+                    r"-0.55(1-C_t)P_t/100,\ 0,\ 100\right]"
+                )
+                st.caption(
+                    "Cₜ为0–1综合挑战，Pₜ为0–100相对生理压力。平滑中心和权重均在下表列出，"
+                    "但尚未通过具体鱼种的死亡、生长或代谢数据进行现场标定。"
+                )
+                sandbox_evidence_rows = [
+                    ["藻华危害压力", "真实回放相对峰值" if "真实" in bio_preset_name else "情景参数", "危害外部输入"],
+                    ["MHW强度", "情景假设", "热压力输入"],
+                    ["溶解氧", "情景假设", "低氧压力输入"],
+                    ["养殖密度", "情景假设", "密度与耗氧代理"],
+                    ["计划投喂", "情景假设", "摄食与代谢负荷代理"],
+                    ["生物响应参数", "未标定参数", "需用物种/场站数据再标定"],
+                ]
+                evidence_frame = pd.DataFrame(
+                    sandbox_evidence_rows, columns=["模型输入", "证据属性", "在沙盘中的作用"]
+                )
+                research_table(evidence_frame, width="stretch", hide_index=True)
+                research_table(bio_simulation["parameters"], width="stretch", hide_index=True)
+
+            bd1, bd2, bd3, bd4 = st.columns(4)
+            bd1.download_button(
+                "下载响应轨迹", bio_trajectories.to_csv(index=False).encode("utf-8-sig"),
+                "cage_fish_response_trajectories.csv", "text/csv",
+            )
+            bd2.download_button(
+                "下载干预对照", bio_summary.to_csv(index=False).encode("utf-8-sig"),
+                "cage_fish_intervention_comparison.csv", "text/csv",
+            )
+            bd3.download_button(
+                "下载模型参数", bio_simulation["parameters"].to_csv(index=False).encode("utf-8-sig"),
+                "cage_fish_sandbox_parameters.csv", "text/csv",
+            )
+            bd4.download_button(
+                "下载沙盘卡", json.dumps(
+                    bio_simulation["scenario_card"], ensure_ascii=False, indent=2
+                ).encode("utf-8"),
+                "cage_fish_sandbox_card.json", "application/json",
+            )
+            st.download_button(
+                "下载81情景稳健性结果",
+                bio_robustness["detail"].to_csv(index=False).encode("utf-8-sig"),
+                "cage_fish_intervention_robustness.csv", "text/csv",
+            )
+            st.warning(
+                "本模块输出相对压力与情景对照，不计算死亡率、生物量损失或毒素浓度；现场措施需结合实测DO、鱼群状态、设备能力和管理要求。"
+            )
+            with st.expander("方法与统计口径", expanded=False):
+                st.caption(
+                    "架构参考：[Føre等，Computers and Electronics in Agriculture（2024）]"
+                    "(https://doi.org/10.1016/j.compag.2024.108676)与"
+                    "[Lima等，Open Research Europe（2023）]"
+                    "(https://open-research-europe.ec.europa.eu/articles/2-16)。"
+                    "文献用于支持“环境—生物状态—运营对照”的结构设计，不构成当前参数的鱼种标定。"
+                )
 
 with tab_methods:
+    from globalhab_demo.result_pool import register
+    register('科学解释','当前合成实验；统计关联检验',{'direction_lag':te_cte_lag_summary.to_dict('records'),'spatial_effects':spatial_effects.to_dict('records')})
     with st.container(border=True, key="research_section_tab_methods_0"):
         st.markdown("### 冲击—输运—响应关系")
         st.markdown(
@@ -2430,6 +2445,8 @@ with tab_methods:
 
 with tab_agent:
     with st.container(border=True, key="research_section_tab_agent_0"):
+        from globalhab_demo.result_pool import register
+        register('探索与验证','当前合成实验',{'best':best,'baselines':baselines.to_dict('records')})
         st.markdown("### 实验对照与探索记录")
 
         c1, c2 = st.columns([1.15, 1.0], gap="large")

@@ -171,7 +171,9 @@ def _research_flow_html() -> str:
         pieces.append(f'<a href="{href}" target="_self" aria-label="{label}"><title>{label} · 查看对应工作区</title><path d="{path}" fill="{color}"/><text x="{tx:.2f}" y="{ty+5:.2f}" text-anchor="middle">{label}</text></a>')
     return f'''<div class="hf-card hf-research-panel hf-sector-panel">
       <div class="hf-card-title">研究思路概览</div>
-      <svg class="hf-research-wheel" viewBox="20 10 320 290" role="img" aria-label="研究流程：多源观测、异常识别、传播推理、现场复核、迁移验证">
+      <svg class="hf-research-wheel" viewBox="20 0 320 310" role="img" aria-label="研究流程：多源观测、异常识别、传播推理、现场复核、迁移验证">
+      <defs><marker id="wheel-arrow" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#709bab"/></marker></defs>
+      {''.join(f'<path d="M{xy(143,-122+i*72)[0]:.2f},{xy(143,-122+i*72)[1]:.2f} A143 143 0 0 1 {xy(143,-66+i*72)[0]:.2f},{xy(143,-66+i*72)[1]:.2f}" fill="none" stroke="#9fc4cf" stroke-width="1.5" marker-end="url(#wheel-arrow)"/>' for i in range(5))}
       {''.join(pieces)}
       <circle cx="180" cy="155" r="60" fill="#F0F8FC"/>
       <text class="wheel-center-title" x="180" y="151" text-anchor="middle">科学Agent</text>
@@ -482,8 +484,10 @@ def _norway_panel_html(root: Path) -> str:
     </div>'''
 
 def _panel_header(title: str, action: str = "", section: str = "") -> None:
+    hints={"Agent探索轨迹":"合成实验：每个点代表一次试验。", "南澳真实事件回放":"灰格表示无有效记录，浅绿表示0；细胞/升，对数色阶；站点和日期为展示子集。", "环境因子与迁移验证":"上图为合成机制检验；下图为独立挪威真实观测任务，两者不能合并解释为实海因果证明。"}
+    tooltip=html.escape(hints.get(title,"查看对应工作区了解完整结果"))
     action_html = f'<a href="?workspace={quote("研究验证")}&section={quote(section)}" target="_self">查看详情 →</a>' if section else (f'<span>{html.escape(action)}</span>' if action else "")
-    st.markdown(f'<div class="hf-viz-title"><b>{html.escape(title)}</b>{action_html}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="hf-viz-title"><b title="{tooltip}">{html.escape(title)} ⓘ</b>{action_html}</div>', unsafe_allow_html=True)
 
 
 def render(root: Any) -> None:
@@ -497,7 +501,7 @@ def render(root: Any) -> None:
         [data-testid="stSidebarCollapsedControl"] {display:none !important;}
         [data-testid="stAppViewContainer"] > .main {margin-left:0 !important;}
         </style>
-        <div id="globalhab-build-hf2" data-build="HF2-VISUAL-20260918"></div>
+        <div id="globalhab-build-hf2" data-build="HF2-MULTIMODAL-20260918"></div>
         """,
         unsafe_allow_html=True,
     )
@@ -519,17 +523,17 @@ def render(root: Any) -> None:
         with st.container(key="hf_agent_panel"):
             _panel_header("Agent探索轨迹", section="探索与验证")
             st.plotly_chart(_agent_trace_figure(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_agent_chart")
-            st.caption("合成实验 · 每个点代表一次试验")
+            
     with c2:
         with st.container(key="hf_sa_panel"):
             _panel_header("南澳真实事件回放", section="真实事件回放")
             st.plotly_chart(_sa_site_heatmap(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_sa_chart")
-            st.caption("灰：缺测 · 浅绿：0 · 细胞/升（对数）")
+            
     with c3:
         with st.container(key="hf_evidence_panel"):
             _panel_header("环境因子与迁移验证", section="科学解释")
             st.plotly_chart(_evidence_figure(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_evidence_visual")
-            st.caption("不同指标分别读图 · 悬停查看含义")
+            
 
     _render_china_panel(root)
 
@@ -538,7 +542,7 @@ def _render_china_panel(root: Path) -> None:
     """Paired AP comparison; every seed contributes, no cherry-picked maximum."""
     with st.container(key="china_overview", border=True):
         _panel_header("中国近海 · 跨年检验", section="真实数据训练与验证")
-        st.caption("2019—2020年训练 → 2021年检验 · 藻种检出识别")
+        st.markdown("**用过去训练，在下一年检验：黄海、东海、南海**")
         fig = go.Figure()
         rows=[]
         for marker in ['ITS1','18S_V4']:
@@ -553,14 +557,16 @@ def _render_china_panel(root: Path) -> None:
         if not rows:
             st.info("尚未找到中国近海验证文件。")
             return
-        labels=[r[0] for r in rows]
+        labels=[r[0].split(' · ')[0] for r in rows]
         for label,base,model,lo,hi,n in rows:
+            label=label.split(' · ')[0]
             fig.add_trace(go.Scatter(x=[base,model],y=[label,label],mode='lines',line=dict(color='#bad6e2',width=9),showlegend=False,hoverinfo='skip'))
         fig.add_trace(go.Scatter(x=[r[1] for r in rows],y=labels,mode='markers',name='检出率基线',marker=dict(size=13,color='#8ca6b7',symbol='circle-open',line=dict(width=3)),hovertemplate='%{y}<br>基线 AP %{x:.3f}<extra></extra>'))
-        fig.add_trace(go.Scatter(x=[r[2] for r in rows],y=labels,mode='markers+text',text=[f'{r[2]:.3f}  ({r[2]-r[1]:+.3f})' for r in rows],textposition='top center',cliponaxis=False,name='梯度提升模型',marker=dict(size=15,color='#087e91'),customdata=[[r[3],r[4],r[5]] for r in rows],hovertemplate='%{y}<br>平均 AP %{x:.3f}<br>种子范围 %{customdata[0]:.3f}–%{customdata[1]:.3f}<br>检验记录 %{customdata[2]}<extra></extra>'))
+        fig.add_trace(go.Scatter(x=[r[2] for r in rows],y=labels,mode='markers+text',text=[f'AP {r[2]:.3f}｜较基线 {r[2]-r[1]:+.3f}' for r in rows],textposition='top center',cliponaxis=False,name='梯度提升模型',marker=dict(size=15,color='#087e91'),customdata=[[r[3],r[4],r[5]] for r in rows],hovertemplate='%{y}<br>平均 AP %{x:.3f}<br>种子范围 %{customdata[0]:.3f}–%{customdata[1]:.3f}<br>检验记录 %{customdata[2]}<extra></extra>'))
         fig.update_layout(height=270,margin=dict(l=10,r=90,t=32,b=32),xaxis=dict(range=[0,1],title='AP · 越高越好',dtick=.2),yaxis=dict(autorange='reversed'),legend=dict(orientation='h',y=1.25,x=0),font=dict(size=13),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig,use_container_width=True,config=PLOTLY_CONFIG,key='china_coastal_comparison')
-        st.caption("圆点：3个随机种子的均值；括号：相对基线的AP差值。不同标记分别评估；渤海有观测，暂无对应跨年测试。此处不代表藻华提前预警准确率。")
+        with st.expander("这张图说明什么？"):
+            st.write("2019—2020年训练，2021年检验。实心点是模型，空心点是基线；向右更好。黄海、东海为ITS1，南海为18S V4，分别评估，不能直接比较绝对AP。保留东海低于基线的结果；这是分子检出识别，不是提前预警准确率。渤海暂无对应跨年测试。")
 
 
 def _evidence_summary_html(root: Path) -> str:
@@ -585,25 +591,20 @@ def _evidence_summary_html(root: Path) -> str:
 def _evidence_figure(root):
     from plotly.subplots import make_subplots
     lag=_read_csv(root/'outputs/te_cte_lag_summary.csv')
-    spatial=_read_csv(root/'outputs/spatial_durbin_effects.csv')
     norway=_read_json(root/'outputs/norway_forward_benchmark_card.json')
-    fig=make_subplots(rows=3,cols=1,vertical_spacing=.22,subplot_titles=['传播方向 · 合成实验（bit）','邻区关联 · 合成实验（百分点）','风险排序 · 挪威真实验证（AP）'])
+    fig=make_subplots(rows=2,cols=1,row_heights=[.58,.42],vertical_spacing=.38,subplot_titles=['寻找传播时间差 · 合成实验','有限监测资源 · 挪威真实检验'])
     if not lag.empty:
+        for field,label,color in [('mean_cte_bits','顺流','#168c9d'),('mean_reverse_cte_bits','反向','#cbb799')]:
+            fig.add_trace(go.Scatter(x=lag.lag_days,y=lag[field],mode='lines+markers',name=label,line=dict(color=color),hovertemplate=label+'：%{x}天<br>CTE %{y:.3f} bit<extra></extra>'),row=1,col=1)
         r=lag.loc[lag.mean_cte_bits.idxmax()]
-        fig.add_trace(go.Bar(x=[r.mean_cte_bits,r.mean_reverse_cte_bits],y=['顺流','反向'],orientation='h',marker_color=['#168a9b','#bad6e3'],text=[f'{r.mean_cte_bits:.3f}',f'{r.mean_reverse_cte_bits:.3f}'],textposition='outside',cliponaxis=False,hovertemplate=f'时滞{int(r.lag_days)}天 · %{{y}}<br>条件信息量 %{{x:.3f}} bit；不是准确率<extra></extra>'),row=1,col=1)
-        fig.update_xaxes(range=[0,max(r.mean_cte_bits,r.mean_reverse_cte_bits)*1.45],row=1,col=1)
-    labels=[];values=[]
-    for code,label in [('multiscale_anomaly_score_lag14','异常'),('nutrient_context','营养'),('circulation_residence_proxy','输运')]:
-        q=spatial[(spatial.variable==code)&(spatial.effect_type=='indirect')]
-        if len(q):labels.append(label);values.append(float(q.iloc[0].effect_per_1sd)*100)
-    fig.add_trace(go.Bar(x=values,y=labels,orientation='h',marker_color=['#269bad' if v>=0 else '#d49562' for v in values],text=[f'{v:+.1f}' for v in values],textposition='outside',cliponaxis=False,hovertemplate='%{y}<br>每1标准差输入变化，对应模型概率间接关联 %{x:.1f} 个百分点<br>不是实测因果效应<extra></extra>'),row=2,col=1)
-    if values:fig.update_xaxes(range=[min(-1,min(values)*1.65),max(1,max(values)*1.4)],row=2,col=1)
+        fig.add_annotation(x=r.lag_days,y=r.mean_cte_bits,text=f'{int(r.lag_days)}天峰值',showarrow=True,ax=40,ay=-20,row=1,col=1)
     if norway:
-        v=[norway['model_average_precision'],norway['reference_average_precision']]
-        fig.add_trace(go.Bar(x=v,y=['模型','参考'],orientation='h',marker_color=['#168a9b','#bad6e3'],text=[f'{x:.3f}' for x in v],textposition='outside',cliponaxis=False,hovertemplate='%{y} AP %{x:.3f}<br>风险排序指标，越高越好；不等于准确率<extra></extra>'),row=3,col=1)
-        fig.update_xaxes(range=[0,max(v)*1.5],row=3,col=1)
-    fig.update_layout(height=265,margin=dict(l=38,r=38,t=27,b=5),showlegend=False,bargap=.35,font=dict(size=10),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
-    fig.update_annotations(font_size=11,x=0,xanchor='left')
-    fig.update_xaxes(showticklabels=False,showgrid=False,zeroline=True,zerolinecolor='#aac1ca')
-    fig.update_yaxes(autorange='reversed',showgrid=False,tickfont_size=10)
+        values=[norway['top10_selected']/norway['samples']*100,norway['top10_recall']*100]
+        fig.add_trace(go.Bar(x=values,y=['监测样本','覆盖事件'],orientation='h',marker_color=['#9dc7d7','#168c9d'],text=[f'{v:.0f}%' for v in values],textposition='outside',cliponaxis=False,showlegend=False,hovertemplate='%{y} %{x:.1f}%<extra></extra>'),row=2,col=1)
+        fig.update_xaxes(range=[0,65],showticklabels=False,row=2,col=1)
+        fig.update_yaxes(autorange='reversed',row=2,col=1)
+    fig.update_layout(height=265,margin=dict(l=45,r=25,t=30,b=18),legend=dict(orientation='h',y=1.17,x=.55,font_size=9),font_size=10,paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+    fig.update_annotations(font_size=11)
+    fig.update_xaxes(title=None,showgrid=False)
+    fig.update_yaxes(title=None,showgrid=False)
     return fig

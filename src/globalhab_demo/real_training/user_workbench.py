@@ -229,7 +229,10 @@ def render():
                 try:
                     with st.spinner('正在计算本次数据的结果…'):
                         result=run(data,selected,horizon,description,epochs,task!='历史预测验证',progress.write,remote_config=remote)
-                    st.session_state['user_result']=(signature,result);progress.success('本次分析完成')
+                    st.session_state['user_result']=(signature,result)
+                    from globalhab_demo.result_pool import register
+                    register('自主数据分析','用户数据',{'metrics':result[0].to_dict('records'),'definition':description})
+                    progress.success('本次分析完成')
                 except Exception as exc:progress.error('本次分析未完成：'+str(exc));return
     saved=st.session_state.get('user_result')
     if saved and saved[0]==signature:
@@ -251,7 +254,8 @@ def render():
                 st.dataframe(forecast[['site','origin_date','label_date','model','seed','probability','outside_training_range_features','missing_fraction']],hide_index=True,use_container_width=True)
                 st.caption('无未来真实标签，不显示未来准确率。模型保持训练期权重，使用站点最新历史输入。')
         with c:
-            st.text(explanation)
+            from globalhab_demo.result_charts import render_metrics
+            render_metrics(table,explanation)
             if st.button('用大模型解读本次结果',disabled=not ready(remote) or not consent):
                 try:
                     with st.spinner('大模型正在解读本次结果…'): st.session_state['qwen_explanation']=(signature,explain(remote,explanation))

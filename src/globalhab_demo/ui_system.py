@@ -59,7 +59,12 @@ def install_plotly_theme() -> None:
 
 
 def render_top_navigation(options: Iterable[str]) -> str:
-    """Render the persistent product header and return the selected workspace."""
+    """Render a button-based product header and return the selected workspace.
+
+    Buttons are used instead of ``st.radio`` so the navigation does not expose
+    browser- or Streamlit-version-specific radio circles. This makes the live
+    application match the approved dashboard composition more reliably.
+    """
     import streamlit as st
 
     options = list(options)
@@ -69,9 +74,28 @@ def render_top_navigation(options: Iterable[str]) -> str:
     if st.session_state.get("workspace_mode") not in options:
         st.session_state["workspace_mode"] = options[0]
 
+    current = st.session_state["workspace_mode"]
+    labels = {
+        "项目总览": "▣  项目总览",
+        "研究与验证": "▤  研究与验证",
+        "自有数据分析": "▥  自有数据分析",
+        "现场影像甄别": "▧  现场影像甄别",
+        "大模型结果解读": "✺  大模型结果解读",
+    }
+    nav_keys = {
+        "项目总览": "nav_home",
+        "研究与验证": "nav_research",
+        "自有数据分析": "nav_data",
+        "现场影像甄别": "nav_visual",
+        "大模型结果解读": "nav_llm",
+    }
+
+    def _select_workspace(value: str) -> None:
+        st.session_state["workspace_mode"] = value
+
     with st.container(key="global_top_nav"):
-        brand_col, nav_col = st.columns([1.35, 4.65], gap="medium", vertical_alignment="center")
-        with brand_col:
+        cols = st.columns([1.68, .78, .92, 1.02, 1.08, 1.20, .58], gap="small", vertical_alignment="center")
+        with cols[0]:
             st.markdown(
                 """
                 <div class="top-brand-wrap">
@@ -90,15 +114,37 @@ def render_top_navigation(options: Iterable[str]) -> str:
                 """,
                 unsafe_allow_html=True,
             )
-        with nav_col:
-            selected = st.radio(
-                "工作区",
-                options,
-                horizontal=True,
-                key="workspace_mode",
-                label_visibility="collapsed",
+        for col, value in zip(cols[1:6], options):
+            with col:
+                st.button(
+                    labels.get(value, value),
+                    key=nav_keys[value],
+                    use_container_width=True,
+                    on_click=_select_workspace,
+                    args=(value,),
+                )
+        with cols[6]:
+            st.markdown(
+                '<div class="top-brand-side">DATA<br>SCIENCE<br>FOR A HEALTHY OCEAN</div>',
+                unsafe_allow_html=True,
             )
-    return selected
+
+    active_key = nav_keys[current]
+    st.markdown(
+        f"""
+        <style>
+        .st-key-{active_key} button {{
+          background:#1677c5 !important;
+          border-color:#1677c5 !important;
+          color:#fff !important;
+          box-shadow:0 2px 6px rgba(29,121,197,.16) !important;
+        }}
+        .st-key-{active_key} button p {{color:#fff !important;}}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    return st.session_state["workspace_mode"]
 
 
 def render_workspace_header(title: str, subtitle: str, *, kicker: str = "GlobalHAB-Agent") -> None:

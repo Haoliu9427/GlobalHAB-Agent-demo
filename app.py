@@ -15,6 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
+BUILD_ID = "HF2-20260918"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -117,7 +118,7 @@ st.set_page_config(
     page_title="GlobalHAB-Agent",
     page_icon="🌊",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 st.markdown(
@@ -207,6 +208,7 @@ from globalhab_demo.ui_system import install_plotly_theme, render_top_navigation
 install_plotly_theme()
 st.markdown("<style>" + (ROOT / "assets" / "interface.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
 st.markdown("<style>" + (ROOT / "assets" / "blue_theme.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
+st.markdown("<style>" + (ROOT / "assets" / "high_fidelity.css").read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
 
 
 @st.cache_data(show_spinner=False)
@@ -536,9 +538,9 @@ workspace_mode = render_top_navigation(WORKSPACES)
 
 st.sidebar.markdown(
     """
-    <div class="sidebar-control-head">
+    <div class="sidebar-control-head" data-build="HF2-20260918">
       <b>运行控制</b>
-      <span>地图、Case 与当前工作区参数</span>
+      <span>地图、Case 与当前工作区参数 · HF2</span>
     </div>
     """,
     unsafe_allow_html=True,
@@ -647,7 +649,7 @@ if case_list:
 else:
     active_case_id = None
 if workspace_mode == "项目总览":
-    from globalhab_demo.homepage import render as render_homepage
+    from globalhab_demo.homepage_hifi import render as render_homepage
     render_homepage(ROOT)
     st.stop()
 if workspace_mode == "自有数据分析":

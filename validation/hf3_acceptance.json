@@ -1,0 +1,23 @@
+{
+  "build": "HF3-JOINT-BIO-20260918",
+  "behavior_tests_passed": 4,
+  "desktop_viewport": [
+    1448,
+    1000
+  ],
+  "homepage_card_heights": [
+    394,
+    394,
+    394
+  ],
+  "homepage_svg_font_pixels": [
+    12
+  ],
+  "browser_checked": [
+    "homepage",
+    "joint_matrix",
+    "fish_stability"
+  ],
+  "original_research_data_unchanged": true,
+  "online_deployed": false
+}

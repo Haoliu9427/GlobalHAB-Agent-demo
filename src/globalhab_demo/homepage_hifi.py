@@ -254,16 +254,16 @@ def _hero_and_upper_html(
 def _base_layout(fig: go.Figure, *, height: int, showlegend: bool = True) -> go.Figure:
     fig.update_layout(
         height=height,
-        margin=dict(l=48, r=26, t=12, b=42),
+        margin=dict(l=52, r=24, t=44, b=44),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Microsoft YaHei, PingFang SC, Arial", color=NAVY, size=11),
-        hoverlabel=dict(bgcolor="white", bordercolor="#dbe5ee", font=dict(size=11, color=NAVY)),
+        font=dict(family="Microsoft YaHei, PingFang SC, Arial", color=NAVY, size=12),
+        hoverlabel=dict(bgcolor="white", bordercolor="#dbe5ee", font=dict(size=12, color=NAVY)),
         showlegend=showlegend,
-        legend=dict(orientation="h", yanchor="top", y=-0.16, xanchor="left", x=0, font=dict(size=10)),
+        legend=dict(orientation="h", yanchor="top", y=-0.16, xanchor="left", x=0, font=dict(size=12)),
     )
-    fig.update_xaxes(gridcolor=GRID, zeroline=False, showline=False, tickfont=dict(color="#72869a", size=10), title_font=dict(color="#667f92", size=11))
-    fig.update_yaxes(gridcolor=GRID, zeroline=False, showline=False, tickfont=dict(color="#72869a", size=10), title_font=dict(color="#667f92", size=11))
+    fig.update_xaxes(gridcolor=GRID, zeroline=False, showline=False, tickfont=dict(color="#72869a", size=12), title_font=dict(color="#667f92", size=12))
+    fig.update_yaxes(gridcolor=GRID, zeroline=False, showline=False, tickfont=dict(color="#72869a", size=12), title_font=dict(color="#667f92", size=12))
     return fig
 
 
@@ -289,11 +289,11 @@ def _agent_trace_figure(root: Path) -> go.Figure:
         fig.add_annotation(
             x=best_step, y=best_ap, text=f"当前候选<br><b>AP = {best_ap:.3f}</b>", showarrow=True,
             arrowhead=2, arrowcolor="#5d8197", ax=22, ay=-48, bgcolor="rgba(255,255,255,.97)",
-            bordercolor="#d5e3ed", borderwidth=1, font=dict(size=10, color=NAVY),
+            bordercolor="#d5e3ed", borderwidth=1, font=dict(size=12, color=NAVY),
         )
     fig.update_xaxes(title="试验步", dtick=1)
-    fig.update_yaxes(title="Average Precision (AP)", rangemode="tozero")
-    return _base_layout(fig, height=306, showlegend=False)
+    fig.update_yaxes(title="平均精确率（AP）", rangemode="tozero")
+    return _base_layout(fig, height=330, showlegend=False)
 
 
 def _sa_site_heatmap(root: Path) -> go.Figure:
@@ -301,7 +301,7 @@ def _sa_site_heatmap(root: Path) -> go.Figure:
     fig = go.Figure()
     if raw.empty or not {"sample_date", "location", "k_cristata_cells_l"}.issubset(raw.columns):
         fig.add_annotation(text="暂无南澳回放数据", x=.5, y=.5, showarrow=False)
-        return _base_layout(fig, height=306, showlegend=False)
+        return _base_layout(fig, height=330, showlegend=False)
     raw = raw.copy()
     raw["sample_date"] = pd.to_datetime(raw["sample_date"], errors="coerce")
     raw["k_cristata_cells_l"] = pd.to_numeric(raw["k_cristata_cells_l"], errors="coerce").where(lambda v: v >= 0)
@@ -332,14 +332,14 @@ def _sa_site_heatmap(root: Path) -> go.Figure:
         z=z.tolist(), x=pivot.columns.tolist(), y=[f"S{i+1}" for i in range(len(pivot))], customdata=[[[str(site), None if not np.isfinite(v) else float(v)] for v in row] for site,row in zip(pivot.index,raw_vals)], text=text.tolist(),
         colorscale=[[0,"#e9f7f4"],[.32,"#bee4d5"],[.58,"#f4dd99"],[.8,"#ef9b61"],[1,"#dc5b43"]],
         zmin=0, zmax=max(7.2, float(np.nanmax(z)) if z.size else 7.2),
-        colorbar=dict(orientation="h", thickness=8, len=.95, x=.5, xanchor="center", y=1.16, tickvals=[0,3,5,7], ticktext=["0","千","十万","千万"], outlinewidth=0, tickfont=dict(size=9)),
+        colorbar=dict(orientation="h", thickness=8, len=1., x=.5, xanchor="center", y=1.05, tickvals=[0,3,5,7], ticktext=["0","千","十万","千万"], outlinewidth=0, tickfont=dict(size=12)),
         hovertemplate="%{customdata[0]}<br>%{x}<br>K. cristata %{customdata[1]:,.0f} cells/L<extra></extra>", hoverongaps=False,
         xgap=1, ygap=1,
     ))
     fig.update_xaxes(title="采样日期", type="category", tickangle=0, showgrid=False, tickvals=pivot.columns.tolist()[::3], ticktext=[d[5:] for d in pivot.columns.tolist()[::3]])
     fig.update_yaxes(title=None, autorange="reversed", showgrid=False, tickmode="array",tickvals=[f"S{i+1}" for i in range(len(pivot))],tickfont=dict(size=9, color="#6c8193"))
-    fig = _base_layout(fig, height=306, showlegend=False)
-    fig.update_layout(margin=dict(l=28,r=8,t=42,b=36))
+    fig = _base_layout(fig, height=330, showlegend=False)
+    fig.update_layout(margin=dict(l=38,r=16,t=44,b=44))
     return fig
 
 
@@ -500,7 +500,7 @@ def render(root: Any) -> None:
         [data-testid="stSidebarCollapsedControl"] {display:none !important;}
         [data-testid="stAppViewContainer"] > .main {margin-left:0 !important;}
         </style>
-        <div id="globalhab-build-hf2" data-build="HF2-VISUAL-REFINED-20260918"></div>
+        <div id="globalhab-build-hf2" data-build="HF3-JOINT-BIO-20260918"></div>
         """,
         unsafe_allow_html=True,
     )
@@ -531,9 +531,7 @@ def render(root: Any) -> None:
     with c3:
         with st.container(key="hf_evidence_panel"):
             _panel_header("环境因子与迁移验证", section="科学解释")
-            e1,e2=st.tabs(['传播时差','真实验证'])
-            with e1:st.plotly_chart(_evidence_figure(root,'lag'),use_container_width=True,config=PLOTLY_CONFIG,key='hf_evidence_visual')
-            with e2:st.plotly_chart(_evidence_figure(root,'validation'),use_container_width=True,config=PLOTLY_CONFIG,key='hf_transfer_visual')
+            st.plotly_chart(_combined_evidence_figure(root),use_container_width=True,config=PLOTLY_CONFIG,key='hf_evidence_combined')
             
 
     _render_china_panel(root)
@@ -564,9 +562,9 @@ def _render_china_panel(root: Path) -> None:
                 fig=go.Figure(go.Bar(x=[base,model],y=['检出率基线','梯度提升'],orientation='h',
                     marker_color=['#c5d8df',color],text=[f'{base:.3f}',f'{model:.3f}'],textposition='outside',cliponaxis=False,
                     hovertemplate='%{y}<br>AP %{x:.3f}<extra></extra>'))
-                fig.update_layout(title=dict(text=f'<b>{label}</b><br><span style="font-size:12px;color:{color}">AP变化 {gain:+.3f}</span>',font_size=17),
+                fig.update_layout(title=dict(text=f'<b>{label}</b><br><span style="font-size:12px;color:{color}">较基线 {gain:+.3f}</span>',font_size=17),
                     height=220,margin=dict(l=5,r=32,t=65,b=35),showlegend=False,
-                    xaxis=dict(range=[0,1],tickvals=[0,.5,1],title='AP ↑',showgrid=True,gridcolor='#edf2f3'),
+                    xaxis=dict(range=[0,1],tickvals=[0,.5,1],title=dict(text='平均精确率（AP，越高越好）',font_size=12),showgrid=True,gridcolor='#edf2f3'),
                     yaxis=dict(autorange='reversed'),bargap=.48,font=dict(size=12,color=NAVY),
                     paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
                 fig.update_traces(customdata=[[lo,hi,n]]*2,hovertemplate='%{y}<br>AP %{x:.3f}<br>2019–2020训练 · 2021检验<br>模型种子范围 %{customdata[0]:.3f}–%{customdata[1]:.3f}<br>检验记录 %{customdata[2]}<br>分子检出任务；不同标记分别评估<extra></extra>')
@@ -591,6 +589,39 @@ def _evidence_summary_html(root: Path) -> str:
     if norway:
         cards.append(f'<div class="evidence-note"><span>真实数据验证 · 挪威</span><b>AP {float(norway["model_average_precision"]):.3f} <small>参考模型 {float(norway["reference_average_precision"]):.3f}</small></b><p>AP衡量风险排序，越高越好；不等于准确率。</p></div>')
     return '<div class="evidence-notes">'+''.join(cards)+'</div>'
+
+
+def _combined_evidence_figure(root):
+    """Two independent evidence panels share one canvas and typography."""
+    from plotly.subplots import make_subplots
+    fig = make_subplots(rows=2, cols=1, vertical_spacing=.38, row_heights=[.52,.48])
+    lag = _read_csv(root/'outputs/te_cte_lag_summary.csv')
+    if not lag.empty:
+        for field, label, color in [('mean_cte_bits','顺流','#168c9d'),('mean_reverse_cte_bits','反向','#cbb799')]:
+            fig.add_trace(go.Scatter(x=lag.lag_days, y=lag[field], mode='lines+markers', name=label,
+                          line=dict(color=color,width=2), marker=dict(size=5),
+                          hovertemplate=label+'：%{x}天<br>条件信息量 %{y:.3f} bit<br>合成实验<extra></extra>'), row=1,col=1)
+        peak=lag.loc[lag.mean_cte_bits.idxmax()]
+        fig.add_vrect(x0=float(peak.lag_days)-1.7,x1=float(peak.lag_days)+1.7,fillcolor='#d7ecee',opacity=.55,line_width=0,row=1,col=1)
+        fig.update_yaxes(range=[0,float(lag.mean_cte_bits.max())*1.3],nticks=3,title=None,row=1,col=1)
+        fig.add_annotation(x=float(peak.lag_days),y=float(peak.mean_cte_bits),text=f'{int(peak.lag_days)}天',
+                           showarrow=False,yshift=16,font=dict(size=12,color='#16768d'),row=1,col=1)
+    card=_read_json(root/'outputs/norway_forward_benchmark_card.json')
+    if card and card.get('samples',0)>0:
+        values=[card['top10_selected']/card['samples']*100,card['top10_recall']*100]
+        for y,label,v,color in [(1,'监测样本',values[0],'#9dbeca'),(0,'覆盖事件',values[1],'#168c9d')]:
+            fig.add_trace(go.Bar(x=[v],y=[y],orientation='h',width=.45,marker_color=color,
+                          text=[f'{v:.0f}%'],textposition='outside',cliponaxis=False,showlegend=False,
+                          name=label,hovertemplate=label+' %{x:.1f}%<br>挪威真实观测 · 历史前向验证<extra></extra>'),row=2,col=1)
+        fig.update_yaxes(tickvals=[1,0],ticktext=['监测样本','覆盖事件'],range=[-.6,1.6],showgrid=False,row=2,col=1)
+    fig=_base_layout(fig,height=330,showlegend=True)
+    fig.update_layout(margin=dict(l=70,r=28,t=40,b=34),
+                       legend=dict(orientation='h',x=1,y=1.2,xanchor='right',yanchor='bottom',font_size=12))
+    fig.update_xaxes(tickvals=[0,14,30,45],ticktext=['0天','14天','30天','45天'],showgrid=False,row=1,col=1)
+    fig.update_xaxes(range=[0,100],tickvals=[0,50,100],ticktext=['0%','50%','100%'],showgrid=True,row=2,col=1)
+    fig.add_annotation(x=0,y=1.17,xref='paper',yref='paper',text='传播时差 · 合成（bit）',showarrow=False,xanchor='left',font=dict(size=12,color=NAVY))
+    fig.add_annotation(x=0,y=.48,xref='paper',yref='paper',text='有限采样 · 挪威实测',showarrow=False,xanchor='left',font=dict(size=12,color=NAVY))
+    return fig
 
 
 def _evidence_figure(root,mode='lag'):

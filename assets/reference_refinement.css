@@ -226,3 +226,26 @@ height:330px!important;min-height:330px!important;padding:12px 14px 4px!importan
 .st-key-hf_evidence_panel [data-testid="stVerticalBlock"]{gap:0!important;}
 
 .st-key-hf_agent_panel,.st-key-hf_sa_panel,.st-key-hf_evidence_panel{height:356px!important;min-height:356px!important;}
+
+/* HF3: a common 330px chart canvas, font scale and content rhythm. */
+.st-key-hf_agent_panel,.st-key-hf_sa_panel,.st-key-hf_evidence_panel{
+height:394px!important;min-height:394px!important;padding:14px 16px 10px!important;
+}
+.hf-viz-title{height:28px!important;align-items:center!important;}
+.hf-viz-title b{font-size:16px!important;}
+.st-key-hf_agent_panel [data-testid="stVerticalBlock"],
+.st-key-hf_sa_panel [data-testid="stVerticalBlock"],
+.st-key-hf_evidence_panel [data-testid="stVerticalBlock"]{gap:8px!important;}
+.st-key-research_section_joint_bio{padding:22px!important;}
+@media(max-width:1000px){
+ [data-testid="stHorizontalBlock"]:has(.st-key-hf_agent_panel),
+ .st-key-china_overview [data-testid="stHorizontalBlock"]{flex-wrap:wrap!important;}
+ [data-testid="stHorizontalBlock"]:has(.st-key-hf_agent_panel)>[data-testid="stColumn"],
+ .st-key-china_overview [data-testid="stHorizontalBlock"]>[data-testid="stColumn"]{width:100%!important;flex:1 1 100%!important;min-width:0!important;}
+ .hf-workspace-flow{overflow-x:auto;}
+}
+@media(max-width:800px){
+ .st-key-research_section_joint_bio [data-testid="stHorizontalBlock"]{flex-wrap:wrap!important;}
+ .st-key-research_section_joint_bio [data-testid="stColumn"]{width:100%!important;flex:1 1 100%!important;min-width:0!important;}
+}
+.st-key-research_modules [role="tab"]:nth-child(3)::after{content:'多对象联合评估';}

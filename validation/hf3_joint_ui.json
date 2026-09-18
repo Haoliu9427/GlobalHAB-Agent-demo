@@ -1,0 +1,9 @@
+{
+  "home": true,
+  "research": true,
+  "all_four_objects_default": true,
+  "capture_region_selectable": true,
+  "fish_can_be_unselected": true,
+  "empty_selection_handled": true,
+  "other_workspaces": true
+}

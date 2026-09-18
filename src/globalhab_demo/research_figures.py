@@ -68,3 +68,46 @@ def risk_series(predictions):
     fig.update_yaxes(range=[0,1],title='预测概率',row=1,col=1)
     fig.update_layout(showlegend=False)
     return finish(fig,340)
+
+
+def robustness_distribution(detail, summary):
+    """Every intervention stays visible, including zero-frequency and tied rows."""
+    from plotly.subplots import make_subplots
+    from .bio_response import INTERVENTIONS
+    order = [name for name in INTERVENTIONS if name in set(summary.intervention)]
+    labels = {'维持监测': '维持监测', '降低投喂40%': '降低投喂40%',
+              '启动增氧': '启动增氧', '转移准备（未执行）': '转移准备', '降低投喂+增氧': '投喂调整＋增氧'}
+    fig = make_subplots(rows=1, cols=3, shared_yaxes=True, column_widths=[.48, .26, .26],
+                        horizontal_spacing=.065, subplot_titles=['累计压力降低 · 分布', '摄食机会 · 中位数', '非劣方案 · 出现率'])
+    palette = ['#9bb7c5', '#6ca6bd', '#238e9c', '#b0bbc7', '#176b80']
+    for i, (name, color) in enumerate(zip(order, palette)):
+        values = detail.loc[detail.intervention.eq(name), 'pressure_load_reduction_pct'].to_numpy(float)
+        row = summary.loc[summary.intervention.eq(name)].iloc[0]
+        low, q1, median, q3, high = np.quantile(values, [0, .25, .5, .75, 1])
+        # Explicit whisker, interquartile segment and median keep zero-width
+        # distributions visible without inventing jitter or extra observations.
+        fig.add_trace(go.Scatter(x=[low, high], y=[i, i], mode='lines', line=dict(color=color, width=2),
+                                hoverinfo='skip', showlegend=False), row=1, col=1)
+        fig.add_trace(go.Scatter(x=[q1, q3], y=[i, i], mode='lines', line=dict(color=color, width=12),
+                                hoverinfo='skip', showlegend=False), row=1, col=1)
+        fig.add_trace(go.Scatter(x=[median], y=[i], mode='markers', marker=dict(size=10, color='white', line=dict(color=color, width=3)),
+                      customdata=[[name, low, q1, q3, high, len(values)]],
+                      hovertemplate='%{customdata[0]}<br>中位数 %{x:.2f}%<br>范围 %{customdata[1]:.2f}–%{customdata[4]:.2f}%<br>四分位范围 %{customdata[2]:.2f}–%{customdata[3]:.2f}%<br>扰动组合 %{customdata[5]}<extra></extra>', showlegend=False), row=1, col=1)
+        for col, field in [(2, 'median_feeding_opportunity_pct'), (3, 'pareto_frequency')]:
+            value = float(row[field])
+            fig.add_trace(go.Bar(x=[value], y=[i], orientation='h', width=.38, marker_color=color,
+                          text=[f'{value:.1f}%'], textposition='outside', cliponaxis=False, name=name,
+                          hovertemplate=name+'<br>%{x:.1f}%<extra></extra>', showlegend=False), row=1, col=col)
+    fig.update_yaxes(tickvals=list(range(len(order))), ticktext=[labels.get(x, x) for x in order],
+                     range=[len(order)-.5, -.5], showgrid=False, zeroline=False, col=1)
+    fig.update_yaxes(range=[len(order)-.5, -.5], showgrid=False, zeroline=False, col=2)
+    fig.update_yaxes(range=[len(order)-.5, -.5], showgrid=False, zeroline=False, col=3)
+    fig.update_xaxes(ticksuffix='%', gridcolor='#e7eff3', zeroline=False, tickfont_size=12)
+    fig.update_xaxes(range=[-1, max(2, float(detail.pressure_load_reduction_pct.max())*1.15)], col=1)
+    fig.update_xaxes(range=[0, 123], tickvals=[0, 50, 100], col=2)
+    fig.update_xaxes(range=[0, 125], tickvals=[0, 50, 100], col=3)
+    fig.update_layout(height=340, margin=dict(l=125, r=35, t=55, b=40), bargap=.6,
+                      font=dict(family='Microsoft YaHei, PingFang SC, Arial', size=13, color=INK),
+                      paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False)
+    fig.update_annotations(font_size=13)
+    return fig

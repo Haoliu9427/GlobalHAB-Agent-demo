@@ -171,7 +171,7 @@ def _research_flow_html() -> str:
         pieces.append(f'<a href="{href}" target="_self" aria-label="{label}"><title>{label} · 查看对应工作区</title><path d="{path}" fill="{color}"/><text x="{tx:.2f}" y="{ty+5:.2f}" text-anchor="middle">{label}</text></a>')
     return f'''<div class="hf-card hf-research-panel hf-sector-panel">
       <div class="hf-card-title">研究思路概览</div>
-      <svg class="hf-research-wheel" viewBox="0 0 360 310" role="img" aria-label="研究流程：多源观测、异常识别、传播推理、现场复核、迁移验证">
+      <svg class="hf-research-wheel" viewBox="20 10 320 290" role="img" aria-label="研究流程：多源观测、异常识别、传播推理、现场复核、迁移验证">
       {''.join(pieces)}
       <circle cx="180" cy="155" r="60" fill="#F0F8FC"/>
       <text class="wheel-center-title" x="180" y="151" text-anchor="middle">科学Agent</text>
@@ -300,10 +300,10 @@ def _sa_site_heatmap(root: Path) -> go.Figure:
     fig = go.Figure()
     if raw.empty or not {"sample_date", "location", "k_cristata_cells_l"}.issubset(raw.columns):
         fig.add_annotation(text="暂无南澳回放数据", x=.5, y=.5, showarrow=False)
-        return _base_layout(fig, height=230, showlegend=False)
+        return _base_layout(fig, height=265, showlegend=False)
     raw = raw.copy()
     raw["sample_date"] = pd.to_datetime(raw["sample_date"], errors="coerce")
-    raw["k_cristata_cells_l"] = pd.to_numeric(raw["k_cristata_cells_l"], errors="coerce").fillna(0).clip(lower=0)
+    raw["k_cristata_cells_l"] = pd.to_numeric(raw["k_cristata_cells_l"], errors="coerce").where(lambda v: v >= 0)
     # Prefer repeatedly sampled sites, then high peaks. This produces a readable event replay rather than a sparse all-site matrix.
     score = raw.groupby("location").agg(samples=("k_cristata_cells_l", "size"), peak=("k_cristata_cells_l", "max"))
     score["rank"] = score["samples"] * 2 + np.log10(score["peak"] + 1)
@@ -324,16 +324,22 @@ def _sa_site_heatmap(root: Path) -> go.Figure:
             v = raw_vals[i, j]
             text[i, j] = "—" if v <= 0 else (f"{v/1e6:.1f}M" if v >= 1e6 else f"{v/1e3:.0f}k" if v >= 1e3 else f"{v:.0f}")
     fig.add_trace(go.Heatmap(
+        z=np.zeros(raw_vals.shape).tolist(), x=pivot.columns.tolist(), y=[f"S{i+1}" for i in range(len(pivot))],
+        colorscale=[[0,"#E8EDF1"],[1,"#E8EDF1"]],showscale=False,xgap=2,ygap=2,
+        hovertemplate="%{y} · %{x}<br>无有效浓度记录，不代表零值<extra></extra>"))
+    fig.add_trace(go.Heatmap(
         z=z.tolist(), x=pivot.columns.tolist(), y=[f"S{i+1}" for i in range(len(pivot))], customdata=[[[str(site), None if not np.isfinite(v) else float(v)] for v in row] for site,row in zip(pivot.index,raw_vals)], text=text.tolist(),
         colorscale=[[0,"#e9f7f4"],[.32,"#bee4d5"],[.58,"#f4dd99"],[.8,"#ef9b61"],[1,"#dc5b43"]],
         zmin=0, zmax=max(7.2, float(np.nanmax(z)) if z.size else 7.2),
-        colorbar=dict(title="cells/L", thickness=10, len=.84, x=1.02, tickvals=[2,3,4,5,6,7], ticktext=["10²","10³","10⁴","10⁵","10⁶","10⁷"]),
+        colorbar=dict(orientation="h", thickness=8, len=.95, x=.5, xanchor="center", y=1.16, tickvals=[0,3,5,7], ticktext=["0","千","十万","千万"], outlinewidth=0, tickfont=dict(size=9)),
         hovertemplate="%{customdata[0]}<br>%{x}<br>K. cristata %{customdata[1]:,.0f} cells/L<extra></extra>", hoverongaps=False,
         xgap=1, ygap=1,
     ))
     fig.update_xaxes(title="采样日期", type="category", tickangle=0, showgrid=False, tickvals=pivot.columns.tolist()[::3], ticktext=[d[5:] for d in pivot.columns.tolist()[::3]])
-    fig.update_yaxes(title=None, autorange="reversed", showgrid=False, tickfont=dict(size=9, color="#6c8193"))
-    return _base_layout(fig, height=230, showlegend=False)
+    fig.update_yaxes(title=None, autorange="reversed", showgrid=False, tickmode="array",tickvals=[f"S{i+1}" for i in range(len(pivot))],tickfont=dict(size=9, color="#6c8193"))
+    fig = _base_layout(fig, height=265, showlegend=False)
+    fig.update_layout(margin=dict(l=28,r=8,t=42,b=36))
+    return fig
 
 
 def _evidence_matrix(root: Path) -> go.Figure:
@@ -491,7 +497,7 @@ def render(root: Any) -> None:
         [data-testid="stSidebarCollapsedControl"] {display:none !important;}
         [data-testid="stAppViewContainer"] > .main {margin-left:0 !important;}
         </style>
-        <div id="globalhab-build-hf2" data-build="HF2-SECTOR-20260918"></div>
+        <div id="globalhab-build-hf2" data-build="HF2-CARDS-20260918"></div>
         """,
         unsafe_allow_html=True,
     )
@@ -517,10 +523,11 @@ def render(root: Any) -> None:
         with st.container(key="hf_sa_panel"):
             _panel_header("南澳真实事件回放", section="真实事件回放")
             st.plotly_chart(_sa_site_heatmap(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_sa_chart")
+            st.markdown('<div class="sa-key"><i></i>灰格：无有效记录　<span>浅绿：记录值为0</span><br>浓度单位：细胞/升 · 对数色阶；站点及日期为展示子集。</div>',unsafe_allow_html=True)
     with c3:
         with st.container(key="hf_evidence_panel"):
             _panel_header("环境因子与迁移验证", section="科学解释")
-            st.plotly_chart(_evidence_matrix(root), use_container_width=True, config=PLOTLY_CONFIG, key="hf_evidence_chart")
+            st.markdown(_evidence_summary_html(root), unsafe_allow_html=True)
 
     _render_china_panel(root)
 
@@ -552,3 +559,22 @@ def _render_china_panel(root: Path) -> None:
         fig.update_layout(height=270,margin=dict(l=10,r=90,t=32,b=32),xaxis=dict(range=[0,1],title='AP · 越高越好',dtick=.2),yaxis=dict(autorange='reversed'),legend=dict(orientation='h',y=1.25,x=0),font=dict(size=13),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig,use_container_width=True,config=PLOTLY_CONFIG,key='china_coastal_comparison')
         st.caption("圆点：3个随机种子的均值；括号：相对基线的AP差值。不同标记分别评估；渤海有观测，暂无对应跨年测试。此处不代表藻华提前预警准确率。")
+
+
+def _evidence_summary_html(root: Path) -> str:
+    lag=_read_csv(root/'outputs/te_cte_lag_summary.csv')
+    spatial=_read_csv(root/'outputs/spatial_durbin_effects.csv')
+    norway=_read_json(root/'outputs/norway_forward_benchmark_card.json')
+    cards=[]
+    if not lag.empty:
+        r=lag.loc[lag.mean_cte_bits.idxmax()]
+        cards.append(f'<div class="evidence-note"><span>传播时间差 · 合成实验</span><b>{int(r.lag_days)}天 <small>方向信息最强</small></b><p>顺流 {r.mean_cte_bits:.3f} / 反向 {r.mean_reverse_cte_bits:.3f} bit<br>条件信息量，用于比较方向；不是预测准确率。</p></div>')
+    if not spatial.empty:
+        vals=[]
+        for code,label in [('multiscale_anomaly_score_lag14','异常信号'),('nutrient_context','营养盐'),('circulation_residence_proxy','输运代理')]:
+            q=spatial[(spatial.variable==code)&(spatial.effect_type=='indirect')]
+            if len(q): vals.append(f'<div><span>{label}</span><b>{float(q.iloc[0].effect_per_1sd)*100:+.1f}</b></div>')
+        cards.append('<div class="evidence-note"><span>邻近海区关联 · 合成实验</span><div class="effect-chips">'+''.join(vals)+'</div><p>输入增加1个标准差，对应的模型概率变化（百分点）；不是实测因果效应。</p></div>')
+    if norway:
+        cards.append(f'<div class="evidence-note"><span>真实数据验证 · 挪威</span><b>AP {float(norway["model_average_precision"]):.3f} <small>参考模型 {float(norway["reference_average_precision"]):.3f}</small></b><p>AP衡量风险排序，越高越好；不等于准确率。</p></div>')
+    return '<div class="evidence-notes">'+''.join(cards)+'</div>'

@@ -186,3 +186,19 @@ a.hf-workspace-node{text-decoration:none!important;transition:background .15s,bo
 @media(max-width:900px){.hf-upper-grid{grid-template-columns:1fr;}.hf-sector-panel{min-height:320px!important;}.hf-task-launch{flex-direction:row;align-items:center;}.hf-launch-copy p{display:block;}}
 @media(max-width:460px){.hf-task-launch{flex-direction:column;align-items:stretch;}.hf-research-wheel{height:auto;}}
 .hf-research-wheel a,.hf-research-wheel text{text-decoration:none!important;}
+/* Tighter overview proportions, larger readable wheel. */
+.hf-upper-grid{grid-template-columns:minmax(350px,1fr) minmax(360px,1.05fr);}
+.hf-sector-panel{min-height:330px!important;padding:14px 20px!important;}
+.hf-research-wheel{width:380px;height:310px;max-width:100%;}
+.hf-overview-actions .hf-case-panel{min-height:210px;}
+.evidence-notes{display:grid;gap:8px;margin-top:10px;}
+.evidence-note{background:#f1f8fc;border-radius:10px;padding:9px 12px;border-left:3px solid #54afbc;}
+.evidence-note>span{display:block;font-size:11px;color:#688595;}
+.evidence-note>b{display:block;font-size:19px;color:#176078;margin-top:3px;}
+.evidence-note small{font-size:11px;font-weight:400;color:#5f7d8c;}
+.evidence-note p{margin:4px 0 0;font-size:11px!important;line-height:1.45;color:#587383;}
+.effect-chips{display:flex;gap:6px;margin-top:5px;}.effect-chips>div{flex:1;display:flex;flex-direction:column;}.effect-chips span{font-size:11px;color:#56798b;}.effect-chips b{font-size:18px;color:#117a8b;}
+.sa-key{font-size:10px;color:#647d8b;line-height:1.5;margin:0 0 5px;}.sa-key i{display:inline-block;width:10px;height:10px;background:#e8edf1;border:1px solid #d9e2e8;margin-right:4px;}
+[class*="st-key-research_section_"]{padding:20px!important;background:#fff!important;border:1px solid #dbe9f1!important;border-radius:16px!important;box-shadow:0 4px 16px #183d5507;margin:8px 0 18px!important;}
+[class*="st-key-research_section_"] [data-testid="stVerticalBlockBorderWrapper"]{border-radius:12px;}
+@media(max-width:900px){.hf-upper-grid{grid-template-columns:1fr;}.hf-sector-panel{min-height:320px!important;}.hf-research-wheel{height:290px;}}

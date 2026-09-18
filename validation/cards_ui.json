@@ -1,0 +1,16 @@
+{
+  "research_tabs": [
+    "真实事件回放",
+    "生物响应沙盘",
+    "科学解释",
+    "探索与验证",
+    "数据来源与复核",
+    "真实数据训练与验证"
+  ],
+  "browser_exceptions": 0,
+  "viewport": [
+    1448,
+    1086
+  ],
+  "heatmap_missing_distinct_from_zero": true
+}

@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF2-SECTOR-20260918"
+BUILD_ID = "HF2-CARDS-20260918"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -203,6 +203,7 @@ st.markdown(
 )
 
 from globalhab_demo.map_style import style_map, draw_map
+from globalhab_demo.research_panels import research_plot, research_table
 # Refresh UI code after Streamlit Cloud pulls a new deployment.
 # Controls belong to this script run, not a shared module-global container.
 import globalhab_demo.ui_system as _ui_system
@@ -892,8 +893,9 @@ with st.container(key="research_modules"):
     ], default=st.session_state.get("research_section", "风险研判"))
 
 with tab_training:
-    from globalhab_demo.real_training.ui import render as render_real_training
-    render_real_training(ROOT)
+    with st.container(border=True, key="research_section_tab_training_0"):
+        from globalhab_demo.real_training.ui import render as render_real_training
+        render_real_training(ROOT)
 
 with tab_alert:
     st.markdown("### 未来7/14/30天藻华风险情景推演")
@@ -1106,1885 +1108,1908 @@ with tab_alert:
     )
 
 with tab_real:
-    st.markdown("### 真实观测与验证")
-    st.markdown(
-        '<div class="signal">南澳qPCR用于事件回放；挪威长期监测用于前向排序；Florida/Gulf将Karenia细胞计数与流场进行时滞匹配；现场数据可进行独立前向验证。数据不满足分析条件时返回DEFER。</div>',
-        unsafe_allow_html=True,
-    )
-    evidence_cases = global_evidence_frame()
-    draw_map(global_case_map(evidence_cases))
-    st.caption(
-        "南澳大利亚和挪威数据随包提供；Florida/Gulf支持公开数据在线读取或CSV上传。"
-    )
-
-    real_observations, real_provenance = load_sa_real_case(ROOT / "data")
-    norway_observations, norway_provenance = load_norway_real_case(ROOT / "data")
-    norway_benchmark = cached_norway_benchmark(norway_observations)
-    sa_full_replay = build_sa_replay(
-        real_observations, real_observations["sample_date"].min(),
-        real_observations["sample_date"].max(),
-    )
-    norway_full_replay = build_norway_replay(
-        norway_observations, norway_observations["sample_date"].min(),
-        norway_observations["sample_date"].max(),
-    )
-    real_card = sa_full_replay["card"]
-    norway_card = norway_full_replay["card"]
-
-    case_choice = st.selectbox(
-        "选择数据集或验证方式",
-        [
-            "南澳大利亚 · 2025复杂Karenia事件",
-            "挪威沿岸 · 2006–2019有毒藻监测",
-            "Florida/Gulf · Karenia真实流场回顾验证",
-            "现场前向验证",
-        ],
-    )
-
-    if case_choice.startswith("南澳大利亚"):
-        st.markdown("#### 南澳大利亚：复杂Karenia藻华现场qPCR回放")
-        real_min = real_observations["sample_date"].min().date()
-        real_max = real_observations["sample_date"].max().date()
-        r1, r2 = st.columns([1.5, 1.0])
-        replay_range = r1.date_input(
-            "回放时间范围", value=(real_min, real_max), min_value=real_min,
-            max_value=real_max, key="sa_replay_range",
-        )
-        depths = ["全部深度"] + sorted(real_observations["depth"].dropna().unique().tolist())
-        replay_depth = r2.selectbox("采样深度", depths, key="sa_depth")
-        if isinstance(replay_range, tuple) and len(replay_range) == 2:
-            replay_start, replay_end = replay_range
-        else:
-            replay_start, replay_end = real_min, real_max
-        replay = build_sa_replay(real_observations, replay_start, replay_end, replay_depth)
-        selected_card = replay["card"]
-        peak = selected_card["peak_k_cristata"]
-        st.markdown("##### 养殖对象与暴露情景")
-        ra1, ra2 = st.columns(2)
-        real_production = ra1.selectbox(
-            "主要养殖对象", list(PRODUCTION_PROFILES), key="real_production",
-            help="对象选择只改变脆弱性与复核内容，不改变真实qPCR观测。",
-        )
-        real_exposure = ra2.slider(
-            "养殖暴露系数", .25, 1.0, .80, .05, key="real_exposure",
-            help="用于敏感性分析；当前未接入真实养殖场坐标和养殖密度。",
-        )
-        sa_translation = build_sa_risk_translation(
-            replay["sites"], real_production, real_exposure
-        )
-        real_aqua = sa_translation["priority"]
-        kpi_grid([
-            ("现场qPCR样本", f"{selected_card['observations']:,}", "窗口内真实采样记录"),
-            ("独立采样日数", f"{selected_card['sampling_dates']}", "非均匀现场采样"),
-            ("监测地点", f"{selected_card['locations']}", "Gulf St Vincent沿岸"),
-            ("K. cristata检出", f"{selected_card['k_cristata_detection_share']:.1%}", "样本检出比例"),
-            ("最高观测丰度", f"{peak['cells_l']:.2e}", "cells L⁻¹"),
-            ("当前回放窗口", f"{replay_start} → {replay_end}", f"深度：{replay_depth}"),
-        ])
-        risk_translation_panel(sa_translation["summary"], sa_translation["evidence"])
+    with st.container(border=True, key="research_section_tab_real_0"):
+        st.markdown("### 真实观测与验证")
         st.markdown(
-            '<div class="signal">最高现场观测：'
-            f'<b>{peak["location"]}</b> · {peak["date"]} · '
-            f'<i>K. cristata</i> <b>{peak["cells_l"]:,.0f} cells L⁻¹</b>。'
-            '该值是采样点峰值，不代表整个海区的连续最大值。</div>',
+            '<div class="signal">南澳qPCR用于事件回放；挪威长期监测用于前向排序；Florida/Gulf将Karenia细胞计数与流场进行时滞匹配；现场数据可进行独立前向验证。数据不满足分析条件时返回DEFER。</div>',
             unsafe_allow_html=True,
         )
-        st.plotly_chart(
-            real_qpcr_map(replay["sites"]), width="stretch", config={"displayModeBar": False}
-        )
-        rt1, rt2 = st.columns([1.35, 1.0], gap="large")
-        with rt1:
-            timeline_chart = px.line(
-                replay["timeline"], x="sample_date", y="k_cristata_peak_cells_l",
-                markers=True, log_y=True, title="K. cristata采样日峰值",
-                labels={"sample_date": "采样日期", "k_cristata_peak_cells_l": "cells L⁻¹（对数轴）"},
-            )
-            timeline_chart.update_layout(height=350, margin={"l": 5, "r": 5, "t": 50, "b": 5})
-            st.plotly_chart(timeline_chart, width="stretch", config={"displayModeBar": False})
-        with rt2:
-            composition_chart = px.bar(
-                replay["species"], x="species", y="summed_cells_l_across_samples",
-                log_y=True, color="species", title="采样集Karenia物种构成",
-                labels={"species": "物种", "summed_cells_l_across_samples": "跨样本丰度和"},
-            )
-            composition_chart.update_layout(
-                showlegend=False, height=350, margin={"l": 5, "r": 5, "t": 50, "b": 5}
-            )
-            st.plotly_chart(composition_chart, width="stretch", config={"displayModeBar": False})
-
-        st.markdown("#### 监测区域排序")
+        evidence_cases = global_evidence_frame()
+        draw_map(global_case_map(evidence_cases))
         st.caption(
-            "排序由qPCR相对丰度与设定暴露系数组合计算；结果不对应死亡率、经济损失率或停采阈值。"
+            "南澳大利亚和挪威数据随包提供；Florida/Gulf支持公开数据在线读取或CSV上传。"
         )
-        st.dataframe(
-            real_aqua[[
-                "location", "k_cristata_peak_cells_l", "observed_abundance_band",
-                "verification_priority_index", "priority_level", "evidence_grade",
-                "recommended_action",
-            ]].head(15), width="stretch", hide_index=True,
-            column_config={
-                "location": "监测地点",
-                "k_cristata_peak_cells_l": st.column_config.NumberColumn(
-                    "K. cristata峰值（cells L⁻¹）", format="%.0f"
-                ),
-                "observed_abundance_band": "现场丰度分档",
-                "verification_priority_index": st.column_config.ProgressColumn(
-                    "复核优先指数", min_value=0, max_value=100, format="%.1f"
-                ),
-                "priority_level": "建议响应",
-                "evidence_grade": "证据等级",
-                "recommended_action": st.column_config.TextColumn("建议行动", width="large"),
+
+        real_observations, real_provenance = load_sa_real_case(ROOT / "data")
+        norway_observations, norway_provenance = load_norway_real_case(ROOT / "data")
+        norway_benchmark = cached_norway_benchmark(norway_observations)
+        sa_full_replay = build_sa_replay(
+            real_observations, real_observations["sample_date"].min(),
+            real_observations["sample_date"].max(),
+        )
+        norway_full_replay = build_norway_replay(
+            norway_observations, norway_observations["sample_date"].min(),
+            norway_observations["sample_date"].max(),
+        )
+        real_card = sa_full_replay["card"]
+        norway_card = norway_full_replay["card"]
+
+    with st.container(border=True, key="research_section_tab_real_1"):
+        case_choice = st.selectbox(
+            "选择数据集或验证方式",
+            [
+                "南澳大利亚 · 2025复杂Karenia事件",
+                "挪威沿岸 · 2006–2019有毒藻监测",
+                "Florida/Gulf · Karenia真实流场回顾验证",
+                "现场前向验证",
+            ],
+        )
+
+        if case_choice.startswith("南澳大利亚"):
+            st.markdown("#### 南澳大利亚：复杂Karenia藻华现场qPCR回放")
+            real_min = real_observations["sample_date"].min().date()
+            real_max = real_observations["sample_date"].max().date()
+            r1, r2 = st.columns([1.5, 1.0])
+            replay_range = r1.date_input(
+                "回放时间范围", value=(real_min, real_max), min_value=real_min,
+                max_value=real_max, key="sa_replay_range",
+            )
+            depths = ["全部深度"] + sorted(real_observations["depth"].dropna().unique().tolist())
+            replay_depth = r2.selectbox("采样深度", depths, key="sa_depth")
+            if isinstance(replay_range, tuple) and len(replay_range) == 2:
+                replay_start, replay_end = replay_range
+            else:
+                replay_start, replay_end = real_min, real_max
+            replay = build_sa_replay(real_observations, replay_start, replay_end, replay_depth)
+            selected_card = replay["card"]
+            peak = selected_card["peak_k_cristata"]
+            st.markdown("##### 养殖对象与暴露情景")
+            ra1, ra2 = st.columns(2)
+            real_production = ra1.selectbox(
+                "主要养殖对象", list(PRODUCTION_PROFILES), key="real_production",
+                help="对象选择只改变脆弱性与复核内容，不改变真实qPCR观测。",
+            )
+            real_exposure = ra2.slider(
+                "养殖暴露系数", .25, 1.0, .80, .05, key="real_exposure",
+                help="用于敏感性分析；当前未接入真实养殖场坐标和养殖密度。",
+            )
+            sa_translation = build_sa_risk_translation(
+                replay["sites"], real_production, real_exposure
+            )
+            real_aqua = sa_translation["priority"]
+            kpi_grid([
+                ("现场qPCR样本", f"{selected_card['observations']:,}", "窗口内真实采样记录"),
+                ("独立采样日数", f"{selected_card['sampling_dates']}", "非均匀现场采样"),
+                ("监测地点", f"{selected_card['locations']}", "Gulf St Vincent沿岸"),
+                ("K. cristata检出", f"{selected_card['k_cristata_detection_share']:.1%}", "样本检出比例"),
+                ("最高观测丰度", f"{peak['cells_l']:.2e}", "cells L⁻¹"),
+                ("当前回放窗口", f"{replay_start} → {replay_end}", f"深度：{replay_depth}"),
+            ])
+            risk_translation_panel(sa_translation["summary"], sa_translation["evidence"])
+            st.markdown(
+                '<div class="signal">最高现场观测：'
+                f'<b>{peak["location"]}</b> · {peak["date"]} · '
+                f'<i>K. cristata</i> <b>{peak["cells_l"]:,.0f} cells L⁻¹</b>。'
+                '该值是采样点峰值，不代表整个海区的连续最大值。</div>',
+                unsafe_allow_html=True,
+            )
+            research_plot(
+                real_qpcr_map(replay["sites"]), width="stretch", config={"displayModeBar": False}
+            )
+            rt1, rt2 = st.columns([1.35, 1.0], gap="large")
+            with rt1:
+                timeline_chart = px.line(
+                    replay["timeline"], x="sample_date", y="k_cristata_peak_cells_l",
+                    markers=True, log_y=True, title="K. cristata采样日峰值",
+                    labels={"sample_date": "采样日期", "k_cristata_peak_cells_l": "cells L⁻¹（对数轴）"},
+                )
+                timeline_chart.update_layout(height=350, margin={"l": 5, "r": 5, "t": 50, "b": 5})
+                research_plot(timeline_chart, width="stretch", config={"displayModeBar": False})
+            with rt2:
+                composition_chart = px.bar(
+                    replay["species"], x="species", y="summed_cells_l_across_samples",
+                    log_y=True, color="species", title="采样集Karenia物种构成",
+                    labels={"species": "物种", "summed_cells_l_across_samples": "跨样本丰度和"},
+                )
+                composition_chart.update_layout(
+                    showlegend=False, height=350, margin={"l": 5, "r": 5, "t": 50, "b": 5}
+                )
+                research_plot(composition_chart, width="stretch", config={"displayModeBar": False})
+
+            st.markdown("#### 监测区域排序")
+            st.caption(
+                "排序由qPCR相对丰度与设定暴露系数组合计算；结果不对应死亡率、经济损失率或停采阈值。"
+            )
+            research_table(
+                real_aqua[[
+                    "location", "k_cristata_peak_cells_l", "observed_abundance_band",
+                    "verification_priority_index", "priority_level", "evidence_grade",
+                    "recommended_action",
+                ]].head(15), width="stretch", hide_index=True,
+                column_config={
+                    "location": "监测地点",
+                    "k_cristata_peak_cells_l": st.column_config.NumberColumn(
+                        "K. cristata峰值（cells L⁻¹）", format="%.0f"
+                    ),
+                    "observed_abundance_band": "现场丰度分档",
+                    "verification_priority_index": st.column_config.ProgressColumn(
+                        "复核优先指数", min_value=0, max_value=100, format="%.1f"
+                    ),
+                    "priority_level": "建议响应",
+                    "evidence_grade": "证据等级",
+                    "recommended_action": st.column_config.TextColumn("建议行动", width="large"),
+                },
+            )
+            rd1, rd2, rd3 = st.columns(3)
+            rd1.download_button(
+                "下载真实qPCR数据", replay["observations"].to_csv(index=False).encode("utf-8-sig"),
+                "south_australia_qpcr_replay.csv", "text/csv",
+            )
+            rd2.download_button(
+                "下载事件回放卡", json.dumps(selected_card, ensure_ascii=False, indent=2).encode("utf-8"),
+                "south_australia_replay_card.json", "application/json",
+            )
+            rd3.download_button(
+                "下载养殖复核顺序", real_aqua.to_csv(index=False).encode("utf-8-sig"),
+                "south_australia_aquaculture_priority.csv", "text/csv",
+            )
+            st.markdown(
+                "来源：[Nature Ecology & Evolution](https://doi.org/10.1038/s41559-026-03115-0) · "
+                "[Zenodo数据（CC BY 4.0）](https://doi.org/10.5281/zenodo.20227730)"
+            )
+        elif case_choice.startswith("挪威沿岸"):
+            st.markdown("#### 挪威沿岸：14年有毒藻与环境监测回放")
+            norway_min = norway_observations["sample_date"].min().date()
+            norway_max = norway_observations["sample_date"].max().date()
+            n1, n2 = st.columns([1.5, 1.0])
+            norway_range = n1.date_input(
+                "监测时间范围", value=(norway_min, norway_max), min_value=norway_min,
+                max_value=norway_max, key="norway_replay_range",
+            )
+            norway_regions = ["全部站点"] + sorted(norway_observations["region"].unique().tolist())
+            norway_region = n2.selectbox("沿岸监测区域", norway_regions, key="norway_region")
+            if isinstance(norway_range, tuple) and len(norway_range) == 2:
+                norway_start, norway_end = norway_range
+            else:
+                norway_start, norway_end = norway_min, norway_max
+            norway_replay = build_norway_replay(
+                norway_observations, norway_start, norway_end, norway_region
+            )
+            selected_card = norway_replay["card"]
+            peak_d = selected_card["peak_d_acuta"]
+            st.markdown("##### 养殖对象与暴露情景")
+            nr1, nr2 = st.columns(2)
+            norway_production = nr1.selectbox(
+                "主要养殖对象", list(PRODUCTION_PROFILES), key="norway_production",
+                help="对象选择只改变脆弱性与复核内容，不改变真实监测计数。",
+            )
+            norway_exposure = nr2.slider(
+                "养殖暴露系数", .25, 1.0, .75, .05, key="norway_exposure",
+                help="用于敏感性分析；当前未接入真实养殖场坐标和养殖密度。",
+            )
+            norway_translation = build_norway_risk_translation(
+                norway_replay["stations"], norway_production, norway_exposure
+            )
+            norway_aqua = norway_translation["priority"]
+            kpi_grid([
+                ("真实监测记录", f"{selected_card['observations']:,}", "藻细胞计数与环境条件"),
+                ("独立采样日数", f"{selected_card['sampling_dates']:,}", "2006–2019周尺度监测"),
+                ("沿岸区域", f"{selected_card['regions']}", "58–71°N监测网络"),
+                ("研究定义事件", f"{selected_card['target_event_observations']}", ">200 cells L⁻¹记录"),
+                ("D. acuta最高观测", f"{peak_d['cells_l']:,.0f}", "cells L⁻¹"),
+                ("当前回放窗口", f"{norway_start} → {norway_end}", f"区域：{norway_region}"),
+            ])
+            risk_translation_panel(
+                norway_translation["summary"], norway_translation["evidence"]
+            )
+            st.markdown(
+                '<div class="signal">窗口内 <i>D. acuta</i> 最高观测：'
+                f'<b>{peak_d["region"]}</b> · {peak_d["date"]} · '
+                f'<b>{peak_d["cells_l"]:,.0f} cells L⁻¹</b>。'
+                '事件标识复现论文研究定义，不替代地方贝类毒素管控规则。</div>',
+                unsafe_allow_html=True,
+            )
+            nt1, nt2 = st.columns([1.35, 1.0], gap="large")
+            with nt1:
+                norway_time = norway_replay["timeline"].copy()
+                norway_time["year"] = norway_time["sample_date"].dt.year
+                annual = norway_time.groupby("year", as_index=False).agg(
+                    event_observations=("target_hab_events", "sum"),
+                    monitored_dates=("sample_date", "nunique"),
+                )
+                annual_chart = px.bar(
+                    annual, x="year", y="event_observations",
+                    title="研究定义事件的年度观测数",
+                    labels={"year": "年份", "event_observations": "事件观测数"},
+                    color_discrete_sequence=["#2cb7b1"],
+                )
+                annual_chart.update_layout(height=370, margin={"l": 5, "r": 5, "t": 50, "b": 5})
+                research_plot(annual_chart, width="stretch", config={"displayModeBar": False})
+            with nt2:
+                top_stations = norway_replay["stations"].head(15).sort_values("event_observations")
+                station_chart = px.bar(
+                    top_stations, x="event_observations", y="region", orientation="h",
+                    title="需要优先关注的监测区域",
+                    labels={"event_observations": "事件观测数", "region": "区域"},
+                    color="event_share", color_continuous_scale=["#d9efeb", "#2cb7b1"],
+                )
+                station_chart.update_layout(
+                    height=370, margin={"l": 5, "r": 5, "t": 50, "b": 5},
+                    coloraxis_colorbar={"title": "事件占比"},
+                )
+                research_plot(station_chart, width="stretch", config={"displayModeBar": False})
+            st.markdown("#### 观测物种与环境条件")
+            ne1, ne2 = st.columns([.9, 1.35], gap="large")
+            with ne1:
+                research_table(norway_replay["taxa"], width="stretch", hide_index=True)
+            with ne2:
+                environmental = norway_replay["observations"][[
+                    "sst_c", "sea_surface_salinity_psu", "mixed_layer_depth_m", "par_e_m2_d"
+                ]].describe().loc[["mean", "std", "min", "50%", "max"]].T.reset_index()
+                environmental.columns = ["环境变量", "平均", "标准差", "最小", "中位", "最大"]
+                research_table(environmental, width="stretch", hide_index=True)
+
+            st.markdown("#### 前向回顾验证")
+            st.caption(
+                "前向基准基于完整2006–2019监测序列固定计算，与上方回放筛选独立；模型与阈值选择仅使用训练期数据。"
+            )
+            benchmark_summary = norway_benchmark["summary"]
+            st.markdown(
+                '<div class="signal"><b>任务定义：</b>仅使用当前采样时已经可见的SST、PAR、混合层深度、'
+                '盐度、季节和区域，排序同一区域未来1–14天内的“下一次实际采样”是否达到论文事件定义。'
+                '当前藻细胞计数、未来环境值和超过14天的采样空档均不进入模型。</div>',
+                unsafe_allow_html=True,
+            )
+            kpi_grid([
+                ("最高风险10% · 事件覆盖", f"{benchmark_summary['top10_recall']:.1%}",
+                 f"命中 {benchmark_summary['top10_true_positives']}/{benchmark_summary['events']} 个留出事件"),
+                ("Top10% · 命中率", f"{benchmark_summary['top10_precision']:.1%}",
+                 f"事件率 {benchmark_summary['event_rate']:.2%} 的 {benchmark_summary['top10_precision_lift']:.1f} 倍"),
+                ("Average Precision", f"{benchmark_summary['model_average_precision']:.3f}",
+                 "严格前向留出；越高越好"),
+                ("固定参考模型", f"{benchmark_summary['reference_average_precision']:.3f}",
+                 f"当前前向模型相对提升 {benchmark_summary['relative_improvement_over_reference']:.1%}"),
+                ("季节基线 AP", f"{benchmark_summary['seasonal_average_precision']:.3f}",
+                 "仅使用训练期月份概率"),
+                ("留出事件率", f"{benchmark_summary['event_rate']:.2%}",
+                 f"{benchmark_summary['events']} / {benchmark_summary['samples']:,} 个样本"),
+            ])
+            st.markdown(
+                f'<div class="signal"><b>把指标翻译成监测容量：</b>若只复核模型排序最高的10%样本，'
+                f'需要检查 <b>{benchmark_summary["top10_selected"]}</b> 个样本，命中 '
+                f'<b>{benchmark_summary["top10_true_positives"]}</b> 个事件，同时包含 '
+                f'<b>{benchmark_summary["top10_false_positives"]}</b> 个非事件。'
+                '这可用于比较加密监测顺序，但误报代价仍高，不能直接作为养殖场报警。</div>',
+                unsafe_allow_html=True,
+            )
+            rb1, rb2 = st.columns([1.15, 1.0], gap="large")
+            with rb1:
+                fold_chart_data = norway_benchmark["folds"].melt(
+                    id_vars=["test_window", "test_events"],
+                    value_vars=["model_average_precision", "reference_average_precision",
+                                "seasonal_average_precision"],
+                    var_name="method", value_name="average_precision",
+                )
+                fold_chart_data["method"] = fold_chart_data["method"].map({
+                    "model_average_precision": "训练期内层选择模型",
+                    "reference_average_precision": "固定参考模型",
+                    "seasonal_average_precision": "季节基线",
+                })
+                fold_chart = px.bar(
+                    fold_chart_data, x="test_window", y="average_precision", color="method",
+                    barmode="group", title="四个前向时间窗的Average Precision",
+                    labels={"test_window": "测试年份", "average_precision": "Average Precision（AP）", "method": "方法"},
+                    color_discrete_map={"训练期内层选择模型": "#2cb7b1",
+                                        "固定参考模型": "#d9a441", "季节基线": "#b8c8cc"},
+                    hover_data={"test_events": True},
+                )
+                fold_chart.update_layout(height=360, margin={"l": 5, "r": 5, "t": 55, "b": 5})
+                research_plot(fold_chart, width="stretch", config={"displayModeBar": False})
+            with rb2:
+                st.markdown("##### 验证结果")
+                norway_result_table = pd.DataFrame([
+                    ["Average Precision", f"{benchmark_summary['model_average_precision']:.3f}"],
+                    ["AP 95%区间", f"{benchmark_summary['model_average_precision_ci95'][0]:.3f}–{benchmark_summary['model_average_precision_ci95'][1]:.3f}"],
+                    ["固定参考模型 AP", f"{benchmark_summary['reference_average_precision']:.3f}"],
+                    ["季节基线 AP", f"{benchmark_summary['seasonal_average_precision']:.3f}"],
+                    ["高于季节基线的时间窗", f"{benchmark_summary['folds_beating_seasonal_average_precision']}/{benchmark_summary['valid_folds']}"],
+                    ["标签置换 p", f"{benchmark_summary['permutation_p']:.3f}"],
+                    ["Brier误差", f"{benchmark_summary['model_brier']:.4f}"],
+                    ["最弱时间窗", f"{benchmark_summary['weakest_fold']} · AP {benchmark_summary['weakest_fold_average_precision']:.3f}"],
+                ], columns=["指标", "结果"])
+                research_table(norway_result_table, width="stretch", hide_index=True)
+                st.caption("模型选择仅使用训练期数据；外层测试窗不参与调参。该任务为回顾性下一样本排序。")
+                with st.expander("验证约束"):
+                    for rule in benchmark_summary["leakage_controls"]:
+                        st.markdown(f"- {rule}")
+            rbd1, rbd2, rbd3 = st.columns(3)
+            rbd1.download_button(
+                "下载前向预测明细",
+                norway_benchmark["predictions"].to_csv(index=False).encode("utf-8-sig"),
+                "norway_forward_benchmark_predictions.csv", "text/csv",
+            )
+            rbd2.download_button(
+                "下载时间窗指标",
+                norway_benchmark["folds"].to_csv(index=False).encode("utf-8-sig"),
+                "norway_forward_benchmark_folds.csv", "text/csv",
+            )
+            rbd3.download_button(
+                "下载前向验证卡",
+                json.dumps(benchmark_summary, ensure_ascii=False, indent=2).encode("utf-8"),
+                "norway_forward_benchmark_card.json", "application/json",
+            )
+            st.markdown("#### 监测区域排序")
+            st.caption(
+                "相对危害指数基于当前回放窗口内的对数丰度；不对应地方毒素阈值。"
+            )
+            research_table(
+                norway_aqua[[
+                    "region", "target_peak_cells_l", "event_observations",
+                    "verification_priority_index", "priority_level", "evidence_grade",
+                    "recommended_action",
+                ]].head(15),
+                width="stretch",
+                hide_index=True,
+                column_config={
+                    "region": "监测区域",
+                    "target_peak_cells_l": st.column_config.NumberColumn(
+                        "目标藻最高计数（cells L⁻¹）", format="%.0f"
+                    ),
+                    "event_observations": "论文定义事件观测数",
+                    "verification_priority_index": st.column_config.ProgressColumn(
+                        "加密监测优先指数", min_value=0, max_value=100, format="%.1f"
+                    ),
+                    "priority_level": "建议响应",
+                    "evidence_grade": "证据等级",
+                    "recommended_action": st.column_config.TextColumn("建议行动", width="large"),
+                },
+            )
+            nd1, nd2, nd3 = st.columns(3)
+            nd1.download_button(
+                "下载挪威观测回放", norway_replay["observations"].to_csv(index=False).encode("utf-8-sig"),
+                "norway_hab_monitoring_replay.csv", "text/csv",
+            )
+            nd2.download_button(
+                "下载挪威回放卡", json.dumps(selected_card, ensure_ascii=False, indent=2).encode("utf-8"),
+                "norway_replay_card.json", "application/json",
+            )
+            nd3.download_button(
+                "下载养殖监测顺序", norway_aqua.to_csv(index=False).encode("utf-8-sig"),
+                "norway_aquaculture_monitoring_priority.csv", "text/csv",
+            )
+            st.markdown(
+                "来源：[Communications Earth & Environment](https://doi.org/10.1038/s43247-025-02421-y) · "
+                "[Zenodo数据与模型（CC BY 4.0）](https://doi.org/10.5281/zenodo.10958487)"
+            )
+
+
+        elif case_choice.startswith("Florida/Gulf"):
+            st.markdown("#### Florida/Gulf of Mexico：Karenia流场约束回顾分析")
+            st.caption(
+                "将Karenia brevis细胞计数与表层流场按候选时滞进行上游—下游匹配，并与无流向和反向流对照比较。回顾分析默认使用HYCOM Gulf reanalysis；流场位移采用一阶投影。"
+            )
+            research_table(FLORIDA_SOURCE_CATALOG, width="stretch", hide_index=True)
+            st.markdown(
+                "公开数据入口：[NOAA HABSOS](https://habsos.noaa.gov/about/) · "
+                "[NOAA CoastWatch surface currents](https://coastwatch.noaa.gov/erddap/info/noaacwBLENDEDNRTcurrentsDaily/index.html) · "
+                "[HYCOM Gulf reanalysis](https://www.hycom.org/data/gomb0pt04/gom-reanalysis)"
+            )
+
+            fc1, fc2, fc3 = st.columns([1.2, 1.0, 1.0])
+            florida_range = fc1.date_input(
+                "回顾验证时间范围",
+                value=(pd.Timestamp("2018-08-01").date(), pd.Timestamp("2018-12-31").date()),
+                min_value=pd.Timestamp("2015-01-15").date(),
+                max_value=pd.Timestamp("2024-03-25").date(),
+                key="florida_sts_range",
+            )
+            florida_threshold = fc2.selectbox(
+                "Karenia事件阈值（cells L⁻¹）",
+                [10_000, 100_000, 1_000_000], index=1,
+                format_func=lambda x: f"{x:,}", key="florida_event_threshold",
+            )
+            florida_lags = fc3.multiselect(
+                "候选时滞（天）", list(FLORIDA_STS_LAGS),
+                default=list(FLORIDA_STS_LAGS), key="florida_lags",
+            )
+            if isinstance(florida_range, tuple) and len(florida_range) == 2:
+                florida_start, florida_end = florida_range
+            else:
+                florida_start = florida_end = florida_range
+
+            fs1, fs2 = st.columns(2)
+            with fs1:
+                hab_source_mode = st.radio(
+                    "Karenia观测来源", ["NOAA HABSOS在线读取", "上传HABSOS/现场CSV"],
+                    horizontal=False, key="florida_hab_source",
+                )
+                hab_upload = None
+                if hab_source_mode.startswith("上传"):
+                    hab_upload = st.file_uploader("上传Karenia观测CSV", type=["csv"], key="florida_hab_upload")
+            with fs2:
+                current_source_mode = st.radio(
+                    "流场来源",
+                    [
+                        "HYCOM GOMb0.04在线回顾流场",
+                        "NOAA CoastWatch在线流场",
+                        "上传HYCOM/Copernicus/HF-radar流场CSV",
+                    ],
+                    horizontal=False, key="florida_current_source",
+                )
+                current_upload = None
+                if current_source_mode.startswith("上传"):
+                    current_upload = st.file_uploader("上传流场CSV", type=["csv"], key="florida_current_upload")
+                    st.caption("最低字段：date/time、latitude、longitude、u/v（m s⁻¹）。常见uo/vo、u_current/v_current字段会自动识别。")
+
+            florida_run_key = (
+                str(florida_start), str(florida_end), int(florida_threshold), tuple(florida_lags),
+                hab_source_mode, current_source_mode,
+            )
+            if st.button("读取数据并运行回顾分析", key="run_florida_sts", type="primary"):
+                # A failed live fetch must never leave a previous run visible under the current controls.
+                for _key in ("florida_sts_result", "florida_sts_hab", "florida_sts_current", "florida_sts_current_warnings", "florida_sts_key"):
+                    st.session_state.pop(_key, None)
+                if not florida_lags:
+                    st.error("至少选择一个候选时滞。")
+                else:
+                    try:
+                        with st.spinner("正在读取Karenia观测与真实流场，并构建流向约束的上游—下游匹配……"):
+                            if hab_source_mode.startswith("NOAA"):
+                                florida_hab = fetch_habsos(florida_start, florida_end, "FL")
+                            else:
+                                if hab_upload is None:
+                                    raise ValueError("请先上传Karenia观测CSV。")
+                                florida_hab = normalize_habsos(pd.read_csv(hab_upload))
+                            # 聚焦Florida Gulf/Florida Keys一侧；HABSOS也含东海岸记录。
+                            florida_hab = florida_hab[
+                                florida_hab["longitude"].between(-87.2, -80.0)
+                                & florida_hab["latitude"].between(24.0, 31.2)
+                            ].reset_index(drop=True)
+                            if florida_hab.empty:
+                                raise ValueError("所选时间范围与Florida区域内没有可用的HABSOS Karenia观测。")
+                            _start_day = pd.Timestamp(florida_start).floor("D")
+                            _end_day = pd.Timestamp(florida_end).floor("D")
+                            if florida_hab["date"].min() < _start_day or florida_hab["date"].max() > _end_day:
+                                raise ValueError("HABSOS返回日期与当前选择的回顾时间范围不一致。")
+                            if current_source_mode.startswith("HYCOM"):
+                                # Limit the live HYCOM subset to the actual HABSOS footprint
+                                # plus a small transport margin; this avoids requesting the
+                                # entire Florida/Gulf grid for every retrospective run.
+                                _lat_min = max(18.2, float(florida_hab["latitude"].min()) - 0.45)
+                                _lat_max = min(32.0, float(florida_hab["latitude"].max()) + 0.45)
+                                _lon_min = max(-98.0, float(florida_hab["longitude"].min()) - 0.45)
+                                _lon_max = min(-76.4, float(florida_hab["longitude"].max()) + 0.45)
+                                florida_current = fetch_hycom_gom_currents(
+                                    florida_start, florida_end,
+                                    lat_min=_lat_min, lat_max=_lat_max,
+                                    lon_min=_lon_min, lon_max=_lon_max,
+                                    chunk_days=14,
+                                )
+                            elif current_source_mode.startswith("NOAA"):
+                                florida_current = fetch_coastwatch_currents(florida_start, florida_end, 2)
+                            else:
+                                if current_upload is None:
+                                    raise ValueError("请先上传流场CSV。")
+                                florida_current = normalize_current_frame(pd.read_csv(current_upload))
+                            if florida_current.empty:
+                                raise RuntimeError(
+                                    f"流场读取结果为空（适配器 {LIVE_ADAPTER_REVISION}）；请检查部署代码是否已同步更新。"
+                                )
+                            _current_fetch_warnings = list(florida_current.attrs.get("fetch_warnings", []))
+                            florida_result = run_retrospective_sts(
+                                florida_hab, florida_current, florida_lags, float(florida_threshold)
+                            )
+                            st.session_state["florida_sts_result"] = florida_result
+                            st.session_state["florida_sts_hab"] = florida_hab
+                            st.session_state["florida_sts_current"] = florida_current
+                            st.session_state["florida_sts_current_warnings"] = _current_fetch_warnings
+                            st.session_state["florida_sts_key"] = florida_run_key
+                    except Exception as exc:
+                        st.error(f"Florida/Gulf数据读取或验证未完成：{exc}")
+                        st.info("当前运行未保留旧结果。可重新读取，或切换为CSV上传模式。")
+
+            florida_result = st.session_state.get("florida_sts_result")
+            if florida_result is not None and st.session_state.get("florida_sts_key") == florida_run_key:
+                fq = florida_result["quality"]
+                kpi_grid([
+                    ("Karenia观测", f"{fq['observations']:,}", f"{fq['sampling_dates']}个独立采样日"),
+                    ("空间位置", f"{fq['locations']:,}", "按经纬度去重"),
+                    ("事件观测", f"{fq['events']:,}", f"阈值 {int(florida_threshold):,} cells L⁻¹"),
+                    ("流场日期覆盖", f"{fq['current_date_overlap']:.1%}", "观测日存在流场的比例"),
+                    ("质量门控", str(fq["status"]).upper(), "不足时只保留defer"),
+                    ("最佳回顾时滞", f"{florida_result['best_lag']}天" if florida_result["best_lag"] else "未确定", "由真实流向匹配AP排序"),
+                ])
+                reason_map = {
+                    "HAB/field observations are too few for the requested validation mode": "HAB观测数量不足",
+                    "sampling dates are insufficient": "独立采样日期不足",
+                    "at least three spatial locations are required": "空间位置少于3个",
+                    "too few event observations at the selected cell-count threshold": "当前阈值下事件观测不足",
+                    "current-field temporal coverage is below 45% of observation dates": "流场与HAB观测的日期重叠不足45%",
+                    "time span is shorter than 60 days": "观测时间跨度不足60天",
+                }
+                if fq["reasons"]:
+                    st.warning("质量门控：" + "；".join(reason_map.get(x, x) for x in fq["reasons"]))
+                _partial_warnings = st.session_state.get("florida_sts_current_warnings", [])
+                if _partial_warnings:
+                    st.caption(f"HYCOM在线读取存在{len(_partial_warnings)}个缺失时间块；当前结果仅使用成功返回的流场日期，并由上方日期覆盖门控决定是否可评估。")
+
+                def _fmt_date(value):
+                    return pd.Timestamp(value).strftime("%Y-%m-%d") if pd.notna(value) else "无"
+
+                st.caption(
+                    f"HAB观测日期 {_fmt_date(fq.get('observation_start'))}—{_fmt_date(fq.get('observation_end'))}；"
+                    f"流场日期 {_fmt_date(fq.get('current_start'))}—{_fmt_date(fq.get('current_end'))}；"
+                    f"重叠 {int(fq.get('overlap_dates', 0))}/{int(fq.get('sampling_dates', 0))} 个观测日期。"
+                )
+
+                lag_summary = florida_result["lag_summary"].copy()
+                evaluable = (
+                    not lag_summary.empty
+                    and lag_summary["samples"].fillna(0).gt(0).any()
+                    and lag_summary[["flow_ap", "no_flow_ap", "reverse_ap"]].notna().any().any()
+                )
+                if evaluable:
+                    st.markdown("##### 候选时滞：流向约束与对照")
+                    lag_long = lag_summary.melt(
+                        id_vars=["lag_days", "samples", "events"],
+                        value_vars=["flow_ap", "no_flow_ap", "reverse_ap"],
+                        var_name="evidence", value_name="average_precision",
+                    ).dropna(subset=["average_precision"])
+                    lag_long["evidence"] = lag_long["evidence"].map({
+                        "flow_ap": "真实流向约束", "no_flow_ap": "仅空间邻近", "reverse_ap": "反向流负对照",
+                    })
+                    lag_fig = px.line(
+                        lag_long, x="lag_days", y="average_precision", color="evidence", markers=True,
+                        labels={"lag_days": "时滞（天）", "average_precision": "Average Precision", "evidence": "证据"},
+                    )
+                    lag_fig.update_yaxes(range=[0, 1])
+                    lag_fig.update_layout(height=380, margin={"l": 10, "r": 10, "t": 20, "b": 45})
+                    research_plot(lag_fig, width="stretch", config={"displayModeBar": False})
+                    display_lags = lag_summary.rename(columns={
+                        "lag_days": "时滞（天）", "samples": "配对数", "events": "事件数",
+                        "flow_ap": "流向约束AP", "reverse_ap": "反向流AP", "no_flow_ap": "无流向AP",
+                        "flow_vs_no_flow": "相对无流向增量", "flow_vs_reverse": "相对反向流增量",
+                        "median_path_error_km": "路径误差中位数（km）",
+                    })
+                    research_table(display_lags, width="stretch", hide_index=True)
+                else:
+                    st.info("当前数据没有形成可评估的时滞配对。先检查HAB与流场日期覆盖；必要时切换流场数据源或上传同时间段的流场CSV。")
+
+                if florida_result["best_lag"] is not None and not florida_result["best_pairs"].empty:
+                    best_pairs = florida_result["best_pairs"]
+                    st.markdown("##### 最佳时滞下的流向匹配记录")
+                    research_table(best_pairs.head(100), width="stretch", hide_index=True)
+                    projection = project_next_sampling_candidates(
+                        st.session_state["florida_sts_hab"], st.session_state["florida_sts_current"],
+                        int(florida_result["best_lag"]), 12,
+                    )
+                    if not projection.empty:
+                        map_fig = px.scatter_geo(
+                            projection, lat="projected_latitude", lon="projected_longitude",
+                            size="sampling_priority", hover_name="date",
+                            hover_data={"cell_count": ":.0f", "current_speed_ms": ":.3f"},
+                            projection="natural earth",
+                            labels={"sampling_priority": "采样优先级"},
+                        )
+                        map_fig.update_geos(lataxis_range=[23, 32], lonaxis_range=[-89, -78], showland=True, landcolor="#edf2f1")
+                        map_fig.update_layout(height=430, margin={"l": 0, "r": 0, "t": 10, "b": 0})
+                        draw_map(style_map(map_fig))
+                        st.caption("位置为最新观测点按局地表层流速作的一阶欧拉投影，仅用于形成下一批采样候选，不等同于业务粒子轨迹预报。")
+                    fd1, fd2 = st.columns(2)
+                    fd1.download_button(
+                        "下载Florida时滞结果", lag_summary.to_csv(index=False).encode("utf-8-sig"),
+                        "florida_gulf_sts_lag_summary.csv", "text/csv",
+                    )
+                    fd2.download_button(
+                        "下载最佳流向匹配", best_pairs.to_csv(index=False).encode("utf-8-sig"),
+                        "florida_gulf_sts_best_pairs.csv", "text/csv",
+                    )
+                st.caption("该分析使用不规则Karenia观测与连续流场进行回顾性匹配；未包含连续毒素或生物响应观测。")
+            elif florida_result is not None:
+                st.warning("时间范围、阈值、时滞或数据来源已变化，请重新运行。")
+
+        else:
+            st.markdown("#### 现场前向验证")
+            st.caption(
+                "上传连续站点观测与流场数据。训练时段用于选择传播时滞，后续时段仅用于独立评估；样本量、时间连续性或流场覆盖不足时返回DEFER。"
+            )
+            t1, t2 = st.columns(2)
+            t1.download_button(
+                "下载现场观测模板CSV", field_observation_template().to_csv(index=False).encode("utf-8-sig"),
+                "field_observations_template.csv", "text/csv",
+            )
+            t2.download_button(
+                "下载流场模板CSV", field_current_template().to_csv(index=False).encode("utf-8-sig"),
+                "field_currents_template.csv", "text/csv",
+            )
+            st.markdown(
+                "最低观测字段：`date, station_id, latitude, longitude, cell_count`；最低流场字段："
+                "`date, latitude, longitude, u_ms, v_ms`。建议同步加入毒素、SST、盐度、DO、NO₃、PO₄、Si、Chl-a、鱼体/鳃部反应和网箱信息。"
+            )
+            fu1, fu2 = st.columns(2)
+            with fu1:
+                field_obs_upload = st.file_uploader("上传现场观测CSV", type=["csv"], key="field_obs_upload")
+            with fu2:
+                field_cur_upload = st.file_uploader("上传连续流场CSV", type=["csv"], key="field_cur_upload")
+            fp1, fp2, fp3 = st.columns(3)
+            field_threshold = fp1.selectbox(
+                "事件阈值（cells L⁻¹）", [10_000, 100_000, 1_000_000], index=1,
+                format_func=lambda x: f"{x:,}", key="field_event_threshold",
+            )
+            field_lags = fp2.multiselect(
+                "训练期候选lag", list(FLORIDA_STS_LAGS), default=list(FLORIDA_STS_LAGS), key="field_lags"
+            )
+            field_test_fraction = fp3.slider("最终前向测试比例", 0.20, 0.40, 0.30, 0.05, key="field_test_fraction")
+
+            if field_obs_upload is not None and field_cur_upload is not None:
+                try:
+                    field_obs = normalize_field_observations(pd.read_csv(field_obs_upload))
+                    field_cur = normalize_current_frame(pd.read_csv(field_cur_upload))
+                    readiness = field_quality_gate(field_obs, field_cur, float(field_threshold), strict_forward=True)
+                    kpi_grid([
+                        ("现场观测", f"{readiness['observations']:,}", f"{readiness['sampling_dates']}个日期"),
+                        ("空间位置", f"{readiness['locations']}", "至少3个空间位置"),
+                        ("事件观测", f"{readiness['events']}", f"阈值 {int(field_threshold):,}"),
+                        ("流场日期覆盖", f"{readiness['current_date_overlap']:.1%}", "越高越适合前向分析"),
+                        ("时间跨度", f"{readiness['date_span_days']}天", "建议覆盖多个传播窗口"),
+                        ("质量状态", readiness["status"].upper(), "不满足条件时DEFER"),
+                    ])
+                    if readiness["reasons"]:
+                        st.warning("当前还不能进入严格前向验证：" + "；".join(readiness["reasons"]))
+                    if st.button("运行现场数据前向STS验证", key="run_field_forward", type="primary"):
+                        if not field_lags:
+                            st.error("至少选择一个训练期候选lag。")
+                        else:
+                            result = run_forward_field_validation(
+                                field_obs, field_cur, field_lags, float(field_threshold), float(field_test_fraction)
+                            )
+                            st.session_state["field_forward_result"] = result
+                            st.session_state["field_forward_key"] = (
+                                len(field_obs), len(field_cur), int(field_threshold), tuple(field_lags), float(field_test_fraction)
+                            )
+                            st.session_state["field_forward_obs"] = field_obs
+                            st.session_state["field_forward_cur"] = field_cur
+                    field_result = st.session_state.get("field_forward_result")
+                    current_field_key = (len(field_obs), len(field_cur), int(field_threshold), tuple(field_lags), float(field_test_fraction))
+                    if field_result is not None and st.session_state.get("field_forward_key") == current_field_key:
+                        if field_result["status"] == "evaluated":
+                            fs = field_result["test_summary"]
+                            kpi_grid([
+                                ("训练期选择lag", f"{field_result['selected_lag']}天", f"截止 {pd.Timestamp(field_result['cut_date']).date()} 前选择"),
+                                ("前向测试AP", f"{fs['flow_ap']:.3f}", "独立后续时间块"),
+                                ("无流向对照AP", f"{fs['no_flow_ap']:.3f}", f"增量 {fs['flow_vs_no_flow']:+.3f}"),
+                                ("反向流对照AP", f"{fs['reverse_ap']:.3f}", f"增量 {fs['flow_vs_reverse']:+.3f}"),
+                                ("测试配对", f"{fs['samples']}", f"{fs['events']}个事件"),
+                                ("中位路径误差", f"{fs['median_path_error_km']:.1f} km", "一阶流场匹配诊断"),
+                            ])
+                            research_table(field_result["training_lags"], width="stretch", hide_index=True)
+                            research_table(field_result["test_pairs"].head(100), width="stretch", hide_index=True)
+                            horizon = st.radio("生成下一批采样候选的投影窗口", [3, 7, 14], index=1, horizontal=True, key="field_projection_horizon")
+                            priority = project_next_sampling_candidates(field_obs, field_cur, int(horizon), 15)
+                            if not priority.empty:
+                                st.markdown("##### 下一批采样位置候选")
+                                research_table(priority, width="stretch", hide_index=True)
+                                pf = px.scatter_geo(
+                                    priority, lat="projected_latitude", lon="projected_longitude",
+                                    size="sampling_priority", hover_data={"cell_count": ":.0f", "current_speed_ms": ":.3f"},
+                                )
+                                pf.update_layout(height=430, margin={"l": 0, "r": 0, "t": 10, "b": 0})
+                                pf.update_geos(fitbounds="locations")
+                                draw_map(style_map(pf))
+                            st.success("前向验证完成。结果需结合毒素、生物观测和水团追踪资料解释。")
+                        else:
+                            st.warning("状态：DEFER。" + "；".join(field_result["quality"]["reasons"]))
+                except Exception as exc:
+                    st.error(f"现场数据解析失败：{exc}")
+            else:
+                st.info("上传观测与流场CSV后进行质量检查；满足时间、空间、事件和流场覆盖条件后可运行前向验证。")
+
+with tab_bio:
+    with st.container(border=True, key="research_section_tab_bio_0"):
+        st.markdown("### 网箱鱼生物响应沙盘")
+        st.markdown(
+            '<div class="signal"><b>区域化网箱鱼响应情景：</b>本沙盘将藻华、高温、溶解氧、'
+            '养殖密度和计划投喂转化为网箱鱼的相对生理压力轨迹，并并列比较监测、降低投喂、增氧和'
+            '转移准备。参数用于情景比较，尚未按具体鱼种或场站进行标定。</div>',
+            unsafe_allow_html=True,
+        )
+
+        production_regions = production_region_frame()
+        cage_region_names = [
+            name for name, profile in BIO_PRODUCTION_REGIONS.items()
+            if profile["cage_sandbox"]
+        ]
+        selected_bio_region = st.selectbox(
+            "网箱鱼情景海区", cage_region_names,
+            index=cage_region_names.index("智利巴塔哥尼亚峡湾"),
+            help="仅列入具有海水网箱养殖背景的代表海区。捕捞渔场仍显示在地图上，但不套用网箱鱼生理模型。",
+        )
+        region_profile = BIO_PRODUCTION_REGIONS[selected_bio_region]
+        research_plot(
+            production_region_map(production_regions, selected_bio_region),
+            width="stretch", config={"displayModeBar": False},
+        )
+        st.caption(
+            "青色点可进入网箱鱼情景比较；橙色和紫色点用于呈现全球捕捞或贝类生产背景。"
+            "洪堡流和西印度洋不进入网箱鱼模型，仅保留区域背景。"
+        )
+
+        bio_control, bio_result = st.columns([1.0, 2.15], gap="large")
+        with bio_control:
+            bio_options = ["区域背景情景"] + list(BIO_SCENARIO_PRESETS)
+            bio_preset_name = st.selectbox(
+                "压力情景", bio_options, index=0
+            )
+            if bio_preset_name == "区域背景情景":
+                bio_preset = region_profile
+                bio_source_note = (
+                    f"代表对象：{region_profile['representative_stock']}。"
+                    "初始值为区域情景参数，可调整；不对应实时场站观测或运营阈值。"
+                )
+            else:
+                bio_preset = BIO_SCENARIO_PRESETS[bio_preset_name]
+                bio_source_note = str(bio_preset["source_note"])
+            bio_key = f"{selected_bio_region}_{bio_preset_name}"
+            hab_pressure = st.slider(
+                "藻华危害压力（0–100）", 0.0, 100.0,
+                float(bio_preset["hab_pressure"]), 1.0,
+                key=f"bio_hab_{bio_key}",
+                help="无量纲外部压力。真实事件锚点仅表示所选回放内的相对峰值，不对应毒素或死亡阈值。",
+            )
+            bio_mhw = st.slider(
+                "海洋热浪强度（°C）", 0.0, 5.0,
+                float(bio_preset["mhw_intensity_c"]), .1,
+                key=f"bio_mhw_{bio_key}",
+            )
+            bio_do = st.slider(
+                "场景溶解氧（mg L⁻¹）", 1.0, 10.0,
+                float(bio_preset["dissolved_oxygen_mg_l"]), .1,
+                key=f"bio_do_{bio_key}",
+                help="情景输入，不对应实时养殖场观测。",
+            )
+            bio_density = st.slider(
+                "养殖密度（kg m⁻³）", 2.0, 45.0,
+                float(bio_preset["stocking_density_kg_m3"]), 1.0,
+                key=f"bio_density_{bio_key}",
+                help="用于模拟密度相关氧负荷，不作为养殖密度建议。",
+            )
+            bio_feed = st.slider(
+                "计划投喂水平（%）", 0.0, 120.0,
+                float(bio_preset["planned_feeding_pct"]), 5.0,
+                key=f"bio_feed_{bio_key}",
+            )
+            bio_duration = st.slider(
+                "藻华压力持续时间（小时）", 12, 72,
+                int(bio_preset["hab_duration_hours"]), 6,
+                key=f"bio_duration_{bio_key}",
+            )
+            bio_horizon = st.radio(
+                "模拟时间", [48, 72, 96], index=1, horizontal=True,
+                format_func=lambda value: f"{value}小时",
+            )
+            st.caption(bio_source_note)
+
+        bio_simulation = compare_interventions(
+            hab_pressure=hab_pressure,
+            mhw_intensity_c=bio_mhw,
+            dissolved_oxygen_mg_l=bio_do,
+            stocking_density_kg_m3=bio_density,
+            planned_feeding_pct=bio_feed,
+            hab_duration_hours=min(bio_duration, bio_horizon),
+            horizon_hours=bio_horizon,
+        )
+        bio_robustness = evaluate_intervention_robustness(
+            hab_pressure=hab_pressure,
+            mhw_intensity_c=bio_mhw,
+            dissolved_oxygen_mg_l=bio_do,
+            stocking_density_kg_m3=bio_density,
+            planned_feeding_pct=bio_feed,
+            hab_duration_hours=min(bio_duration, bio_horizon),
+            horizon_hours=bio_horizon,
+        )
+        bio_summary = bio_simulation["summary"]
+        bio_trajectories = bio_simulation["trajectories"]
+        lowest = bio_summary.iloc[0]
+        baseline = bio_summary[bio_summary["intervention"].eq("维持监测")].iloc[0]
+        transfer = bio_summary[
+            bio_summary["intervention"].eq("转移准备（未执行）")
+        ].iloc[0]
+
+        with bio_result:
+            if bio_preset_name.startswith("南澳"):
+                anchor_text = (
+                    f"真实藻华锚点：K. cristata现场qPCR峰值 "
+                    f"{real_card['peak_k_cristata']['cells_l']:,.0f} cells L⁻¹ · "
+                    f"{real_card['peak_k_cristata']['location']} · "
+                    f"{real_card['peak_k_cristata']['date']}。仅在回放内部归一化为100。"
+                )
+            elif bio_preset_name.startswith("挪威"):
+                anchor_text = (
+                    f"真实藻华锚点：D. acuta最高监测值 "
+                    f"{norway_card['peak_d_acuta']['cells_l']:,.0f} cells L⁻¹ · "
+                    f"{norway_card['peak_d_acuta']['region']} · "
+                    f"{norway_card['peak_d_acuta']['date']}。仅在回放内部归一化为100。"
+                )
+            elif bio_preset_name == "区域背景情景":
+                anchor_text = (
+                    f"{selected_bio_region} · {region_profile['representative_stock']}。"
+                    "区域名称和生产对象提供情景背景，环境与养殖参数为可调整初始值。"
+                )
+            else:
+                anchor_text = "当前输入为可调整情景参数，未对应具体养殖场观测。"
+            st.markdown(
+                f'<div class="case-card"><span class="case-badge">数据来源</span><br>'
+                f'{html.escape(anchor_text)}</div>', unsafe_allow_html=True,
+            )
+            kpi_grid([
+                ("当前生产情景", selected_bio_region, str(region_profile["representative_stock"])),
+                ("基准峰值压力", f"{baseline['peak_pressure_index']:.1f}/100", "维持监测情景"),
+                ("最低压力情景", str(lowest["intervention"]), "情景比较结果"),
+            ])
+            kpi_grid([
+                ("累计压力变化", f"−{lowest['pressure_load_reduction_vs_baseline_pct']:.1f}%", "相对维持监测基准"),
+                ("摄食机会保留", f"{lowest['mean_feeding_opportunity_pct']:.1f}%", "模型中的相对摄食代理"),
+                ("最低有效DO", f"{lowest['minimum_effective_do_mg_l']:.2f}", "mg L⁻¹ · 场景代理"),
+            ])
+
+        bio_steps = [
+            ("海区与环境", f"{selected_bio_region} · HAB {hab_pressure:.0f} · MHW {bio_mhw:.1f}°C"),
+            ("养殖对象", f"{region_profile['representative_stock']} · 密度 {bio_density:.0f} kg m⁻³"),
+            ("当前响应", f"峰值 {baseline['peak_pressure_index']:.1f}/100 · 最低DO {baseline['minimum_effective_do_mg_l']:.2f}"),
+            ("情景比较", f"{lowest['intervention']} · 累计压力 −{lowest['pressure_load_reduction_vs_baseline_pct']:.1f}%"),
+            ("准备状态", f"转移准备 {transfer['response_readiness_hours']}小时 · 不外推死亡率"),
+        ]
+        step_cards = "".join(
+            '<div class="risk-step">'
+            f'<div class="risk-step-title">{title}</div>'
+            f'<div class="risk-step-value">{value}</div>'
+            '</div>'
+            for title, value in bio_steps
+        )
+        st.markdown(
+            '<div class="risk-bridge"><div class="risk-bridge-title">网箱鱼响应概览</div>'
+            '<div class="risk-bridge-subtitle">模型沿时间推进复合压力，并在相同外部条件下比较干预方案。</div>'
+            f'<div class="risk-chain">{step_cards}</div></div>', unsafe_allow_html=True,
+        )
+
+    with st.container(border=True, key="research_section_tab_bio_1"):
+        selected_interventions = st.multiselect(
+            "选择需要比较的干预轨迹",
+            list(INTERVENTIONS),
+            default=list(INTERVENTIONS),
+        )
+        if not selected_interventions:
+            selected_interventions = ["维持监测"]
+        bio_plot_data = bio_trajectories[
+            bio_trajectories["intervention"].isin(selected_interventions)
+        ]
+        trajectory_chart = px.line(
+            bio_plot_data,
+            x="hour",
+            y="relative_physiological_pressure",
+            color="intervention",
+            title="不同干预情景下的相对生理压力轨迹",
+            labels={
+                "hour": "模拟时间（小时）",
+                "relative_physiological_pressure": "相对生理压力指数（0–100）",
+                "intervention": "干预情景",
             },
         )
-        rd1, rd2, rd3 = st.columns(3)
-        rd1.download_button(
-            "下载真实qPCR数据", replay["observations"].to_csv(index=False).encode("utf-8-sig"),
-            "south_australia_qpcr_replay.csv", "text/csv",
+        trajectory_chart.update_layout(
+            height=440, margin={"l": 5, "r": 5, "t": 55, "b": 5},
+            legend={"orientation": "h", "y": -0.20},
+            hovermode="x unified",
         )
-        rd2.download_button(
-            "下载事件回放卡", json.dumps(selected_card, ensure_ascii=False, indent=2).encode("utf-8"),
-            "south_australia_replay_card.json", "application/json",
-        )
-        rd3.download_button(
-            "下载养殖复核顺序", real_aqua.to_csv(index=False).encode("utf-8-sig"),
-            "south_australia_aquaculture_priority.csv", "text/csv",
-        )
-        st.markdown(
-            "来源：[Nature Ecology & Evolution](https://doi.org/10.1038/s41559-026-03115-0) · "
-            "[Zenodo数据（CC BY 4.0）](https://doi.org/10.5281/zenodo.20227730)"
-        )
-    elif case_choice.startswith("挪威沿岸"):
-        st.markdown("#### 挪威沿岸：14年有毒藻与环境监测回放")
-        norway_min = norway_observations["sample_date"].min().date()
-        norway_max = norway_observations["sample_date"].max().date()
-        n1, n2 = st.columns([1.5, 1.0])
-        norway_range = n1.date_input(
-            "监测时间范围", value=(norway_min, norway_max), min_value=norway_min,
-            max_value=norway_max, key="norway_replay_range",
-        )
-        norway_regions = ["全部站点"] + sorted(norway_observations["region"].unique().tolist())
-        norway_region = n2.selectbox("沿岸监测区域", norway_regions, key="norway_region")
-        if isinstance(norway_range, tuple) and len(norway_range) == 2:
-            norway_start, norway_end = norway_range
-        else:
-            norway_start, norway_end = norway_min, norway_max
-        norway_replay = build_norway_replay(
-            norway_observations, norway_start, norway_end, norway_region
-        )
-        selected_card = norway_replay["card"]
-        peak_d = selected_card["peak_d_acuta"]
-        st.markdown("##### 养殖对象与暴露情景")
-        nr1, nr2 = st.columns(2)
-        norway_production = nr1.selectbox(
-            "主要养殖对象", list(PRODUCTION_PROFILES), key="norway_production",
-            help="对象选择只改变脆弱性与复核内容，不改变真实监测计数。",
-        )
-        norway_exposure = nr2.slider(
-            "养殖暴露系数", .25, 1.0, .75, .05, key="norway_exposure",
-            help="用于敏感性分析；当前未接入真实养殖场坐标和养殖密度。",
-        )
-        norway_translation = build_norway_risk_translation(
-            norway_replay["stations"], norway_production, norway_exposure
-        )
-        norway_aqua = norway_translation["priority"]
-        kpi_grid([
-            ("真实监测记录", f"{selected_card['observations']:,}", "藻细胞计数与环境条件"),
-            ("独立采样日数", f"{selected_card['sampling_dates']:,}", "2006–2019周尺度监测"),
-            ("沿岸区域", f"{selected_card['regions']}", "58–71°N监测网络"),
-            ("研究定义事件", f"{selected_card['target_event_observations']}", ">200 cells L⁻¹记录"),
-            ("D. acuta最高观测", f"{peak_d['cells_l']:,.0f}", "cells L⁻¹"),
-            ("当前回放窗口", f"{norway_start} → {norway_end}", f"区域：{norway_region}"),
-        ])
-        risk_translation_panel(
-            norway_translation["summary"], norway_translation["evidence"]
-        )
-        st.markdown(
-            '<div class="signal">窗口内 <i>D. acuta</i> 最高观测：'
-            f'<b>{peak_d["region"]}</b> · {peak_d["date"]} · '
-            f'<b>{peak_d["cells_l"]:,.0f} cells L⁻¹</b>。'
-            '事件标识复现论文研究定义，不替代地方贝类毒素管控规则。</div>',
-            unsafe_allow_html=True,
-        )
-        nt1, nt2 = st.columns([1.35, 1.0], gap="large")
-        with nt1:
-            norway_time = norway_replay["timeline"].copy()
-            norway_time["year"] = norway_time["sample_date"].dt.year
-            annual = norway_time.groupby("year", as_index=False).agg(
-                event_observations=("target_hab_events", "sum"),
-                monitored_dates=("sample_date", "nunique"),
-            )
-            annual_chart = px.bar(
-                annual, x="year", y="event_observations",
-                title="研究定义事件的年度观测数",
-                labels={"year": "年份", "event_observations": "事件观测数"},
-                color_discrete_sequence=["#2cb7b1"],
-            )
-            annual_chart.update_layout(height=370, margin={"l": 5, "r": 5, "t": 50, "b": 5})
-            st.plotly_chart(annual_chart, width="stretch", config={"displayModeBar": False})
-        with nt2:
-            top_stations = norway_replay["stations"].head(15).sort_values("event_observations")
-            station_chart = px.bar(
-                top_stations, x="event_observations", y="region", orientation="h",
-                title="需要优先关注的监测区域",
-                labels={"event_observations": "事件观测数", "region": "区域"},
-                color="event_share", color_continuous_scale=["#d9efeb", "#2cb7b1"],
-            )
-            station_chart.update_layout(
-                height=370, margin={"l": 5, "r": 5, "t": 50, "b": 5},
-                coloraxis_colorbar={"title": "事件占比"},
-            )
-            st.plotly_chart(station_chart, width="stretch", config={"displayModeBar": False})
-        st.markdown("#### 观测物种与环境条件")
-        ne1, ne2 = st.columns([.9, 1.35], gap="large")
-        with ne1:
-            st.dataframe(norway_replay["taxa"], width="stretch", hide_index=True)
-        with ne2:
-            environmental = norway_replay["observations"][[
-                "sst_c", "sea_surface_salinity_psu", "mixed_layer_depth_m", "par_e_m2_d"
-            ]].describe().loc[["mean", "std", "min", "50%", "max"]].T.reset_index()
-            environmental.columns = ["环境变量", "平均", "标准差", "最小", "中位", "最大"]
-            st.dataframe(environmental, width="stretch", hide_index=True)
+        trajectory_chart.update_yaxes(range=[0, 100])
+        research_plot(trajectory_chart, width="stretch", config={"displayModeBar": False})
 
-        st.markdown("#### 前向回顾验证")
-        st.caption(
-            "前向基准基于完整2006–2019监测序列固定计算，与上方回放筛选独立；模型与阈值选择仅使用训练期数据。"
-        )
-        benchmark_summary = norway_benchmark["summary"]
+        bc1, bc2 = st.columns([1.25, 1.0], gap="large")
+        with bc1:
+            error_plus = (
+                bio_summary["peak_pressure_upper"] - bio_summary["peak_pressure_index"]
+            )
+            error_minus = (
+                bio_summary["peak_pressure_index"] - bio_summary["peak_pressure_lower"]
+            )
+            pressure_bar = go.Figure(go.Bar(
+                x=bio_summary["intervention"],
+                y=bio_summary["peak_pressure_index"],
+                marker_color=["#2cb7b1", "#4d9ce0", "#d08a32", "#4d9ce0", "#6f93aa"],
+                error_y={
+                    "type": "data", "array": error_plus, "arrayminus": error_minus,
+                    "visible": True, "color": "#3f5860",
+                },
+                customdata=bio_summary[[
+                    "mean_feeding_opportunity_pct", "minimum_effective_do_mg_l",
+                    "pressure_load_reduction_vs_baseline_pct",
+                ]],
+                hovertemplate=(
+                    "<b>%{x}</b><br>峰值压力：%{y:.1f}/100"
+                    "<br>摄食机会：%{customdata[0]:.1f}%"
+                    "<br>最低有效DO：%{customdata[1]:.2f} mg L⁻¹"
+                    "<br>累计压力变化：%{customdata[2]:.1f}%<extra></extra>"
+                ),
+            ))
+            pressure_bar.update_layout(
+                title="峰值压力与±15%参数敏感性包络", height=390,
+                margin={"l": 5, "r": 5, "t": 55, "b": 95},
+                xaxis={"tickangle": -18}, yaxis={"title": "相对压力指数", "range": [0, 100]},
+            )
+            research_plot(pressure_bar, width="stretch", config={"displayModeBar": False})
+        with bc2:
+            tradeoff_chart = px.scatter(
+                bio_summary,
+                x="mean_feeding_opportunity_pct",
+                y="pressure_load_reduction_vs_baseline_pct",
+                color="intervention",
+                size=(20 - bio_summary["response_readiness_hours"]).clip(lower=2),
+                title="压力缓解—摄食机会权衡",
+                labels={
+                    "mean_feeding_opportunity_pct": "摄食机会保留（%）",
+                    "pressure_load_reduction_vs_baseline_pct": "累计压力降低（%）",
+                    "intervention": "干预情景",
+                },
+                hover_data={"response_readiness_hours": True},
+            )
+            tradeoff_chart.update_layout(
+                height=390, margin={"l": 5, "r": 5, "t": 55, "b": 5},
+                showlegend=False,
+            )
+            research_plot(tradeoff_chart, width="stretch", config={"displayModeBar": False})
+
+    with st.container(border=True, key="research_section_tab_bio_2"):
+        st.markdown("#### 参数扰动下的稳定性")
+        robustness_summary = bio_robustness["summary"]
+        robustness_card = bio_robustness["card"]
         st.markdown(
-            '<div class="signal"><b>任务定义：</b>仅使用当前采样时已经可见的SST、PAR、混合层深度、'
-            '盐度、季节和区域，排序同一区域未来1–14天内的“下一次实际采样”是否达到论文事件定义。'
-            '当前藻细胞计数、未来环境值和超过14天的采样空档均不进入模型。</div>',
+            '<div class="signal">HAB压力±10%、MHW±0.4°C、DO±0.5 mg L⁻¹和密度±10%组合形成81个邻近情景，并计算各干预的帕累托出现率。</div>',
             unsafe_allow_html=True,
         )
-        kpi_grid([
-            ("最高风险10% · 事件覆盖", f"{benchmark_summary['top10_recall']:.1%}",
-             f"命中 {benchmark_summary['top10_true_positives']}/{benchmark_summary['events']} 个留出事件"),
-            ("Top10% · 命中率", f"{benchmark_summary['top10_precision']:.1%}",
-             f"事件率 {benchmark_summary['event_rate']:.2%} 的 {benchmark_summary['top10_precision_lift']:.1f} 倍"),
-            ("Average Precision", f"{benchmark_summary['model_average_precision']:.3f}",
-             "严格前向留出；越高越好"),
-            ("固定参考模型", f"{benchmark_summary['reference_average_precision']:.3f}",
-             f"当前前向模型相对提升 {benchmark_summary['relative_improvement_over_reference']:.1%}"),
-            ("季节基线 AP", f"{benchmark_summary['seasonal_average_precision']:.3f}",
-             "仅使用训练期月份概率"),
-            ("留出事件率", f"{benchmark_summary['event_rate']:.2%}",
-             f"{benchmark_summary['events']} / {benchmark_summary['samples']:,} 个样本"),
-        ])
-        st.markdown(
-            f'<div class="signal"><b>把指标翻译成监测容量：</b>若只复核模型排序最高的10%样本，'
-            f'需要检查 <b>{benchmark_summary["top10_selected"]}</b> 个样本，命中 '
-            f'<b>{benchmark_summary["top10_true_positives"]}</b> 个事件，同时包含 '
-            f'<b>{benchmark_summary["top10_false_positives"]}</b> 个非事件。'
-            '这可用于比较加密监测顺序，但误报代价仍高，不能直接作为养殖场报警。</div>',
-            unsafe_allow_html=True,
+        robustness_chart = px.scatter(
+            robustness_summary,
+            x="median_feeding_opportunity_pct",
+            y="median_pressure_reduction_pct",
+            size="pareto_frequency",
+            color="intervention",
+            title="81个邻近输入情景下的干预稳健性",
+            labels={
+                "median_feeding_opportunity_pct": "中位摄食机会保留（%）",
+                "median_pressure_reduction_pct": "中位累计压力降低（%）",
+                "pareto_frequency": "帕累托出现率（%）",
+                "intervention": "干预情景",
+            },
+            hover_data={
+                "worst_case_pressure_reduction_pct": ":.1f",
+                "best_case_pressure_reduction_pct": ":.1f",
+                "lowest_pressure_frequency": ":.1f",
+            },
         )
-        rb1, rb2 = st.columns([1.15, 1.0], gap="large")
-        with rb1:
-            fold_chart_data = norway_benchmark["folds"].melt(
-                id_vars=["test_window", "test_events"],
-                value_vars=["model_average_precision", "reference_average_precision",
-                            "seasonal_average_precision"],
-                var_name="method", value_name="average_precision",
-            )
-            fold_chart_data["method"] = fold_chart_data["method"].map({
-                "model_average_precision": "训练期内层选择模型",
-                "reference_average_precision": "固定参考模型",
-                "seasonal_average_precision": "季节基线",
-            })
-            fold_chart = px.bar(
-                fold_chart_data, x="test_window", y="average_precision", color="method",
-                barmode="group", title="四个前向时间窗的Average Precision",
-                labels={"test_window": "测试年份", "average_precision": "Average Precision（AP）", "method": "方法"},
-                color_discrete_map={"训练期内层选择模型": "#2cb7b1",
-                                    "固定参考模型": "#d9a441", "季节基线": "#b8c8cc"},
-                hover_data={"test_events": True},
-            )
-            fold_chart.update_layout(height=360, margin={"l": 5, "r": 5, "t": 55, "b": 5})
-            st.plotly_chart(fold_chart, width="stretch", config={"displayModeBar": False})
-        with rb2:
-            st.markdown("##### 验证结果")
-            norway_result_table = pd.DataFrame([
-                ["Average Precision", f"{benchmark_summary['model_average_precision']:.3f}"],
-                ["AP 95%区间", f"{benchmark_summary['model_average_precision_ci95'][0]:.3f}–{benchmark_summary['model_average_precision_ci95'][1]:.3f}"],
-                ["固定参考模型 AP", f"{benchmark_summary['reference_average_precision']:.3f}"],
-                ["季节基线 AP", f"{benchmark_summary['seasonal_average_precision']:.3f}"],
-                ["高于季节基线的时间窗", f"{benchmark_summary['folds_beating_seasonal_average_precision']}/{benchmark_summary['valid_folds']}"],
-                ["标签置换 p", f"{benchmark_summary['permutation_p']:.3f}"],
-                ["Brier误差", f"{benchmark_summary['model_brier']:.4f}"],
-                ["最弱时间窗", f"{benchmark_summary['weakest_fold']} · AP {benchmark_summary['weakest_fold_average_precision']:.3f}"],
-            ], columns=["指标", "结果"])
-            st.dataframe(norway_result_table, width="stretch", hide_index=True)
-            st.caption("模型选择仅使用训练期数据；外层测试窗不参与调参。该任务为回顾性下一样本排序。")
-            with st.expander("验证约束"):
-                for rule in benchmark_summary["leakage_controls"]:
-                    st.markdown(f"- {rule}")
-        rbd1, rbd2, rbd3 = st.columns(3)
-        rbd1.download_button(
-            "下载前向预测明细",
-            norway_benchmark["predictions"].to_csv(index=False).encode("utf-8-sig"),
-            "norway_forward_benchmark_predictions.csv", "text/csv",
+        robustness_chart.update_layout(
+            height=410, margin={"l": 5, "r": 5, "t": 55, "b": 5}, showlegend=False,
         )
-        rbd2.download_button(
-            "下载时间窗指标",
-            norway_benchmark["folds"].to_csv(index=False).encode("utf-8-sig"),
-            "norway_forward_benchmark_folds.csv", "text/csv",
-        )
-        rbd3.download_button(
-            "下载前向验证卡",
-            json.dumps(benchmark_summary, ensure_ascii=False, indent=2).encode("utf-8"),
-            "norway_forward_benchmark_card.json", "application/json",
-        )
-        st.markdown("#### 监测区域排序")
-        st.caption(
-            "相对危害指数基于当前回放窗口内的对数丰度；不对应地方毒素阈值。"
-        )
-        st.dataframe(
-            norway_aqua[[
-                "region", "target_peak_cells_l", "event_observations",
-                "verification_priority_index", "priority_level", "evidence_grade",
-                "recommended_action",
-            ]].head(15),
+        research_plot(robustness_chart, width="stretch", config={"displayModeBar": False})
+        research_table(
+            robustness_summary,
             width="stretch",
             hide_index=True,
             column_config={
-                "region": "监测区域",
-                "target_peak_cells_l": st.column_config.NumberColumn(
-                    "目标藻最高计数（cells L⁻¹）", format="%.0f"
-                ),
-                "event_observations": "论文定义事件观测数",
-                "verification_priority_index": st.column_config.ProgressColumn(
-                    "加密监测优先指数", min_value=0, max_value=100, format="%.1f"
-                ),
-                "priority_level": "建议响应",
-                "evidence_grade": "证据等级",
-                "recommended_action": st.column_config.TextColumn("建议行动", width="large"),
-            },
-        )
-        nd1, nd2, nd3 = st.columns(3)
-        nd1.download_button(
-            "下载挪威观测回放", norway_replay["observations"].to_csv(index=False).encode("utf-8-sig"),
-            "norway_hab_monitoring_replay.csv", "text/csv",
-        )
-        nd2.download_button(
-            "下载挪威回放卡", json.dumps(selected_card, ensure_ascii=False, indent=2).encode("utf-8"),
-            "norway_replay_card.json", "application/json",
-        )
-        nd3.download_button(
-            "下载养殖监测顺序", norway_aqua.to_csv(index=False).encode("utf-8-sig"),
-            "norway_aquaculture_monitoring_priority.csv", "text/csv",
-        )
-        st.markdown(
-            "来源：[Communications Earth & Environment](https://doi.org/10.1038/s43247-025-02421-y) · "
-            "[Zenodo数据与模型（CC BY 4.0）](https://doi.org/10.5281/zenodo.10958487)"
-        )
-
-
-    elif case_choice.startswith("Florida/Gulf"):
-        st.markdown("#### Florida/Gulf of Mexico：Karenia流场约束回顾分析")
-        st.caption(
-            "将Karenia brevis细胞计数与表层流场按候选时滞进行上游—下游匹配，并与无流向和反向流对照比较。回顾分析默认使用HYCOM Gulf reanalysis；流场位移采用一阶投影。"
-        )
-        st.dataframe(FLORIDA_SOURCE_CATALOG, width="stretch", hide_index=True)
-        st.markdown(
-            "公开数据入口：[NOAA HABSOS](https://habsos.noaa.gov/about/) · "
-            "[NOAA CoastWatch surface currents](https://coastwatch.noaa.gov/erddap/info/noaacwBLENDEDNRTcurrentsDaily/index.html) · "
-            "[HYCOM Gulf reanalysis](https://www.hycom.org/data/gomb0pt04/gom-reanalysis)"
-        )
-
-        fc1, fc2, fc3 = st.columns([1.2, 1.0, 1.0])
-        florida_range = fc1.date_input(
-            "回顾验证时间范围",
-            value=(pd.Timestamp("2018-08-01").date(), pd.Timestamp("2018-12-31").date()),
-            min_value=pd.Timestamp("2015-01-15").date(),
-            max_value=pd.Timestamp("2024-03-25").date(),
-            key="florida_sts_range",
-        )
-        florida_threshold = fc2.selectbox(
-            "Karenia事件阈值（cells L⁻¹）",
-            [10_000, 100_000, 1_000_000], index=1,
-            format_func=lambda x: f"{x:,}", key="florida_event_threshold",
-        )
-        florida_lags = fc3.multiselect(
-            "候选时滞（天）", list(FLORIDA_STS_LAGS),
-            default=list(FLORIDA_STS_LAGS), key="florida_lags",
-        )
-        if isinstance(florida_range, tuple) and len(florida_range) == 2:
-            florida_start, florida_end = florida_range
-        else:
-            florida_start = florida_end = florida_range
-
-        fs1, fs2 = st.columns(2)
-        with fs1:
-            hab_source_mode = st.radio(
-                "Karenia观测来源", ["NOAA HABSOS在线读取", "上传HABSOS/现场CSV"],
-                horizontal=False, key="florida_hab_source",
-            )
-            hab_upload = None
-            if hab_source_mode.startswith("上传"):
-                hab_upload = st.file_uploader("上传Karenia观测CSV", type=["csv"], key="florida_hab_upload")
-        with fs2:
-            current_source_mode = st.radio(
-                "流场来源",
-                [
-                    "HYCOM GOMb0.04在线回顾流场",
-                    "NOAA CoastWatch在线流场",
-                    "上传HYCOM/Copernicus/HF-radar流场CSV",
-                ],
-                horizontal=False, key="florida_current_source",
-            )
-            current_upload = None
-            if current_source_mode.startswith("上传"):
-                current_upload = st.file_uploader("上传流场CSV", type=["csv"], key="florida_current_upload")
-                st.caption("最低字段：date/time、latitude、longitude、u/v（m s⁻¹）。常见uo/vo、u_current/v_current字段会自动识别。")
-
-        florida_run_key = (
-            str(florida_start), str(florida_end), int(florida_threshold), tuple(florida_lags),
-            hab_source_mode, current_source_mode,
-        )
-        if st.button("读取数据并运行回顾分析", key="run_florida_sts", type="primary"):
-            # A failed live fetch must never leave a previous run visible under the current controls.
-            for _key in ("florida_sts_result", "florida_sts_hab", "florida_sts_current", "florida_sts_current_warnings", "florida_sts_key"):
-                st.session_state.pop(_key, None)
-            if not florida_lags:
-                st.error("至少选择一个候选时滞。")
-            else:
-                try:
-                    with st.spinner("正在读取Karenia观测与真实流场，并构建流向约束的上游—下游匹配……"):
-                        if hab_source_mode.startswith("NOAA"):
-                            florida_hab = fetch_habsos(florida_start, florida_end, "FL")
-                        else:
-                            if hab_upload is None:
-                                raise ValueError("请先上传Karenia观测CSV。")
-                            florida_hab = normalize_habsos(pd.read_csv(hab_upload))
-                        # 聚焦Florida Gulf/Florida Keys一侧；HABSOS也含东海岸记录。
-                        florida_hab = florida_hab[
-                            florida_hab["longitude"].between(-87.2, -80.0)
-                            & florida_hab["latitude"].between(24.0, 31.2)
-                        ].reset_index(drop=True)
-                        if florida_hab.empty:
-                            raise ValueError("所选时间范围与Florida区域内没有可用的HABSOS Karenia观测。")
-                        _start_day = pd.Timestamp(florida_start).floor("D")
-                        _end_day = pd.Timestamp(florida_end).floor("D")
-                        if florida_hab["date"].min() < _start_day or florida_hab["date"].max() > _end_day:
-                            raise ValueError("HABSOS返回日期与当前选择的回顾时间范围不一致。")
-                        if current_source_mode.startswith("HYCOM"):
-                            # Limit the live HYCOM subset to the actual HABSOS footprint
-                            # plus a small transport margin; this avoids requesting the
-                            # entire Florida/Gulf grid for every retrospective run.
-                            _lat_min = max(18.2, float(florida_hab["latitude"].min()) - 0.45)
-                            _lat_max = min(32.0, float(florida_hab["latitude"].max()) + 0.45)
-                            _lon_min = max(-98.0, float(florida_hab["longitude"].min()) - 0.45)
-                            _lon_max = min(-76.4, float(florida_hab["longitude"].max()) + 0.45)
-                            florida_current = fetch_hycom_gom_currents(
-                                florida_start, florida_end,
-                                lat_min=_lat_min, lat_max=_lat_max,
-                                lon_min=_lon_min, lon_max=_lon_max,
-                                chunk_days=14,
-                            )
-                        elif current_source_mode.startswith("NOAA"):
-                            florida_current = fetch_coastwatch_currents(florida_start, florida_end, 2)
-                        else:
-                            if current_upload is None:
-                                raise ValueError("请先上传流场CSV。")
-                            florida_current = normalize_current_frame(pd.read_csv(current_upload))
-                        if florida_current.empty:
-                            raise RuntimeError(
-                                f"流场读取结果为空（适配器 {LIVE_ADAPTER_REVISION}）；请检查部署代码是否已同步更新。"
-                            )
-                        _current_fetch_warnings = list(florida_current.attrs.get("fetch_warnings", []))
-                        florida_result = run_retrospective_sts(
-                            florida_hab, florida_current, florida_lags, float(florida_threshold)
-                        )
-                        st.session_state["florida_sts_result"] = florida_result
-                        st.session_state["florida_sts_hab"] = florida_hab
-                        st.session_state["florida_sts_current"] = florida_current
-                        st.session_state["florida_sts_current_warnings"] = _current_fetch_warnings
-                        st.session_state["florida_sts_key"] = florida_run_key
-                except Exception as exc:
-                    st.error(f"Florida/Gulf数据读取或验证未完成：{exc}")
-                    st.info("当前运行未保留旧结果。可重新读取，或切换为CSV上传模式。")
-
-        florida_result = st.session_state.get("florida_sts_result")
-        if florida_result is not None and st.session_state.get("florida_sts_key") == florida_run_key:
-            fq = florida_result["quality"]
-            kpi_grid([
-                ("Karenia观测", f"{fq['observations']:,}", f"{fq['sampling_dates']}个独立采样日"),
-                ("空间位置", f"{fq['locations']:,}", "按经纬度去重"),
-                ("事件观测", f"{fq['events']:,}", f"阈值 {int(florida_threshold):,} cells L⁻¹"),
-                ("流场日期覆盖", f"{fq['current_date_overlap']:.1%}", "观测日存在流场的比例"),
-                ("质量门控", str(fq["status"]).upper(), "不足时只保留defer"),
-                ("最佳回顾时滞", f"{florida_result['best_lag']}天" if florida_result["best_lag"] else "未确定", "由真实流向匹配AP排序"),
-            ])
-            reason_map = {
-                "HAB/field observations are too few for the requested validation mode": "HAB观测数量不足",
-                "sampling dates are insufficient": "独立采样日期不足",
-                "at least three spatial locations are required": "空间位置少于3个",
-                "too few event observations at the selected cell-count threshold": "当前阈值下事件观测不足",
-                "current-field temporal coverage is below 45% of observation dates": "流场与HAB观测的日期重叠不足45%",
-                "time span is shorter than 60 days": "观测时间跨度不足60天",
-            }
-            if fq["reasons"]:
-                st.warning("质量门控：" + "；".join(reason_map.get(x, x) for x in fq["reasons"]))
-            _partial_warnings = st.session_state.get("florida_sts_current_warnings", [])
-            if _partial_warnings:
-                st.caption(f"HYCOM在线读取存在{len(_partial_warnings)}个缺失时间块；当前结果仅使用成功返回的流场日期，并由上方日期覆盖门控决定是否可评估。")
-
-            def _fmt_date(value):
-                return pd.Timestamp(value).strftime("%Y-%m-%d") if pd.notna(value) else "无"
-
-            st.caption(
-                f"HAB观测日期 {_fmt_date(fq.get('observation_start'))}—{_fmt_date(fq.get('observation_end'))}；"
-                f"流场日期 {_fmt_date(fq.get('current_start'))}—{_fmt_date(fq.get('current_end'))}；"
-                f"重叠 {int(fq.get('overlap_dates', 0))}/{int(fq.get('sampling_dates', 0))} 个观测日期。"
-            )
-
-            lag_summary = florida_result["lag_summary"].copy()
-            evaluable = (
-                not lag_summary.empty
-                and lag_summary["samples"].fillna(0).gt(0).any()
-                and lag_summary[["flow_ap", "no_flow_ap", "reverse_ap"]].notna().any().any()
-            )
-            if evaluable:
-                st.markdown("##### 候选时滞：流向约束与对照")
-                lag_long = lag_summary.melt(
-                    id_vars=["lag_days", "samples", "events"],
-                    value_vars=["flow_ap", "no_flow_ap", "reverse_ap"],
-                    var_name="evidence", value_name="average_precision",
-                ).dropna(subset=["average_precision"])
-                lag_long["evidence"] = lag_long["evidence"].map({
-                    "flow_ap": "真实流向约束", "no_flow_ap": "仅空间邻近", "reverse_ap": "反向流负对照",
-                })
-                lag_fig = px.line(
-                    lag_long, x="lag_days", y="average_precision", color="evidence", markers=True,
-                    labels={"lag_days": "时滞（天）", "average_precision": "Average Precision", "evidence": "证据"},
-                )
-                lag_fig.update_yaxes(range=[0, 1])
-                lag_fig.update_layout(height=380, margin={"l": 10, "r": 10, "t": 20, "b": 45})
-                st.plotly_chart(lag_fig, width="stretch", config={"displayModeBar": False})
-                display_lags = lag_summary.rename(columns={
-                    "lag_days": "时滞（天）", "samples": "配对数", "events": "事件数",
-                    "flow_ap": "流向约束AP", "reverse_ap": "反向流AP", "no_flow_ap": "无流向AP",
-                    "flow_vs_no_flow": "相对无流向增量", "flow_vs_reverse": "相对反向流增量",
-                    "median_path_error_km": "路径误差中位数（km）",
-                })
-                st.dataframe(display_lags, width="stretch", hide_index=True)
-            else:
-                st.info("当前数据没有形成可评估的时滞配对。先检查HAB与流场日期覆盖；必要时切换流场数据源或上传同时间段的流场CSV。")
-
-            if florida_result["best_lag"] is not None and not florida_result["best_pairs"].empty:
-                best_pairs = florida_result["best_pairs"]
-                st.markdown("##### 最佳时滞下的流向匹配记录")
-                st.dataframe(best_pairs.head(100), width="stretch", hide_index=True)
-                projection = project_next_sampling_candidates(
-                    st.session_state["florida_sts_hab"], st.session_state["florida_sts_current"],
-                    int(florida_result["best_lag"]), 12,
-                )
-                if not projection.empty:
-                    map_fig = px.scatter_geo(
-                        projection, lat="projected_latitude", lon="projected_longitude",
-                        size="sampling_priority", hover_name="date",
-                        hover_data={"cell_count": ":.0f", "current_speed_ms": ":.3f"},
-                        projection="natural earth",
-                        labels={"sampling_priority": "采样优先级"},
-                    )
-                    map_fig.update_geos(lataxis_range=[23, 32], lonaxis_range=[-89, -78], showland=True, landcolor="#edf2f1")
-                    map_fig.update_layout(height=430, margin={"l": 0, "r": 0, "t": 10, "b": 0})
-                    draw_map(style_map(map_fig))
-                    st.caption("位置为最新观测点按局地表层流速作的一阶欧拉投影，仅用于形成下一批采样候选，不等同于业务粒子轨迹预报。")
-                fd1, fd2 = st.columns(2)
-                fd1.download_button(
-                    "下载Florida时滞结果", lag_summary.to_csv(index=False).encode("utf-8-sig"),
-                    "florida_gulf_sts_lag_summary.csv", "text/csv",
-                )
-                fd2.download_button(
-                    "下载最佳流向匹配", best_pairs.to_csv(index=False).encode("utf-8-sig"),
-                    "florida_gulf_sts_best_pairs.csv", "text/csv",
-                )
-            st.caption("该分析使用不规则Karenia观测与连续流场进行回顾性匹配；未包含连续毒素或生物响应观测。")
-        elif florida_result is not None:
-            st.warning("时间范围、阈值、时滞或数据来源已变化，请重新运行。")
-
-    else:
-        st.markdown("#### 现场前向验证")
-        st.caption(
-            "上传连续站点观测与流场数据。训练时段用于选择传播时滞，后续时段仅用于独立评估；样本量、时间连续性或流场覆盖不足时返回DEFER。"
-        )
-        t1, t2 = st.columns(2)
-        t1.download_button(
-            "下载现场观测模板CSV", field_observation_template().to_csv(index=False).encode("utf-8-sig"),
-            "field_observations_template.csv", "text/csv",
-        )
-        t2.download_button(
-            "下载流场模板CSV", field_current_template().to_csv(index=False).encode("utf-8-sig"),
-            "field_currents_template.csv", "text/csv",
-        )
-        st.markdown(
-            "最低观测字段：`date, station_id, latitude, longitude, cell_count`；最低流场字段："
-            "`date, latitude, longitude, u_ms, v_ms`。建议同步加入毒素、SST、盐度、DO、NO₃、PO₄、Si、Chl-a、鱼体/鳃部反应和网箱信息。"
-        )
-        fu1, fu2 = st.columns(2)
-        with fu1:
-            field_obs_upload = st.file_uploader("上传现场观测CSV", type=["csv"], key="field_obs_upload")
-        with fu2:
-            field_cur_upload = st.file_uploader("上传连续流场CSV", type=["csv"], key="field_cur_upload")
-        fp1, fp2, fp3 = st.columns(3)
-        field_threshold = fp1.selectbox(
-            "事件阈值（cells L⁻¹）", [10_000, 100_000, 1_000_000], index=1,
-            format_func=lambda x: f"{x:,}", key="field_event_threshold",
-        )
-        field_lags = fp2.multiselect(
-            "训练期候选lag", list(FLORIDA_STS_LAGS), default=list(FLORIDA_STS_LAGS), key="field_lags"
-        )
-        field_test_fraction = fp3.slider("最终前向测试比例", 0.20, 0.40, 0.30, 0.05, key="field_test_fraction")
-
-        if field_obs_upload is not None and field_cur_upload is not None:
-            try:
-                field_obs = normalize_field_observations(pd.read_csv(field_obs_upload))
-                field_cur = normalize_current_frame(pd.read_csv(field_cur_upload))
-                readiness = field_quality_gate(field_obs, field_cur, float(field_threshold), strict_forward=True)
-                kpi_grid([
-                    ("现场观测", f"{readiness['observations']:,}", f"{readiness['sampling_dates']}个日期"),
-                    ("空间位置", f"{readiness['locations']}", "至少3个空间位置"),
-                    ("事件观测", f"{readiness['events']}", f"阈值 {int(field_threshold):,}"),
-                    ("流场日期覆盖", f"{readiness['current_date_overlap']:.1%}", "越高越适合前向分析"),
-                    ("时间跨度", f"{readiness['date_span_days']}天", "建议覆盖多个传播窗口"),
-                    ("质量状态", readiness["status"].upper(), "不满足条件时DEFER"),
-                ])
-                if readiness["reasons"]:
-                    st.warning("当前还不能进入严格前向验证：" + "；".join(readiness["reasons"]))
-                if st.button("运行现场数据前向STS验证", key="run_field_forward", type="primary"):
-                    if not field_lags:
-                        st.error("至少选择一个训练期候选lag。")
-                    else:
-                        result = run_forward_field_validation(
-                            field_obs, field_cur, field_lags, float(field_threshold), float(field_test_fraction)
-                        )
-                        st.session_state["field_forward_result"] = result
-                        st.session_state["field_forward_key"] = (
-                            len(field_obs), len(field_cur), int(field_threshold), tuple(field_lags), float(field_test_fraction)
-                        )
-                        st.session_state["field_forward_obs"] = field_obs
-                        st.session_state["field_forward_cur"] = field_cur
-                field_result = st.session_state.get("field_forward_result")
-                current_field_key = (len(field_obs), len(field_cur), int(field_threshold), tuple(field_lags), float(field_test_fraction))
-                if field_result is not None and st.session_state.get("field_forward_key") == current_field_key:
-                    if field_result["status"] == "evaluated":
-                        fs = field_result["test_summary"]
-                        kpi_grid([
-                            ("训练期选择lag", f"{field_result['selected_lag']}天", f"截止 {pd.Timestamp(field_result['cut_date']).date()} 前选择"),
-                            ("前向测试AP", f"{fs['flow_ap']:.3f}", "独立后续时间块"),
-                            ("无流向对照AP", f"{fs['no_flow_ap']:.3f}", f"增量 {fs['flow_vs_no_flow']:+.3f}"),
-                            ("反向流对照AP", f"{fs['reverse_ap']:.3f}", f"增量 {fs['flow_vs_reverse']:+.3f}"),
-                            ("测试配对", f"{fs['samples']}", f"{fs['events']}个事件"),
-                            ("中位路径误差", f"{fs['median_path_error_km']:.1f} km", "一阶流场匹配诊断"),
-                        ])
-                        st.dataframe(field_result["training_lags"], width="stretch", hide_index=True)
-                        st.dataframe(field_result["test_pairs"].head(100), width="stretch", hide_index=True)
-                        horizon = st.radio("生成下一批采样候选的投影窗口", [3, 7, 14], index=1, horizontal=True, key="field_projection_horizon")
-                        priority = project_next_sampling_candidates(field_obs, field_cur, int(horizon), 15)
-                        if not priority.empty:
-                            st.markdown("##### 下一批采样位置候选")
-                            st.dataframe(priority, width="stretch", hide_index=True)
-                            pf = px.scatter_geo(
-                                priority, lat="projected_latitude", lon="projected_longitude",
-                                size="sampling_priority", hover_data={"cell_count": ":.0f", "current_speed_ms": ":.3f"},
-                            )
-                            pf.update_layout(height=430, margin={"l": 0, "r": 0, "t": 10, "b": 0})
-                            pf.update_geos(fitbounds="locations")
-                            draw_map(style_map(pf))
-                        st.success("前向验证完成。结果需结合毒素、生物观测和水团追踪资料解释。")
-                    else:
-                        st.warning("状态：DEFER。" + "；".join(field_result["quality"]["reasons"]))
-            except Exception as exc:
-                st.error(f"现场数据解析失败：{exc}")
-        else:
-            st.info("上传观测与流场CSV后进行质量检查；满足时间、空间、事件和流场覆盖条件后可运行前向验证。")
-
-with tab_bio:
-    st.markdown("### 网箱鱼生物响应沙盘")
-    st.markdown(
-        '<div class="signal"><b>区域化网箱鱼响应情景：</b>本沙盘将藻华、高温、溶解氧、'
-        '养殖密度和计划投喂转化为网箱鱼的相对生理压力轨迹，并并列比较监测、降低投喂、增氧和'
-        '转移准备。参数用于情景比较，尚未按具体鱼种或场站进行标定。</div>',
-        unsafe_allow_html=True,
-    )
-
-    production_regions = production_region_frame()
-    cage_region_names = [
-        name for name, profile in BIO_PRODUCTION_REGIONS.items()
-        if profile["cage_sandbox"]
-    ]
-    selected_bio_region = st.selectbox(
-        "网箱鱼情景海区", cage_region_names,
-        index=cage_region_names.index("智利巴塔哥尼亚峡湾"),
-        help="仅列入具有海水网箱养殖背景的代表海区。捕捞渔场仍显示在地图上，但不套用网箱鱼生理模型。",
-    )
-    region_profile = BIO_PRODUCTION_REGIONS[selected_bio_region]
-    st.plotly_chart(
-        production_region_map(production_regions, selected_bio_region),
-        width="stretch", config={"displayModeBar": False},
-    )
-    st.caption(
-        "青色点可进入网箱鱼情景比较；橙色和紫色点用于呈现全球捕捞或贝类生产背景。"
-        "洪堡流和西印度洋不进入网箱鱼模型，仅保留区域背景。"
-    )
-
-    bio_control, bio_result = st.columns([1.0, 2.15], gap="large")
-    with bio_control:
-        bio_options = ["区域背景情景"] + list(BIO_SCENARIO_PRESETS)
-        bio_preset_name = st.selectbox(
-            "压力情景", bio_options, index=0
-        )
-        if bio_preset_name == "区域背景情景":
-            bio_preset = region_profile
-            bio_source_note = (
-                f"代表对象：{region_profile['representative_stock']}。"
-                "初始值为区域情景参数，可调整；不对应实时场站观测或运营阈值。"
-            )
-        else:
-            bio_preset = BIO_SCENARIO_PRESETS[bio_preset_name]
-            bio_source_note = str(bio_preset["source_note"])
-        bio_key = f"{selected_bio_region}_{bio_preset_name}"
-        hab_pressure = st.slider(
-            "藻华危害压力（0–100）", 0.0, 100.0,
-            float(bio_preset["hab_pressure"]), 1.0,
-            key=f"bio_hab_{bio_key}",
-            help="无量纲外部压力。真实事件锚点仅表示所选回放内的相对峰值，不对应毒素或死亡阈值。",
-        )
-        bio_mhw = st.slider(
-            "海洋热浪强度（°C）", 0.0, 5.0,
-            float(bio_preset["mhw_intensity_c"]), .1,
-            key=f"bio_mhw_{bio_key}",
-        )
-        bio_do = st.slider(
-            "场景溶解氧（mg L⁻¹）", 1.0, 10.0,
-            float(bio_preset["dissolved_oxygen_mg_l"]), .1,
-            key=f"bio_do_{bio_key}",
-            help="情景输入，不对应实时养殖场观测。",
-        )
-        bio_density = st.slider(
-            "养殖密度（kg m⁻³）", 2.0, 45.0,
-            float(bio_preset["stocking_density_kg_m3"]), 1.0,
-            key=f"bio_density_{bio_key}",
-            help="用于模拟密度相关氧负荷，不作为养殖密度建议。",
-        )
-        bio_feed = st.slider(
-            "计划投喂水平（%）", 0.0, 120.0,
-            float(bio_preset["planned_feeding_pct"]), 5.0,
-            key=f"bio_feed_{bio_key}",
-        )
-        bio_duration = st.slider(
-            "藻华压力持续时间（小时）", 12, 72,
-            int(bio_preset["hab_duration_hours"]), 6,
-            key=f"bio_duration_{bio_key}",
-        )
-        bio_horizon = st.radio(
-            "模拟时间", [48, 72, 96], index=1, horizontal=True,
-            format_func=lambda value: f"{value}小时",
-        )
-        st.caption(bio_source_note)
-
-    bio_simulation = compare_interventions(
-        hab_pressure=hab_pressure,
-        mhw_intensity_c=bio_mhw,
-        dissolved_oxygen_mg_l=bio_do,
-        stocking_density_kg_m3=bio_density,
-        planned_feeding_pct=bio_feed,
-        hab_duration_hours=min(bio_duration, bio_horizon),
-        horizon_hours=bio_horizon,
-    )
-    bio_robustness = evaluate_intervention_robustness(
-        hab_pressure=hab_pressure,
-        mhw_intensity_c=bio_mhw,
-        dissolved_oxygen_mg_l=bio_do,
-        stocking_density_kg_m3=bio_density,
-        planned_feeding_pct=bio_feed,
-        hab_duration_hours=min(bio_duration, bio_horizon),
-        horizon_hours=bio_horizon,
-    )
-    bio_summary = bio_simulation["summary"]
-    bio_trajectories = bio_simulation["trajectories"]
-    lowest = bio_summary.iloc[0]
-    baseline = bio_summary[bio_summary["intervention"].eq("维持监测")].iloc[0]
-    transfer = bio_summary[
-        bio_summary["intervention"].eq("转移准备（未执行）")
-    ].iloc[0]
-
-    with bio_result:
-        if bio_preset_name.startswith("南澳"):
-            anchor_text = (
-                f"真实藻华锚点：K. cristata现场qPCR峰值 "
-                f"{real_card['peak_k_cristata']['cells_l']:,.0f} cells L⁻¹ · "
-                f"{real_card['peak_k_cristata']['location']} · "
-                f"{real_card['peak_k_cristata']['date']}。仅在回放内部归一化为100。"
-            )
-        elif bio_preset_name.startswith("挪威"):
-            anchor_text = (
-                f"真实藻华锚点：D. acuta最高监测值 "
-                f"{norway_card['peak_d_acuta']['cells_l']:,.0f} cells L⁻¹ · "
-                f"{norway_card['peak_d_acuta']['region']} · "
-                f"{norway_card['peak_d_acuta']['date']}。仅在回放内部归一化为100。"
-            )
-        elif bio_preset_name == "区域背景情景":
-            anchor_text = (
-                f"{selected_bio_region} · {region_profile['representative_stock']}。"
-                "区域名称和生产对象提供情景背景，环境与养殖参数为可调整初始值。"
-            )
-        else:
-            anchor_text = "当前输入为可调整情景参数，未对应具体养殖场观测。"
-        st.markdown(
-            f'<div class="case-card"><span class="case-badge">数据来源</span><br>'
-            f'{html.escape(anchor_text)}</div>', unsafe_allow_html=True,
-        )
-        kpi_grid([
-            ("当前生产情景", selected_bio_region, str(region_profile["representative_stock"])),
-            ("基准峰值压力", f"{baseline['peak_pressure_index']:.1f}/100", "维持监测情景"),
-            ("最低压力情景", str(lowest["intervention"]), "情景比较结果"),
-        ])
-        kpi_grid([
-            ("累计压力变化", f"−{lowest['pressure_load_reduction_vs_baseline_pct']:.1f}%", "相对维持监测基准"),
-            ("摄食机会保留", f"{lowest['mean_feeding_opportunity_pct']:.1f}%", "模型中的相对摄食代理"),
-            ("最低有效DO", f"{lowest['minimum_effective_do_mg_l']:.2f}", "mg L⁻¹ · 场景代理"),
-        ])
-
-    bio_steps = [
-        ("海区与环境", f"{selected_bio_region} · HAB {hab_pressure:.0f} · MHW {bio_mhw:.1f}°C"),
-        ("养殖对象", f"{region_profile['representative_stock']} · 密度 {bio_density:.0f} kg m⁻³"),
-        ("当前响应", f"峰值 {baseline['peak_pressure_index']:.1f}/100 · 最低DO {baseline['minimum_effective_do_mg_l']:.2f}"),
-        ("情景比较", f"{lowest['intervention']} · 累计压力 −{lowest['pressure_load_reduction_vs_baseline_pct']:.1f}%"),
-        ("准备状态", f"转移准备 {transfer['response_readiness_hours']}小时 · 不外推死亡率"),
-    ]
-    step_cards = "".join(
-        '<div class="risk-step">'
-        f'<div class="risk-step-title">{title}</div>'
-        f'<div class="risk-step-value">{value}</div>'
-        '</div>'
-        for title, value in bio_steps
-    )
-    st.markdown(
-        '<div class="risk-bridge"><div class="risk-bridge-title">网箱鱼响应概览</div>'
-        '<div class="risk-bridge-subtitle">模型沿时间推进复合压力，并在相同外部条件下比较干预方案。</div>'
-        f'<div class="risk-chain">{step_cards}</div></div>', unsafe_allow_html=True,
-    )
-
-    selected_interventions = st.multiselect(
-        "选择需要比较的干预轨迹",
-        list(INTERVENTIONS),
-        default=list(INTERVENTIONS),
-    )
-    if not selected_interventions:
-        selected_interventions = ["维持监测"]
-    bio_plot_data = bio_trajectories[
-        bio_trajectories["intervention"].isin(selected_interventions)
-    ]
-    trajectory_chart = px.line(
-        bio_plot_data,
-        x="hour",
-        y="relative_physiological_pressure",
-        color="intervention",
-        title="不同干预情景下的相对生理压力轨迹",
-        labels={
-            "hour": "模拟时间（小时）",
-            "relative_physiological_pressure": "相对生理压力指数（0–100）",
-            "intervention": "干预情景",
-        },
-    )
-    trajectory_chart.update_layout(
-        height=440, margin={"l": 5, "r": 5, "t": 55, "b": 5},
-        legend={"orientation": "h", "y": -0.20},
-        hovermode="x unified",
-    )
-    trajectory_chart.update_yaxes(range=[0, 100])
-    st.plotly_chart(trajectory_chart, width="stretch", config={"displayModeBar": False})
-
-    bc1, bc2 = st.columns([1.25, 1.0], gap="large")
-    with bc1:
-        error_plus = (
-            bio_summary["peak_pressure_upper"] - bio_summary["peak_pressure_index"]
-        )
-        error_minus = (
-            bio_summary["peak_pressure_index"] - bio_summary["peak_pressure_lower"]
-        )
-        pressure_bar = go.Figure(go.Bar(
-            x=bio_summary["intervention"],
-            y=bio_summary["peak_pressure_index"],
-            marker_color=["#2cb7b1", "#4d9ce0", "#d08a32", "#4d9ce0", "#6f93aa"],
-            error_y={
-                "type": "data", "array": error_plus, "arrayminus": error_minus,
-                "visible": True, "color": "#3f5860",
-            },
-            customdata=bio_summary[[
-                "mean_feeding_opportunity_pct", "minimum_effective_do_mg_l",
-                "pressure_load_reduction_vs_baseline_pct",
-            ]],
-            hovertemplate=(
-                "<b>%{x}</b><br>峰值压力：%{y:.1f}/100"
-                "<br>摄食机会：%{customdata[0]:.1f}%"
-                "<br>最低有效DO：%{customdata[1]:.2f} mg L⁻¹"
-                "<br>累计压力变化：%{customdata[2]:.1f}%<extra></extra>"
-            ),
-        ))
-        pressure_bar.update_layout(
-            title="峰值压力与±15%参数敏感性包络", height=390,
-            margin={"l": 5, "r": 5, "t": 55, "b": 95},
-            xaxis={"tickangle": -18}, yaxis={"title": "相对压力指数", "range": [0, 100]},
-        )
-        st.plotly_chart(pressure_bar, width="stretch", config={"displayModeBar": False})
-    with bc2:
-        tradeoff_chart = px.scatter(
-            bio_summary,
-            x="mean_feeding_opportunity_pct",
-            y="pressure_load_reduction_vs_baseline_pct",
-            color="intervention",
-            size=(20 - bio_summary["response_readiness_hours"]).clip(lower=2),
-            title="压力缓解—摄食机会权衡",
-            labels={
-                "mean_feeding_opportunity_pct": "摄食机会保留（%）",
-                "pressure_load_reduction_vs_baseline_pct": "累计压力降低（%）",
                 "intervention": "干预情景",
+                "scenarios": "扰动情景数",
+                "median_pressure_reduction_pct": st.column_config.NumberColumn(
+                    "中位压力降低（%）", format="%.1f"
+                ),
+                "worst_case_pressure_reduction_pct": st.column_config.NumberColumn(
+                    "最弱情景变化（%）", format="%.1f"
+                ),
+                "best_case_pressure_reduction_pct": st.column_config.NumberColumn(
+                    "最强情景变化（%）", format="%.1f"
+                ),
+                "median_feeding_opportunity_pct": st.column_config.NumberColumn(
+                    "中位摄食机会（%）", format="%.1f"
+                ),
+                "lowest_pressure_frequency": st.column_config.NumberColumn(
+                    "最低压力出现率（%）", format="%.1f"
+                ),
+                "pareto_frequency": st.column_config.ProgressColumn(
+                    "帕累托出现率（%）", min_value=0, max_value=100, format="%.1f"
+                ),
             },
-            hover_data={"response_readiness_hours": True},
-        )
-        tradeoff_chart.update_layout(
-            height=390, margin={"l": 5, "r": 5, "t": 55, "b": 5},
-            showlegend=False,
-        )
-        st.plotly_chart(tradeoff_chart, width="stretch", config={"displayModeBar": False})
-
-    st.markdown("#### 参数扰动下的稳定性")
-    robustness_summary = bio_robustness["summary"]
-    robustness_card = bio_robustness["card"]
-    st.markdown(
-        '<div class="signal">HAB压力±10%、MHW±0.4°C、DO±0.5 mg L⁻¹和密度±10%组合形成81个邻近情景，并计算各干预的帕累托出现率。</div>',
-        unsafe_allow_html=True,
-    )
-    robustness_chart = px.scatter(
-        robustness_summary,
-        x="median_feeding_opportunity_pct",
-        y="median_pressure_reduction_pct",
-        size="pareto_frequency",
-        color="intervention",
-        title="81个邻近输入情景下的干预稳健性",
-        labels={
-            "median_feeding_opportunity_pct": "中位摄食机会保留（%）",
-            "median_pressure_reduction_pct": "中位累计压力降低（%）",
-            "pareto_frequency": "帕累托出现率（%）",
-            "intervention": "干预情景",
-        },
-        hover_data={
-            "worst_case_pressure_reduction_pct": ":.1f",
-            "best_case_pressure_reduction_pct": ":.1f",
-            "lowest_pressure_frequency": ":.1f",
-        },
-    )
-    robustness_chart.update_layout(
-        height=410, margin={"l": 5, "r": 5, "t": 55, "b": 5}, showlegend=False,
-    )
-    st.plotly_chart(robustness_chart, width="stretch", config={"displayModeBar": False})
-    st.dataframe(
-        robustness_summary,
-        width="stretch",
-        hide_index=True,
-        column_config={
-            "intervention": "干预情景",
-            "scenarios": "扰动情景数",
-            "median_pressure_reduction_pct": st.column_config.NumberColumn(
-                "中位压力降低（%）", format="%.1f"
-            ),
-            "worst_case_pressure_reduction_pct": st.column_config.NumberColumn(
-                "最弱情景变化（%）", format="%.1f"
-            ),
-            "best_case_pressure_reduction_pct": st.column_config.NumberColumn(
-                "最强情景变化（%）", format="%.1f"
-            ),
-            "median_feeding_opportunity_pct": st.column_config.NumberColumn(
-                "中位摄食机会（%）", format="%.1f"
-            ),
-            "lowest_pressure_frequency": st.column_config.NumberColumn(
-                "最低压力出现率（%）", format="%.1f"
-            ),
-            "pareto_frequency": st.column_config.ProgressColumn(
-                "帕累托出现率（%）", min_value=0, max_value=100, format="%.1f"
-            ),
-        },
-    )
-    st.caption(
-        "帕累托出现率表示方案在“降低相对压力”和“保留摄食机会”两目标下处于非劣解的频率，不表示现场有效率或推荐概率。"
-    )
-
-    st.markdown("#### 干预情景对照表")
-    bio_display = bio_summary[[
-        "intervention", "peak_pressure_index", "peak_pressure_lower",
-        "peak_pressure_upper", "pressure_load_reduction_vs_baseline_pct",
-        "mean_feeding_opportunity_pct", "minimum_effective_do_mg_l",
-        "response_readiness_hours", "pressure_band", "scenario_interpretation",
-    ]].copy()
-    st.dataframe(
-        bio_display, width="stretch", hide_index=True,
-        column_config={
-            "intervention": "干预情景",
-            "peak_pressure_index": st.column_config.ProgressColumn(
-                "峰值压力", min_value=0, max_value=100, format="%.1f"
-            ),
-            "peak_pressure_lower": st.column_config.NumberColumn("敏感性下界", format="%.1f"),
-            "peak_pressure_upper": st.column_config.NumberColumn("敏感性上界", format="%.1f"),
-            "pressure_load_reduction_vs_baseline_pct": st.column_config.NumberColumn(
-                "累计压力变化（%）", format="%.1f"
-            ),
-            "mean_feeding_opportunity_pct": st.column_config.NumberColumn(
-                "摄食机会保留（%）", format="%.1f"
-            ),
-            "minimum_effective_do_mg_l": st.column_config.NumberColumn(
-                "最低有效DO", format="%.2f"
-            ),
-            "response_readiness_hours": "准备响应时间（h）",
-            "pressure_band": "展示分档",
-            "scenario_interpretation": st.column_config.TextColumn("情景解释", width="large"),
-        },
-    )
-    st.info(
-        "“转移准备（未执行）”与“维持监测”的生理轨迹相同是预期结果：准备本身只缩短响应时间，"
-        "在实际转移发生前不会减少藻华暴露。"
-    )
-
-    with st.expander("模型设定、参数与输入说明"):
-        st.markdown(
-            "综合挑战由HAB、热异常、低氧、密度及三个交互项加权组成。压力状态按小时更新："
-        )
-        st.latex(
-            r"P_{t+1}=\operatorname{clip}\left[P_t+1.45C_t(1-P_t/100)"
-            r"-0.55(1-C_t)P_t/100,\ 0,\ 100\right]"
         )
         st.caption(
-            "Cₜ为0–1综合挑战，Pₜ为0–100相对生理压力。平滑中心和权重均在下表列出，"
-            "但尚未通过具体鱼种的死亡、生长或代谢数据进行现场标定。"
+            "帕累托出现率表示方案在“降低相对压力”和“保留摄食机会”两目标下处于非劣解的频率，不表示现场有效率或推荐概率。"
         )
-        sandbox_evidence_rows = [
-            ["藻华危害压力", "真实回放相对峰值" if "真实" in bio_preset_name else "情景参数", "危害外部输入"],
-            ["MHW强度", "情景假设", "热压力输入"],
-            ["溶解氧", "情景假设", "低氧压力输入"],
-            ["养殖密度", "情景假设", "密度与耗氧代理"],
-            ["计划投喂", "情景假设", "摄食与代谢负荷代理"],
-            ["生物响应参数", "未标定参数", "需用物种/场站数据再标定"],
-        ]
-        evidence_frame = pd.DataFrame(
-            sandbox_evidence_rows, columns=["模型输入", "证据属性", "在沙盘中的作用"]
-        )
-        st.dataframe(evidence_frame, width="stretch", hide_index=True)
-        st.dataframe(bio_simulation["parameters"], width="stretch", hide_index=True)
 
-    bd1, bd2, bd3, bd4 = st.columns(4)
-    bd1.download_button(
-        "下载响应轨迹", bio_trajectories.to_csv(index=False).encode("utf-8-sig"),
-        "cage_fish_response_trajectories.csv", "text/csv",
-    )
-    bd2.download_button(
-        "下载干预对照", bio_summary.to_csv(index=False).encode("utf-8-sig"),
-        "cage_fish_intervention_comparison.csv", "text/csv",
-    )
-    bd3.download_button(
-        "下载模型参数", bio_simulation["parameters"].to_csv(index=False).encode("utf-8-sig"),
-        "cage_fish_sandbox_parameters.csv", "text/csv",
-    )
-    bd4.download_button(
-        "下载沙盘卡", json.dumps(
-            bio_simulation["scenario_card"], ensure_ascii=False, indent=2
-        ).encode("utf-8"),
-        "cage_fish_sandbox_card.json", "application/json",
-    )
-    st.download_button(
-        "下载81情景稳健性结果",
-        bio_robustness["detail"].to_csv(index=False).encode("utf-8-sig"),
-        "cage_fish_intervention_robustness.csv", "text/csv",
-    )
-    st.warning(
-        "本模块输出相对压力与情景对照，不计算死亡率、生物量损失或毒素浓度；现场措施需结合实测DO、鱼群状态、设备能力和管理要求。"
-    )
-    with st.expander("方法与统计口径", expanded=False):
-        st.caption(
-            "架构参考：[Føre等，Computers and Electronics in Agriculture（2024）]"
-            "(https://doi.org/10.1016/j.compag.2024.108676)与"
-            "[Lima等，Open Research Europe（2023）]"
-            "(https://open-research-europe.ec.europa.eu/articles/2-16)。"
-            "文献用于支持“环境—生物状态—运营对照”的结构设计，不构成当前参数的鱼种标定。"
+    with st.container(border=True, key="research_section_tab_bio_3"):
+        st.markdown("#### 干预情景对照表")
+        bio_display = bio_summary[[
+            "intervention", "peak_pressure_index", "peak_pressure_lower",
+            "peak_pressure_upper", "pressure_load_reduction_vs_baseline_pct",
+            "mean_feeding_opportunity_pct", "minimum_effective_do_mg_l",
+            "response_readiness_hours", "pressure_band", "scenario_interpretation",
+        ]].copy()
+        research_table(
+            bio_display, width="stretch", hide_index=True,
+            column_config={
+                "intervention": "干预情景",
+                "peak_pressure_index": st.column_config.ProgressColumn(
+                    "峰值压力", min_value=0, max_value=100, format="%.1f"
+                ),
+                "peak_pressure_lower": st.column_config.NumberColumn("敏感性下界", format="%.1f"),
+                "peak_pressure_upper": st.column_config.NumberColumn("敏感性上界", format="%.1f"),
+                "pressure_load_reduction_vs_baseline_pct": st.column_config.NumberColumn(
+                    "累计压力变化（%）", format="%.1f"
+                ),
+                "mean_feeding_opportunity_pct": st.column_config.NumberColumn(
+                    "摄食机会保留（%）", format="%.1f"
+                ),
+                "minimum_effective_do_mg_l": st.column_config.NumberColumn(
+                    "最低有效DO", format="%.2f"
+                ),
+                "response_readiness_hours": "准备响应时间（h）",
+                "pressure_band": "展示分档",
+                "scenario_interpretation": st.column_config.TextColumn("情景解释", width="large"),
+            },
         )
+        st.info(
+            "“转移准备（未执行）”与“维持监测”的生理轨迹相同是预期结果：准备本身只缩短响应时间，"
+            "在实际转移发生前不会减少藻华暴露。"
+        )
+
+        with st.expander("模型设定、参数与输入说明"):
+            st.markdown(
+                "综合挑战由HAB、热异常、低氧、密度及三个交互项加权组成。压力状态按小时更新："
+            )
+            st.latex(
+                r"P_{t+1}=\operatorname{clip}\left[P_t+1.45C_t(1-P_t/100)"
+                r"-0.55(1-C_t)P_t/100,\ 0,\ 100\right]"
+            )
+            st.caption(
+                "Cₜ为0–1综合挑战，Pₜ为0–100相对生理压力。平滑中心和权重均在下表列出，"
+                "但尚未通过具体鱼种的死亡、生长或代谢数据进行现场标定。"
+            )
+            sandbox_evidence_rows = [
+                ["藻华危害压力", "真实回放相对峰值" if "真实" in bio_preset_name else "情景参数", "危害外部输入"],
+                ["MHW强度", "情景假设", "热压力输入"],
+                ["溶解氧", "情景假设", "低氧压力输入"],
+                ["养殖密度", "情景假设", "密度与耗氧代理"],
+                ["计划投喂", "情景假设", "摄食与代谢负荷代理"],
+                ["生物响应参数", "未标定参数", "需用物种/场站数据再标定"],
+            ]
+            evidence_frame = pd.DataFrame(
+                sandbox_evidence_rows, columns=["模型输入", "证据属性", "在沙盘中的作用"]
+            )
+            research_table(evidence_frame, width="stretch", hide_index=True)
+            research_table(bio_simulation["parameters"], width="stretch", hide_index=True)
+
+        bd1, bd2, bd3, bd4 = st.columns(4)
+        bd1.download_button(
+            "下载响应轨迹", bio_trajectories.to_csv(index=False).encode("utf-8-sig"),
+            "cage_fish_response_trajectories.csv", "text/csv",
+        )
+        bd2.download_button(
+            "下载干预对照", bio_summary.to_csv(index=False).encode("utf-8-sig"),
+            "cage_fish_intervention_comparison.csv", "text/csv",
+        )
+        bd3.download_button(
+            "下载模型参数", bio_simulation["parameters"].to_csv(index=False).encode("utf-8-sig"),
+            "cage_fish_sandbox_parameters.csv", "text/csv",
+        )
+        bd4.download_button(
+            "下载沙盘卡", json.dumps(
+                bio_simulation["scenario_card"], ensure_ascii=False, indent=2
+            ).encode("utf-8"),
+            "cage_fish_sandbox_card.json", "application/json",
+        )
+        st.download_button(
+            "下载81情景稳健性结果",
+            bio_robustness["detail"].to_csv(index=False).encode("utf-8-sig"),
+            "cage_fish_intervention_robustness.csv", "text/csv",
+        )
+        st.warning(
+            "本模块输出相对压力与情景对照，不计算死亡率、生物量损失或毒素浓度；现场措施需结合实测DO、鱼群状态、设备能力和管理要求。"
+        )
+        with st.expander("方法与统计口径", expanded=False):
+            st.caption(
+                "架构参考：[Føre等，Computers and Electronics in Agriculture（2024）]"
+                "(https://doi.org/10.1016/j.compag.2024.108676)与"
+                "[Lima等，Open Research Europe（2023）]"
+                "(https://open-research-europe.ec.europa.eu/articles/2-16)。"
+                "文献用于支持“环境—生物状态—运营对照”的结构设计，不构成当前参数的鱼种标定。"
+            )
 
 with tab_methods:
-    st.markdown("### 冲击—输运—响应关系")
-    st.markdown(
-        '<div class="formula">Local: Shock A(t) → Response A(t)　｜　Transport: Shock A(t) → Transport → Response B(t + τ)</div>',
-        unsafe_allow_html=True,
-    )
-    st.caption(
-        "依次检验异常持续时间、分析条件、传播方向与时滞，以及邻近区域关联。"
-    )
-    st.markdown("### 异常识别与跨区域影响")
-    st.caption("以下分析共享同一套时空数据、时间窗口和验证设置。")
-
-    st.markdown("#### 持续异常识别")
-    anomaly_region = st.selectbox(
-        "选择异常轨迹海域", REGIONS, index=3, key="anomaly_region",
-        format_func=lambda value: REGION_LABELS[value],
-    )
-    anomaly_region_daily = anomaly_daily[anomaly_daily["region"].eq(anomaly_region)].copy()
-    anomaly_region_events = anomaly_events[anomaly_events["region"].eq(anomaly_region)].copy()
-    peak_anomaly_score = float(anomaly_region_daily["multiscale_anomaly_score"].max())
-    anomaly_days = int(anomaly_region_daily["anomaly_event"].sum())
-    max_scale_agreement = int(anomaly_region_daily["scale_agreement"].max())
-    if anomaly_region_events.empty:
-        peak_event_date = "无合并事件"
-    else:
-        peak_event_date = pd.Timestamp(
-            anomaly_region_events.loc[anomaly_region_events["peak_score"].idxmax(), "peak_date"]
-        ).date().isoformat()
-    kpi_grid([
-        ("当前序列", f"{active_config['days']}天", f"{len(anomaly_region_daily):,}个逐日记录"),
-        ("当前海区合并事件", f"{len(anomaly_region_events)}", "随序列、种子与海区重新计算"),
-        ("当前海区异常日", f"{anomaly_days}", "满足多尺度事件判定的日期数"),
-        ("峰值异常强度", f"{peak_anomaly_score:.2f}", "当前海区MAD稳健标准化结果"),
-        ("最高尺度一致性", f"{max_scale_agreement}/4", "7/14/30/60天窗口中同时支持的尺度数"),
-        ("最强事件峰值日期", peak_event_date, "当前所选海区"),
-    ])
-    st.caption(
-        "方法定义固定为7/14/30/60天过去窗口、MAD稳健标准化和至少2个尺度一致；"
-        "上方KPI只显示当前运行与当前所选海区实际计算出的结果。"
-    )
-    anomaly_plot = anomaly_region_daily.set_index("date")[[
-        "anomaly_score_7d", "anomaly_score_14d", "anomaly_score_30d",
-        "anomaly_score_60d", "multiscale_anomaly_score",
-    ]]
-    st.line_chart(anomaly_plot, height=300)
-    anomaly_events_display = (
-        anomaly_region_events.sort_values("peak_score", ascending=False).head(12).copy()
-        if not anomaly_region_events.empty else anomaly_events.head(0).copy()
-    )
-    anomaly_events_display["region"] = anomaly_events_display["region"].map(REGION_LABELS)
-    st.dataframe(
-        anomaly_events_display, width="stretch", hide_index=True,
-        column_config={
-            "region": "海域", "peak_score": st.column_config.NumberColumn("峰值强度", format="%.3f")
-        },
-    )
-    st.download_button(
-        "下载多尺度事件目录", anomaly_events.to_csv(index=False).encode("utf-8-sig"),
-        "multiscale_event_catalog.csv", "text/csv",
-    )
-
-    st.markdown("#### 分析路径选择")
-    selected_branch_count = int(router_trace["selected"].sum())
-    kpi_grid([
-        ("当前启用分析分支", f"{selected_branch_count}/4", "由本轮数据诊断门控决定"),
-        ("数据完整度", f"{float(router_diagnostics['completeness']):.1%}", "本轮核心变量非缺失比例"),
-        ("样本支持", f"{float(router_diagnostics['sample_support']):.2f}", f"当前共{int(router_diagnostics['rows']):,}行"),
-        ("事件支持", f"{float(router_diagnostics['event_support']):.2f}", f"当前事件记录{int(router_diagnostics['events'])}条"),
-        ("时间依赖", f"{float(router_diagnostics['temporal_dependence']):.2f}", "MHW强度平均|lag-1自相关|"),
-        ("跨尺度一致性", f"{float(router_diagnostics['scale_consistency']):.2f}", "当前异常事件的平均尺度一致性"),
-    ])
-    route_display = router_trace[[
-        "branch", "compatibility_score", "routing_probability", "decision", "reason"
-    ]].copy()
-    route_display["branch"] = route_display["branch"].map({
-        "blocked_prediction": "跨时间与跨区域风险验证",
-        "multiscale_anomaly": "多时间尺度异常识别",
-        "te_cte_network": "跨区域传播路径识别",
-        "spatial_durbin": "邻近海区溢出影响",
-    })
-    route_display["decision"] = route_display["decision"].map({"run": "运行", "defer": "暂缓"})
-    st.dataframe(
-        route_display, width="stretch", hide_index=True,
-        column_config={
-            "compatibility_score": st.column_config.ProgressColumn(min_value=0.0, max_value=1.0),
-            "routing_probability": st.column_config.NumberColumn(format="%.3f"),
-        },
-    )
-    st.caption(
-        "两阶段门控先计算完整度、样本支持、时间依赖、空间支持、事件支持和跨尺度一致性，"
-        "再对四条分支给出兼容度与软路由概率；每次决策均进入日志。"
-    )
-
-    st.markdown("#### 跨区域传播时滞")
-    st.caption("比较预设输运方向和反向路径，识别最可能的传播时滞，并对偶然相关进行多重检验控制。")
-    peak_lag = int(te_cte_lag_summary.loc[te_cte_lag_summary["mean_cte_bits"].idxmax(), "lag_days"])
-    peak_lag_row = te_cte_lag_summary[te_cte_lag_summary["lag_days"].eq(peak_lag)].iloc[0]
-    significant_edges = int(te_cte_network["significant_fdr_0_10"].sum())
-    total_edges = int(len(te_cte_network))
-    kpi_grid([
-        ("本轮峰值传播时滞", f"{peak_lag}天", "由当前序列与随机种子重新估计"),
-        ("峰值沿流CTE", f"{float(peak_lag_row['mean_cte_bits']):.3f} bit", "跨边平均条件信息量"),
-        ("对应反向CTE", f"{float(peak_lag_row['mean_reverse_cte_bits']):.3f} bit", "用于方向性反证"),
-        ("FDR通过边", f"{significant_edges}/{total_edges}", "边级置换检验 + BH校正"),
-        ("候选时滞数", f"{te_cte_lag_summary['lag_days'].nunique()}", "当前固定候选集合"),
-        ("方向净差", f"{float(peak_lag_row['mean_cte_bits'] - peak_lag_row['mean_reverse_cte_bits']):.3f} bit", "峰值时滞下沿流减反向"),
-    ])
-    te_long = te_cte_lag_summary.melt(
-        id_vars="lag_days",
-        value_vars=["mean_cte_bits", "mean_reverse_cte_bits"],
-        var_name="direction", value_name="information_bits",
-    )
-    te_long["direction"] = te_long["direction"].map({
-        "mean_cte_bits": "预设沿流方向 CTE",
-        "mean_reverse_cte_bits": "反向路径 CTE",
-    })
-    te_chart = px.line(
-        te_long, x="lag_days", y="information_bits", color="direction", markers=True,
-        labels={"lag_days": "时滞（天）", "information_bits": "条件传递熵（bit）", "direction": "路径"},
-        color_discrete_sequence=["#1c78c0", "#b8865b"],
-    )
-    te_chart.add_vline(x=14, line_dash="dot", line_color="#4d9ce0")
-    te_chart.update_layout(height=350, margin={"l": 5, "r": 5, "t": 20, "b": 5})
-    st.plotly_chart(te_chart, width="stretch", config={"displayModeBar": False})
-    st.caption(f"当前峰值时滞：{peak_lag}天。14天为合成生成器预设真值，仅用于事后核验。")
-    te_display = te_cte_network[[
-            "source_region", "target_region", "lag_days", "te_bits", "cte_bits",
-            "reverse_cte_bits", "net_directionality_bits", "permutation_p", "fdr_q",
-            "significant_fdr_0_10",
-        ]].head(16).copy()
-    te_display["source_region"] = te_display["source_region"].map(REGION_LABELS)
-    te_display["target_region"] = te_display["target_region"].map(REGION_LABELS)
-    st.dataframe(
-        te_display, width="stretch", hide_index=True,
-        column_config={
-            "source_region": "信号来源区", "target_region": "风险响应区",
-            "lag_days": "传播时滞（天）", "cte_bits": "方向信息量",
-            "reverse_cte_bits": "反向路径信息量", "fdr_q": "校正后可靠性",
-            "significant_fdr_0_10": "通过可靠性检验",
-        },
-    )
-    st.download_button(
-        "下载TE/CTE边级网络", te_cte_network.to_csv(index=False).encode("utf-8-sig"),
-        "te_cte_network.csv", "text/csv",
-    )
-
-    st.markdown("#### 邻近海区影响")
-    st.caption("将本地影响、邻近海区溢出和总体关联分开呈现，便于确定需要同步监测的范围。")
-    labels = {
-        "multiscale_anomaly_score_lag14": "14天滞后多尺度异常",
-        "nutrient_context": "营养盐背景",
-        "circulation_residence_proxy": "输运/停留/汇聚代理",
-    }
-    effect_plot = spatial_effects.copy()
-    effect_plot["变量"] = effect_plot["variable"].map(labels)
-    effect_plot["影响"] = effect_plot["effect_type"].map({
-        "direct": "直接", "indirect": "间接", "total": "总影响"
-    })
-    effect_chart = px.bar(
-        effect_plot, x="变量", y="effect_per_1sd", color="影响", barmode="group",
-        labels={"effect_per_1sd": "合成HAB概率变化 / 1 SD"},
-        color_discrete_sequence=["#2c83bc", "#e39b47", "#4d9ce0"],
-    )
-    effect_chart.update_layout(height=390, margin={"l": 5, "r": 5, "t": 20, "b": 5})
-    st.plotly_chart(effect_chart, width="stretch", config={"displayModeBar": False})
-    anomaly_effect_rows = spatial_effects[
-        spatial_effects["variable"].eq("multiscale_anomaly_score_lag14")
-    ].set_index("effect_type")
-    direct_effect = anomaly_effect_rows.loc["direct"]
-    indirect_effect = anomaly_effect_rows.loc["indirect"]
-    total_effect = anomaly_effect_rows.loc["total"]
-    kpi_grid([
-        ("区域联动强度", f"ρ = {float(spatial_diagnostics['rho']):.2f}", "本轮空间诊断结果"),
-        ("探索性解释度", f"{float(spatial_diagnostics['pseudo_r2']):.3f}", "当前合成基准拟合"),
-        ("Bootstrap复核", f"{int(spatial_diagnostics['bootstrap_repeats'])}次", "当前运行的区域块重复抽样"),
-        ("14天异常·本地影响", f"{float(direct_effect['effect_per_1sd']):+.3f}", f"90%区间 {float(direct_effect['ci90_lower']):+.3f}–{float(direct_effect['ci90_upper']):+.3f}"),
-        ("14天异常·邻区溢出", f"{float(indirect_effect['effect_per_1sd']):+.3f}", f"90%区间 {float(indirect_effect['ci90_lower']):+.3f}–{float(indirect_effect['ci90_upper']):+.3f}"),
-        ("14天异常·总体关联", f"{float(total_effect['effect_per_1sd']):+.3f}", f"90%区间 {float(total_effect['ci90_lower']):+.3f}–{float(total_effect['ci90_upper']):+.3f}"),
-    ])
-    st.caption(
-        "区域传播关系根据预设输运方向标准化；14天窗口来自前述风险模式和传播路径结果。"
-        "效应值表示合成环境中的关联强度，用于空间影响分解。"
-    )
-    visible_effects = effect_plot[[
-        "变量", "影响", "effect_per_1sd", "ci90_lower", "ci90_upper"
-    ]].copy()
-    st.dataframe(
-        visible_effects, width="stretch", hide_index=True,
-        column_config={
-            "effect_per_1sd": "每1 SD关联强度", "ci90_lower": "不确定区间下限",
-            "ci90_upper": "不确定区间上限",
-        },
-    )
-    st.download_button(
-        "下载Durbin影响分解", spatial_effects.to_csv(index=False).encode("utf-8-sig"),
-        "spatial_durbin_effects.csv", "text/csv",
-    )
-
-with tab_agent:
-    st.markdown("### 实验对照与探索记录")
-
-    c1, c2 = st.columns([1.15, 1.0], gap="large")
-    with c1:
-        comparison = pd.concat([
-            baselines[["baseline", "pr_auc", "brier_skill", "ece"]].rename(columns={"baseline": "方法"}),
-            pd.DataFrame([{
-                "方法": "GlobalHAB-Agent最佳候选",
-                "pr_auc": best["pr_auc"],
-                "brier_skill": best["brier_skill"],
-                "ece": best["ece"],
-            }]),
-        ], ignore_index=True)
-        fig = px.bar(
-            comparison, x="方法", y="pr_auc", color="方法",
-            title="阻断验证Average Precision（AP）：Agent候选 vs 平凡解",
-            text_auto=".3f",
-            color_discrete_sequence=["#8cbddc", "#c7a76c", "#1c78c0"],
+    with st.container(border=True, key="research_section_tab_methods_0"):
+        st.markdown("### 冲击—输运—响应关系")
+        st.markdown(
+            '<div class="formula">Local: Shock A(t) → Response A(t)　｜　Transport: Shock A(t) → Transport → Response B(t + τ)</div>',
+            unsafe_allow_html=True,
         )
-        fig.update_layout(showlegend=False, height=350, margin={"l": 5, "r": 5, "t": 55, "b": 10})
-        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
-    with c2:
-        st.markdown("#### 随机探索参照")
+        st.caption(
+            "依次检验异常持续时间、分析条件、传播方向与时滞，以及邻近区域关联。"
+        )
+    with st.container(border=True, key="research_section_tab_methods_1"):
+        st.markdown("### 异常识别与跨区域影响")
+        st.caption("以下分析共享同一套时空数据、时间窗口和验证设置。")
+
+    with st.container(border=True, key="research_section_tab_methods_2"):
+        st.markdown("#### 持续异常识别")
+        anomaly_region = st.selectbox(
+            "选择异常轨迹海域", REGIONS, index=3, key="anomaly_region",
+            format_func=lambda value: REGION_LABELS[value],
+        )
+        anomaly_region_daily = anomaly_daily[anomaly_daily["region"].eq(anomaly_region)].copy()
+        anomaly_region_events = anomaly_events[anomaly_events["region"].eq(anomaly_region)].copy()
+        peak_anomaly_score = float(anomaly_region_daily["multiscale_anomaly_score"].max())
+        anomaly_days = int(anomaly_region_daily["anomaly_event"].sum())
+        max_scale_agreement = int(anomaly_region_daily["scale_agreement"].max())
+        if anomaly_region_events.empty:
+            peak_event_date = "无合并事件"
+        else:
+            peak_event_date = pd.Timestamp(
+                anomaly_region_events.loc[anomaly_region_events["peak_score"].idxmax(), "peak_date"]
+            ).date().isoformat()
         kpi_grid([
-            ("随机探索识别14天模式", f"{float(random_ref['hidden_signal_recovery_rate']):.1%}", "识别生成器14天真值的重复比例"),
-            ("随机探索中位效用", f"{float(random_ref['median_best_utility']):.3f}", "随机策略的最佳效用分布"),
-            ("重复对照次数", f"{int(random_ref['repeats'])}", "每次使用相同候选空间"),
+            ("当前序列", f"{active_config['days']}天", f"{len(anomaly_region_daily):,}个逐日记录"),
+            ("当前海区合并事件", f"{len(anomaly_region_events)}", "随序列、种子与海区重新计算"),
+            ("当前海区异常日", f"{anomaly_days}", "满足多尺度事件判定的日期数"),
+            ("峰值异常强度", f"{peak_anomaly_score:.2f}", "当前海区MAD稳健标准化结果"),
+            ("最高尺度一致性", f"{max_scale_agreement}/4", "7/14/30/60天窗口中同时支持的尺度数"),
+            ("最强事件峰值日期", peak_event_date, "当前所选海区"),
         ])
         st.caption(
-            f"基于{int(random_ref['repeats'])}次随机选择；每次使用相同候选空间、"
-            f"相同预算（{active_config['budget']}步）和相同阻断验证结果。"
+            "方法定义固定为7/14/30/60天过去窗口、MAD稳健标准化和至少2个尺度一致；"
+            "上方KPI只显示当前运行与当前所选海区实际计算出的结果。"
         )
-        st.markdown("#### 负对照")
-        st.dataframe(
-            controls[["control_name", "pr_auc", "pr_auc_gain", "brier_skill", "ece"]],
-            width="stretch", hide_index=True,
+        anomaly_plot = anomaly_region_daily.set_index("date")[[
+            "anomaly_score_7d", "anomaly_score_14d", "anomaly_score_30d",
+            "anomaly_score_60d", "multiscale_anomaly_score",
+        ]]
+        st.line_chart(anomaly_plot, height=300)
+        anomaly_events_display = (
+            anomaly_region_events.sort_values("peak_score", ascending=False).head(12).copy()
+            if not anomaly_region_events.empty else anomaly_events.head(0).copy()
         )
-
-    st.markdown("#### 实验选择策略对比")
-    st.caption(
-        "在相同候选空间和实验预算下比较启发式、Bayesian Expected Improvement、Bayesian Information Gain、Thompson Sampling与随机策略。14天真值不参与策略选择。"
-    )
-    policy_key = (
-        int(active_config["days"]), int(active_config["seed"]), int(active_config["budget"]),
-        active_config["holdout_region"], float(active_config["test_fraction"]),
-    )
-    run_policy_bench = st.button("运行当前设置的Agent策略对比", key="run_agent_policy_benchmark")
-    if run_policy_bench:
-        with st.spinner("正在比较实验选择策略……"):
-            st.session_state["agent_policy_benchmark"] = cached_policy_benchmark(
-                catalog, int(active_config["budget"]), int(active_config["seed"])
-            )
-            st.session_state["agent_policy_benchmark_key"] = policy_key
-    policy_bench = st.session_state.get("agent_policy_benchmark")
-    if policy_bench is not None and st.session_state.get("agent_policy_benchmark_key") == policy_key:
-        policy_summary = policy_bench["summary"].copy()
-        policy_display = policy_summary[[
-            "policy_label", "recovery_rate", "median_first_hidden_step",
-            "median_best_utility", "repeats",
-        ]].copy()
-        policy_display["recovery_rate"] = 100.0 * policy_display["recovery_rate"].astype(float)
-        policy_display = policy_display.rename(columns={
-            "policy_label": "实验选择策略",
-            "recovery_rate": "14天模式恢复率（%）",
-            "median_first_hidden_step": "首次试到14天模式的中位步数",
-            "median_best_utility": "最佳效用中位数",
-            "repeats": "重复次数",
-        })
-        st.dataframe(
-            policy_display, width="stretch", hide_index=True,
+        anomaly_events_display["region"] = anomaly_events_display["region"].map(REGION_LABELS)
+        research_table(
+            anomaly_events_display, width="stretch", hide_index=True,
             column_config={
-                "14天模式恢复率（%）": st.column_config.NumberColumn(format="%.1f"),
-                "首次试到14天模式的中位步数": st.column_config.NumberColumn(format="%.1f"),
-                "最佳效用中位数": st.column_config.NumberColumn(format="%.3f"),
+                "region": "海域", "peak_score": st.column_config.NumberColumn("峰值强度", format="%.3f")
             },
         )
-        det = policy_summary[policy_summary["policy"].isin(["current_heuristic", "bayesian_ei", "bayesian_eig"])]
-        if not det.empty:
+        st.download_button(
+            "下载多尺度事件目录", anomaly_events.to_csv(index=False).encode("utf-8-sig"),
+            "multiscale_event_catalog.csv", "text/csv",
+        )
+
+    with st.container(border=True, key="research_section_tab_methods_3"):
+        st.markdown("#### 分析路径选择")
+        selected_branch_count = int(router_trace["selected"].sum())
+        kpi_grid([
+            ("当前启用分析分支", f"{selected_branch_count}/4", "由本轮数据诊断门控决定"),
+            ("数据完整度", f"{float(router_diagnostics['completeness']):.1%}", "本轮核心变量非缺失比例"),
+            ("样本支持", f"{float(router_diagnostics['sample_support']):.2f}", f"当前共{int(router_diagnostics['rows']):,}行"),
+            ("事件支持", f"{float(router_diagnostics['event_support']):.2f}", f"当前事件记录{int(router_diagnostics['events'])}条"),
+            ("时间依赖", f"{float(router_diagnostics['temporal_dependence']):.2f}", "MHW强度平均|lag-1自相关|"),
+            ("跨尺度一致性", f"{float(router_diagnostics['scale_consistency']):.2f}", "当前异常事件的平均尺度一致性"),
+        ])
+        route_display = router_trace[[
+            "branch", "compatibility_score", "routing_probability", "decision", "reason"
+        ]].copy()
+        route_display["branch"] = route_display["branch"].map({
+            "blocked_prediction": "跨时间与跨区域风险验证",
+            "multiscale_anomaly": "多时间尺度异常识别",
+            "te_cte_network": "跨区域传播路径识别",
+            "spatial_durbin": "邻近海区溢出影响",
+        })
+        route_display["decision"] = route_display["decision"].map({"run": "运行", "defer": "暂缓"})
+        research_table(
+            route_display, width="stretch", hide_index=True,
+            column_config={
+                "compatibility_score": st.column_config.ProgressColumn(min_value=0.0, max_value=1.0),
+                "routing_probability": st.column_config.NumberColumn(format="%.3f"),
+            },
+        )
+        st.caption(
+            "两阶段门控先计算完整度、样本支持、时间依赖、空间支持、事件支持和跨尺度一致性，"
+            "再对四条分支给出兼容度与软路由概率；每次决策均进入日志。"
+        )
+
+    with st.container(border=True, key="research_section_tab_methods_4"):
+        st.markdown("#### 跨区域传播时滞")
+        st.caption("比较预设输运方向和反向路径，识别最可能的传播时滞，并对偶然相关进行多重检验控制。")
+        peak_lag = int(te_cte_lag_summary.loc[te_cte_lag_summary["mean_cte_bits"].idxmax(), "lag_days"])
+        peak_lag_row = te_cte_lag_summary[te_cte_lag_summary["lag_days"].eq(peak_lag)].iloc[0]
+        significant_edges = int(te_cte_network["significant_fdr_0_10"].sum())
+        total_edges = int(len(te_cte_network))
+        kpi_grid([
+            ("本轮峰值传播时滞", f"{peak_lag}天", "由当前序列与随机种子重新估计"),
+            ("峰值沿流CTE", f"{float(peak_lag_row['mean_cte_bits']):.3f} bit", "跨边平均条件信息量"),
+            ("对应反向CTE", f"{float(peak_lag_row['mean_reverse_cte_bits']):.3f} bit", "用于方向性反证"),
+            ("FDR通过边", f"{significant_edges}/{total_edges}", "边级置换检验 + BH校正"),
+            ("候选时滞数", f"{te_cte_lag_summary['lag_days'].nunique()}", "当前固定候选集合"),
+            ("方向净差", f"{float(peak_lag_row['mean_cte_bits'] - peak_lag_row['mean_reverse_cte_bits']):.3f} bit", "峰值时滞下沿流减反向"),
+        ])
+        te_long = te_cte_lag_summary.melt(
+            id_vars="lag_days",
+            value_vars=["mean_cte_bits", "mean_reverse_cte_bits"],
+            var_name="direction", value_name="information_bits",
+        )
+        te_long["direction"] = te_long["direction"].map({
+            "mean_cte_bits": "预设沿流方向 CTE",
+            "mean_reverse_cte_bits": "反向路径 CTE",
+        })
+        te_chart = px.line(
+            te_long, x="lag_days", y="information_bits", color="direction", markers=True,
+            labels={"lag_days": "时滞（天）", "information_bits": "条件传递熵（bit）", "direction": "路径"},
+            color_discrete_sequence=["#1c78c0", "#b8865b"],
+        )
+        te_chart.add_vline(x=14, line_dash="dot", line_color="#4d9ce0")
+        te_chart.update_layout(height=350, margin={"l": 5, "r": 5, "t": 20, "b": 5})
+        research_plot(te_chart, width="stretch", config={"displayModeBar": False})
+        st.caption(f"当前峰值时滞：{peak_lag}天。14天为合成生成器预设真值，仅用于事后核验。")
+        te_display = te_cte_network[[
+                "source_region", "target_region", "lag_days", "te_bits", "cte_bits",
+                "reverse_cte_bits", "net_directionality_bits", "permutation_p", "fdr_q",
+                "significant_fdr_0_10",
+            ]].head(16).copy()
+        te_display["source_region"] = te_display["source_region"].map(REGION_LABELS)
+        te_display["target_region"] = te_display["target_region"].map(REGION_LABELS)
+        research_table(
+            te_display, width="stretch", hide_index=True,
+            column_config={
+                "source_region": "信号来源区", "target_region": "风险响应区",
+                "lag_days": "传播时滞（天）", "cte_bits": "方向信息量",
+                "reverse_cte_bits": "反向路径信息量", "fdr_q": "校正后可靠性",
+                "significant_fdr_0_10": "通过可靠性检验",
+            },
+        )
+        st.download_button(
+            "下载TE/CTE边级网络", te_cte_network.to_csv(index=False).encode("utf-8-sig"),
+            "te_cte_network.csv", "text/csv",
+        )
+
+    with st.container(border=True, key="research_section_tab_methods_5"):
+        st.markdown("#### 邻近海区影响")
+        st.caption("将本地影响、邻近海区溢出和总体关联分开呈现，便于确定需要同步监测的范围。")
+        labels = {
+            "multiscale_anomaly_score_lag14": "14天滞后多尺度异常",
+            "nutrient_context": "营养盐背景",
+            "circulation_residence_proxy": "输运/停留/汇聚代理",
+        }
+        effect_plot = spatial_effects.copy()
+        effect_plot["变量"] = effect_plot["variable"].map(labels)
+        effect_plot["影响"] = effect_plot["effect_type"].map({
+            "direct": "直接", "indirect": "间接", "total": "总影响"
+        })
+        effect_chart = px.bar(
+            effect_plot, x="变量", y="effect_per_1sd", color="影响", barmode="group",
+            labels={"effect_per_1sd": "合成HAB概率变化 / 1 SD"},
+            color_discrete_sequence=["#2c83bc", "#e39b47", "#4d9ce0"],
+        )
+        effect_chart.update_layout(height=390, margin={"l": 5, "r": 5, "t": 20, "b": 5})
+        research_plot(effect_chart, width="stretch", config={"displayModeBar": False})
+        anomaly_effect_rows = spatial_effects[
+            spatial_effects["variable"].eq("multiscale_anomaly_score_lag14")
+        ].set_index("effect_type")
+        direct_effect = anomaly_effect_rows.loc["direct"]
+        indirect_effect = anomaly_effect_rows.loc["indirect"]
+        total_effect = anomaly_effect_rows.loc["total"]
+        kpi_grid([
+            ("区域联动强度", f"ρ = {float(spatial_diagnostics['rho']):.2f}", "本轮空间诊断结果"),
+            ("探索性解释度", f"{float(spatial_diagnostics['pseudo_r2']):.3f}", "当前合成基准拟合"),
+            ("Bootstrap复核", f"{int(spatial_diagnostics['bootstrap_repeats'])}次", "当前运行的区域块重复抽样"),
+            ("14天异常·本地影响", f"{float(direct_effect['effect_per_1sd']):+.3f}", f"90%区间 {float(direct_effect['ci90_lower']):+.3f}–{float(direct_effect['ci90_upper']):+.3f}"),
+            ("14天异常·邻区溢出", f"{float(indirect_effect['effect_per_1sd']):+.3f}", f"90%区间 {float(indirect_effect['ci90_lower']):+.3f}–{float(indirect_effect['ci90_upper']):+.3f}"),
+            ("14天异常·总体关联", f"{float(total_effect['effect_per_1sd']):+.3f}", f"90%区间 {float(total_effect['ci90_lower']):+.3f}–{float(total_effect['ci90_upper']):+.3f}"),
+        ])
+        st.caption(
+            "区域传播关系根据预设输运方向标准化；14天窗口来自前述风险模式和传播路径结果。"
+            "效应值表示合成环境中的关联强度，用于空间影响分解。"
+        )
+        visible_effects = effect_plot[[
+            "变量", "影响", "effect_per_1sd", "ci90_lower", "ci90_upper"
+        ]].copy()
+        research_table(
+            visible_effects, width="stretch", hide_index=True,
+            column_config={
+                "effect_per_1sd": "每1 SD关联强度", "ci90_lower": "不确定区间下限",
+                "ci90_upper": "不确定区间上限",
+            },
+        )
+        st.download_button(
+            "下载Durbin影响分解", spatial_effects.to_csv(index=False).encode("utf-8-sig"),
+            "spatial_durbin_effects.csv", "text/csv",
+        )
+
+with tab_agent:
+    with st.container(border=True, key="research_section_tab_agent_0"):
+        st.markdown("### 实验对照与探索记录")
+
+        c1, c2 = st.columns([1.15, 1.0], gap="large")
+        with c1:
+            comparison = pd.concat([
+                baselines[["baseline", "pr_auc", "brier_skill", "ece"]].rename(columns={"baseline": "方法"}),
+                pd.DataFrame([{
+                    "方法": "GlobalHAB-Agent最佳候选",
+                    "pr_auc": best["pr_auc"],
+                    "brier_skill": best["brier_skill"],
+                    "ece": best["ece"],
+                }]),
+            ], ignore_index=True)
+            fig = px.scatter(
+                comparison, x="pr_auc", y="方法", color="方法", text="pr_auc",
+                title="同一留出集：候选与基线", labels={"pr_auc":"AP · 越高越好", "方法":""},
+                color_discrete_sequence=["#8cbddc", "#c7a76c", "#1c78c0"],
+            )
+            fig.update_traces(marker=dict(size=15), texttemplate="%{x:.3f}", textposition="top center",cliponaxis=False)
+            fig.update_layout(showlegend=False, height=350, margin={"l": 5, "r": 5, "t": 55, "b": 10})
+            research_plot(fig, width="stretch", config={"displayModeBar": False})
+        with c2:
+            st.markdown("#### 随机探索参照")
             kpi_grid([
-                (str(row.policy_label), "恢复" if float(row.recovery_rate) >= 0.999 else "未恢复",
-                 f"首次14天候选：第{int(row.median_first_hidden_step)}步" if pd.notna(row.median_first_hidden_step) else "8步内未触达")
-                for row in det.itertuples(index=False)
+                ("随机探索识别14天模式", f"{float(random_ref['hidden_signal_recovery_rate']):.1%}", "识别生成器14天真值的重复比例"),
+                ("随机探索中位效用", f"{float(random_ref['median_best_utility']):.3f}", "随机策略的最佳效用分布"),
+                ("重复对照次数", f"{int(random_ref['repeats'])}", "每次使用相同候选空间"),
             ])
-        with st.expander("查看各策略代表性探索轨迹"):
-            trace_cols = ["policy_label", "step", "action_id", "status", "pr_auc", "brier_skill", "ece", "utility"]
-            available_cols = [c for c in trace_cols if c in policy_bench["trajectory"].columns]
-            st.dataframe(policy_bench["trajectory"][available_cols], width="stretch", hide_index=True)
+            st.caption(
+                f"基于{int(random_ref['repeats'])}次随机选择；每次使用相同候选空间、"
+                f"相同预算（{active_config['budget']}步）和相同阻断验证结果。"
+            )
+            st.markdown("#### 负对照")
+            research_table(
+                controls[["control_name", "pr_auc", "pr_auc_gain", "brier_skill", "ece"]],
+                width="stretch", hide_index=True,
+            )
+
+    with st.container(border=True, key="research_section_tab_agent_1"):
+        st.markdown("#### 实验选择策略对比")
         st.caption(
-            "策略比较基于同一合成实验空间；14天真值不参与策略选择，真实数据上的策略效率需单独验证。"
+            "在相同候选空间和实验预算下比较启发式、Bayesian Expected Improvement、Bayesian Information Gain、Thompson Sampling与随机策略。14天真值不参与策略选择。"
         )
-    elif policy_bench is not None:
-        st.warning("当前探索设置已变化，请重新运行策略对比。")
-
-    st.markdown("#### 完整探索轨迹")
-    display = log[[
-        "step", "hypothesis", "action_id", "status", "pr_auc", "pr_auc_gain",
-        "brier_skill", "ece", "false_positive_rate_at_top20",
-        "compute_cost_units", "budget_remaining",
-    ]]
-    st.dataframe(display, width="stretch", hide_index=True)
-    st.download_button(
-        "下载完整探索日志 CSV",
-        log.to_csv(index=False).encode("utf-8-sig"),
-        "agent_exploration_log.csv",
-        "text/csv",
-    )
-
-    st.markdown("#### 留出海区风险序列")
-    plot = predictions.set_index("date")[["risk_probability", "hab_event", "top20_alert"]]
-    st.line_chart(plot, height=320)
-    st.caption("Top20%报警是固定容量排名，不使用留出标签选择阈值。")
-
-    st.markdown("#### 模型对比")
-    st.caption(
-        "Logistic、Random Forest和STS-Interaction GLM使用当前候选、留出海区和前向测试窗计算；时序深度模型在完整Benchmark中按需运行。"
-    )
-    selected_pair = catalog[
-        catalog["route"].eq(str(best["route"]))
-        & catalog["lag_days"].eq(int(best["lag_days"]))
-    ].copy()
-    logistic_current = selected_pair[selected_pair["model"].eq("logistic")].iloc[0]
-    rf_current = selected_pair[selected_pair["model"].eq("random_forest")].iloc[0]
-    current_test_rows = int(logistic_current["test_rows"])
-    current_test_events = int(logistic_current["test_events"])
-
-    try:
-        interaction_current = cached_current_interaction_glm(
-            frame, int(best["lag_days"]), active_config["holdout_region"],
-            float(active_config["test_fraction"]),
+        policy_key = (
+            int(active_config["days"]), int(active_config["seed"]), int(active_config["budget"]),
+            active_config["holdout_region"], float(active_config["test_fraction"]),
         )
-        interaction_available = True
-    except (ValueError, RuntimeError) as exc:
-        interaction_current = None
-        interaction_available = False
-        st.warning(f"当前阻断设置暂不能计算STS-Interaction GLM：{exc}")
+        run_policy_bench = st.button("运行当前设置的Agent策略对比", key="run_agent_policy_benchmark")
+        if run_policy_bench:
+            with st.spinner("正在比较实验选择策略……"):
+                st.session_state["agent_policy_benchmark"] = cached_policy_benchmark(
+                    catalog, int(active_config["budget"]), int(active_config["seed"])
+                )
+                st.session_state["agent_policy_benchmark_key"] = policy_key
+        policy_bench = st.session_state.get("agent_policy_benchmark")
+        if policy_bench is not None and st.session_state.get("agent_policy_benchmark_key") == policy_key:
+            policy_summary = policy_bench["summary"].copy()
+            policy_display = policy_summary[[
+                "policy_label", "recovery_rate", "median_first_hidden_step",
+                "median_best_utility", "repeats",
+            ]].copy()
+            policy_display["recovery_rate"] = 100.0 * policy_display["recovery_rate"].astype(float)
+            policy_display = policy_display.rename(columns={
+                "policy_label": "实验选择策略",
+                "recovery_rate": "14天模式恢复率（%）",
+                "median_first_hidden_step": "首次试到14天模式的中位步数",
+                "median_best_utility": "最佳效用中位数",
+                "repeats": "重复次数",
+            })
+            research_table(
+                policy_display, width="stretch", hide_index=True,
+                column_config={
+                    "14天模式恢复率（%）": st.column_config.NumberColumn(format="%.1f"),
+                    "首次试到14天模式的中位步数": st.column_config.NumberColumn(format="%.1f"),
+                    "最佳效用中位数": st.column_config.NumberColumn(format="%.3f"),
+                },
+            )
+            det = policy_summary[policy_summary["policy"].isin(["current_heuristic", "bayesian_ei", "bayesian_eig"])]
+            if not det.empty:
+                kpi_grid([
+                    (str(row.policy_label), "恢复" if float(row.recovery_rate) >= 0.999 else "未恢复",
+                     f"首次14天候选：第{int(row.median_first_hidden_step)}步" if pd.notna(row.median_first_hidden_step) else "8步内未触达")
+                    for row in det.itertuples(index=False)
+                ])
+            with st.expander("查看各策略代表性探索轨迹"):
+                trace_cols = ["policy_label", "step", "action_id", "status", "pr_auc", "brier_skill", "ece", "utility"]
+                available_cols = [c for c in trace_cols if c in policy_bench["trajectory"].columns]
+                research_table(policy_bench["trajectory"][available_cols], width="stretch", hide_index=True)
+            st.caption(
+                "策略比较基于同一合成实验空间；14天真值不参与策略选择，真实数据上的策略效率需单独验证。"
+            )
+        elif policy_bench is not None:
+            st.warning("当前探索设置已变化，请重新运行策略对比。")
 
-    model_cards = [
-        ("当前候选", f"{best['route']} · {int(best['lag_days'])}天", f"完全留出 {active_holdout}"),
-        ("Logistic AP", f"{float(logistic_current['pr_auc']):.3f}", f"{current_test_rows}条测试记录 / {current_test_events}个事件"),
-        ("Random Forest AP", f"{float(rf_current['pr_auc']):.3f}", "与Logistic完全相同测试集"),
-    ]
-    if interaction_available:
-        model_cards.append((
-            "STS-Interaction GLM AP", f"{float(interaction_current['pr_auc']):.3f}",
-            f"C={float(interaction_current['selected_c']):.2g}；仅训练期内选择"
-        ))
-    kpi_grid(model_cards)
-
-    current_models = [
-        {
-            "模型": "Logistic", "模型类型": "线性基线",
-            "特征结构": "当前候选的环境/季节特征",
-            "Average Precision": float(logistic_current["pr_auc"]),
-            "Brier Skill": float(logistic_current["brier_skill"]), "ECE": float(logistic_current["ece"]),
-            "测试记录": int(logistic_current["test_rows"]), "测试事件": int(logistic_current["test_events"]),
-        },
-        {
-            "模型": "Random Forest", "模型类型": "树集成",
-            "特征结构": "变量非线性与高阶分裂",
-            "Average Precision": float(rf_current["pr_auc"]),
-            "Brier Skill": float(rf_current["brier_skill"]), "ECE": float(rf_current["ece"]),
-            "测试记录": int(rf_current["test_rows"]), "测试事件": int(rf_current["test_events"]),
-        },
-    ]
-    if interaction_available:
-        current_models.append({
-            "模型": "STS-Interaction GLM", "模型类型": "结构化GLM",
-            "特征结构": "沿流热异常 + 营养背景 + 显式交互项",
-            "Average Precision": float(interaction_current["pr_auc"]),
-            "Brier Skill": float(interaction_current["brier_skill"]), "ECE": float(interaction_current["ece"]),
-            "测试记录": int(interaction_current["test_rows"]), "测试事件": int(interaction_current["test_events"]),
-        })
-    current_model_frame = pd.DataFrame(current_models)
-    st.dataframe(current_model_frame, width="stretch", hide_index=True)
-
-    st.markdown("##### STS-Interaction GLM 结构")
-    st.write(
-        "模型包含上游滞后热异常、输运门控、营养背景及其显式交互项；正则参数仅在训练时段内选择。"
-    )
-    st.markdown("##### 完整模型Benchmark")
-    st.caption(
-        "Benchmark覆盖规则/统计基线、非线性统计、经典机器学习、树集成、Boosting、神经网络和STS结构模型。所有方法使用相同lag、留出海区和前向测试窗；超参数仅在训练时段内部选择。"
-    )
-    st.caption(
-        "上方Logistic/RF为候选搜索中的固定配置；完整Benchmark允许在训练时段内进行小型超参数选择，因此同名模型的数值可能略有不同。"
-    )
-    catalogue_view = benchmark_catalogue()
-    with st.expander(f"查看将参与比较的 {len(catalogue_view)} 种方法", expanded=False):
-        st.dataframe(catalogue_view, width="stretch", hide_index=True)
-
-    benchmark_key = (
-        int(active_config["days"]), int(active_config["seed"]), int(best["lag_days"]),
-        active_config["holdout_region"], float(active_config["test_fraction"])
-    )
-    b1, b2 = st.columns([1, 1])
-    with b1:
-        run_core_benchmark = st.button(
-            "运行非深度模型Benchmark", key="run_broad_benchmark_core", type="primary"
+    with st.container(border=True, key="research_section_tab_agent_2"):
+        st.markdown("#### 完整探索轨迹")
+        display = log[[
+            "step", "hypothesis", "action_id", "status", "pr_auc", "pr_auc_gain",
+            "brier_skill", "ece", "false_positive_rate_at_top20",
+            "compute_cost_units", "budget_remaining",
+        ]]
+        research_table(display, width="stretch", hide_index=True)
+        st.download_button(
+            "下载完整探索日志 CSV",
+            log.to_csv(index=False).encode("utf-8-sig"),
+            "agent_exploration_log.csv",
+            "text/csv",
         )
-    with b2:
-        run_deep_benchmark = st.button(
-            "加入Lightweight TCN与STS-Gated TCN", key="run_broad_benchmark_deep"
+
+    with st.container(border=True, key="research_section_tab_agent_3"):
+        st.markdown("#### 留出海区风险序列")
+        plot = predictions.set_index("date")[["risk_probability", "hab_event", "top20_alert"]]
+        st.line_chart(plot, height=320)
+        st.caption("Top20%报警是固定容量排名，不使用留出标签选择阈值。")
+
+    with st.container(border=True, key="research_section_tab_agent_4"):
+        st.markdown("#### 模型对比")
+        st.caption(
+            "Logistic、Random Forest和STS-Interaction GLM使用当前候选、留出海区和前向测试窗计算；时序深度模型在完整Benchmark中按需运行。"
         )
-    if run_core_benchmark:
-        with st.spinner("正在相同阻断留出集上运行完整模型Benchmark……"):
-            st.session_state["broad_benchmark"] = cached_broad_benchmark(
+        selected_pair = catalog[
+            catalog["route"].eq(str(best["route"]))
+            & catalog["lag_days"].eq(int(best["lag_days"]))
+        ].copy()
+        logistic_current = selected_pair[selected_pair["model"].eq("logistic")].iloc[0]
+        rf_current = selected_pair[selected_pair["model"].eq("random_forest")].iloc[0]
+        current_test_rows = int(logistic_current["test_rows"])
+        current_test_events = int(logistic_current["test_events"])
+
+        try:
+            interaction_current = cached_current_interaction_glm(
                 frame, int(best["lag_days"]), active_config["holdout_region"],
-                float(active_config["test_fraction"]), False,
+                float(active_config["test_fraction"]),
             )
-            st.session_state["broad_benchmark_key"] = benchmark_key
-            st.session_state["broad_benchmark_deep"] = False
-    if run_deep_benchmark:
-        with st.spinner("正在加入两个时序深度模型的当前动态对照；该步骤比经典模型更耗时……"):
-            st.session_state["broad_benchmark"] = cached_broad_benchmark(
-                frame, int(best["lag_days"]), active_config["holdout_region"],
-                float(active_config["test_fraction"]), True,
-            )
-            st.session_state["broad_benchmark_key"] = benchmark_key
-            st.session_state["broad_benchmark_deep"] = True
+            interaction_available = True
+        except (ValueError, RuntimeError) as exc:
+            interaction_current = None
+            interaction_available = False
+            st.warning(f"当前阻断设置暂不能计算STS-Interaction GLM：{exc}")
 
-    broad = st.session_state.get("broad_benchmark")
-    broad_key = st.session_state.get("broad_benchmark_key")
-    if broad is not None and broad_key == benchmark_key:
-        bench = broad["summary"].copy()
-        card = broad["card"]
-        def _best_in(categories):
-            sub = bench[bench["category"].isin(categories)]
-            return sub.sort_values("ap", ascending=False).iloc[0] if not sub.empty else None
-        best_stat = _best_in(["规则/统计基线", "统计基线", "非线性统计"])
-        best_classic = _best_in(["经典机器学习", "树集成"])
-        best_boost = _best_in(["Boosting强基线"])
-        sts_row = bench[bench["model"].eq("STS-Interaction GLM")].iloc[0]
-        summary_cards = []
-        if best_stat is not None:
-            summary_cards.append(("最佳统计/规则方法", f"{best_stat['model']} · {best_stat['ap']:.3f}", "当前严格留出AP"))
-        if best_classic is not None:
-            summary_cards.append(("最佳经典机器学习", f"{best_classic['model']} · {best_classic['ap']:.3f}", "同一测试集"))
-        if best_boost is not None:
-            summary_cards.append(("最佳Boosting", f"{best_boost['model']} · {best_boost['ap']:.3f}", "当前留出集"))
-        summary_cards.append(("STS-Interaction GLM", f"{sts_row['ap']:.3f}", "当前留出集"))
-        kpi_grid(summary_cards)
+        model_cards = [
+            ("当前候选", f"{best['route']} · {int(best['lag_days'])}天", f"完全留出 {active_holdout}"),
+            ("Logistic AP", f"{float(logistic_current['pr_auc']):.3f}", f"{current_test_rows}条测试记录 / {current_test_events}个事件"),
+            ("Random Forest AP", f"{float(rf_current['pr_auc']):.3f}", "与Logistic完全相同测试集"),
+        ]
+        if interaction_available:
+            model_cards.append((
+                "STS-Interaction GLM AP", f"{float(interaction_current['pr_auc']):.3f}",
+                f"C={float(interaction_current['selected_c']):.2g}；仅训练期内选择"
+            ))
+        kpi_grid(model_cards)
 
-        st.caption(
-            f"测试集一致性：{int(card['model_count'])}种方法；测试集 {int(card['test_rows'])} 条记录 / "
-            f"{int(card['test_events'])} 个事件；完全留出 {active_holdout}；前向切分日期 {card['cut_date']}。"
-        )
-
-        # 图1：完整性能排名。标题与图例均放在绘图区之外，避免与条形内容争抢顶部空间。
-        chart_data = bench.sort_values("ap", ascending=True).copy()
-        st.markdown("##### 模型性能排名")
-        st.caption("同一严格留出集上的 Average Precision；所有方法使用完全相同的测试记录与事件。")
-        fig_bench = px.bar(
-            chart_data, x="ap", y="model", color="category", orientation="h",
-            labels={"ap": "Average Precision", "model": "模型", "category": "方法类别"},
-            text_auto=".3f",
-        )
-        fig_bench.update_traces(textposition="outside", cliponaxis=False)
-        # Plotly Express按颜色拆成多个trace后可能重新分组；显式固定全局AP排序。
-        fig_bench.update_yaxes(
-            categoryorder="array",
-            categoryarray=chart_data["model"].tolist(),
-            title_text="",
-        )
-        fig_bench.update_layout(
-            height=max(590, 36 * len(chart_data)),
-            margin={"l": 10, "r": 230, "t": 20, "b": 40},
-            legend_title_text="方法类别",
-            legend={
-                "orientation": "v",
-                "yanchor": "top", "y": 1.0,
-                "xanchor": "left", "x": 1.01,
-                "itemsizing": "constant",
+        current_models = [
+            {
+                "模型": "Logistic", "模型类型": "线性基线",
+                "特征结构": "当前候选的环境/季节特征",
+                "Average Precision": float(logistic_current["pr_auc"]),
+                "Brier Skill": float(logistic_current["brier_skill"]), "ECE": float(logistic_current["ece"]),
+                "测试记录": int(logistic_current["test_rows"]), "测试事件": int(logistic_current["test_events"]),
             },
-        )
-        st.plotly_chart(fig_bench, width="stretch", config={"displayModeBar": False})
-
-        # 图2：性能—成本权衡。所有模型保留为点，但只给少数关键模型加文字；
-        # 标题和类别图例继续放到绘图区之外，其余模型通过悬停查看。
-        st.markdown("##### 性能—计算成本权衡")
-        st.caption("横轴为平均拟合时间（对数轴），纵轴为Average Precision；虚线表示当前Pareto前沿。")
-        scatter = bench.dropna(subset=["fit_seconds"]).copy()
-        scatter["fit_seconds_plot"] = scatter["fit_seconds"].clip(lower=0.001)
-        fig_eff = px.scatter(
-            scatter,
-            x="fit_seconds_plot",
-            y="ap",
-            color="category",
-            log_x=True,
-            hover_name="model",
-            hover_data={
-                "fit_seconds_plot": ":.4f",
-                "ap": ":.3f",
-                "brier_skill": ":.3f",
-                "ece": ":.3f",
-                "category": True,
+            {
+                "模型": "Random Forest", "模型类型": "树集成",
+                "特征结构": "变量非线性与高阶分裂",
+                "Average Precision": float(rf_current["pr_auc"]),
+                "Brier Skill": float(rf_current["brier_skill"]), "ECE": float(rf_current["ece"]),
+                "测试记录": int(rf_current["test_rows"]), "测试事件": int(rf_current["test_events"]),
             },
-            labels={
-                "fit_seconds_plot": "平均拟合时间（秒，对数轴）",
-                "ap": "Average Precision",
-                "category": "方法类别",
-            },
-        )
-        fig_eff.update_traces(marker={"size": 10, "opacity": 0.72}, text=None)
+        ]
+        if interaction_available:
+            current_models.append({
+                "模型": "STS-Interaction GLM", "模型类型": "结构化GLM",
+                "特征结构": "沿流热异常 + 营养背景 + 显式交互项",
+                "Average Precision": float(interaction_current["pr_auc"]),
+                "Brier Skill": float(interaction_current["brier_skill"]), "ECE": float(interaction_current["ece"]),
+                "测试记录": int(interaction_current["test_rows"]), "测试事件": int(interaction_current["test_events"]),
+            })
+        current_model_frame = pd.DataFrame(current_models)
+        research_table(current_model_frame, width="stretch", hide_index=True)
 
-        # 动态计算Pareto前沿：更高AP、更低拟合时间为优。
-        pareto = scatter.sort_values(["fit_seconds_plot", "ap"], ascending=[True, False]).copy()
-        running_best = float("-inf")
-        keep = []
-        for idx, row in pareto.iterrows():
-            if float(row["ap"]) > running_best + 1e-12:
-                keep.append(idx)
-                running_best = float(row["ap"])
-        pareto = pareto.loc[keep].sort_values("fit_seconds_plot")
-        if len(pareto) >= 2:
-            fig_eff.add_scatter(
-                x=pareto["fit_seconds_plot"],
-                y=pareto["ap"],
-                mode="lines",
-                name="Pareto前沿",
-                hoverinfo="skip",
-                line={"width": 2, "dash": "dot"},
-            )
-
-        # 只标注少量关键点：当前最优、最佳经典/Boosting，以及两个STS模型。
-        key_models = set()
-        if not scatter.empty:
-            key_models.add(str(scatter.sort_values("ap", ascending=False).iloc[0]["model"]))
-        classic_pool = scatter[scatter["category"].isin(["经典机器学习", "树集成", "Boosting强基线"])]
-        if not classic_pool.empty:
-            key_models.add(str(classic_pool.sort_values("ap", ascending=False).iloc[0]["model"]))
-        for name in ["STS-Interaction GLM", "STS-Gated TCN"]:
-            if name in set(scatter["model"]):
-                key_models.add(name)
-        labels_df = scatter[scatter["model"].isin(key_models)].copy()
-        if not labels_df.empty:
-            fig_eff.add_scatter(
-                x=labels_df["fit_seconds_plot"],
-                y=labels_df["ap"],
-                mode="markers+text",
-                text=labels_df["model"],
-                textposition="top center",
-                name="关键模型",
-                marker={"size": 14, "symbol": "diamond"},
-                hoverinfo="skip",
-            )
-
-        # 给顶部关键模型名称留出余量，避免文字触碰绘图区上边缘。
-        if not scatter.empty:
-            y_min = float(scatter["ap"].min())
-            y_max = float(scatter["ap"].max())
-            y_pad = max(0.025, 0.10 * max(y_max - y_min, 0.05))
-            fig_eff.update_yaxes(range=[max(0.0, y_min - y_pad), min(1.0, y_max + 1.8 * y_pad)])
-        fig_eff.update_layout(
-            height=550,
-            margin={"l": 10, "r": 230, "t": 25, "b": 55},
-            legend_title_text="方法类别",
-            legend={
-                "orientation": "v",
-                "yanchor": "top", "y": 1.0,
-                "xanchor": "left", "x": 1.01,
-                "itemsizing": "constant",
-            },
-        )
-        st.plotly_chart(fig_eff, width="stretch", config={"displayModeBar": False})
-        st.caption("未直接标注的模型可悬停查看名称、AP、Brier Skill、ECE与拟合时间。")
-
-        display_bench = bench.rename(columns={
-            "model": "模型", "category": "方法类别", "ap": "AP", "ap_sd": "AP标准差",
-            "brier_skill": "Brier Skill", "ece": "ECE", "top20_recall": "Top20事件覆盖",
-            "top20_precision": "Top20精度", "fit_seconds": "拟合秒数", "repeats": "重复次数",
-            "complexity": "模型规模", "test_rows": "测试记录", "test_events": "测试事件",
-        })
-        st.dataframe(display_bench, width="stretch", hide_index=True)
-
-        logistic_row = bench[bench["model"].eq("Logistic")].iloc[0]
-        delta = float(sts_row["ap"] - logistic_row["ap"] )
-        st.caption(
-            f"当前同一留出集上，STS-Interaction GLM 相对 Logistic 的 AP 变化为 {delta:+.3f}。"
-            "所有模型均使用同一测试集；需要选参的方法只在训练期内部选择。"
-        )
-        if bool(st.session_state.get("broad_benchmark_deep")):
-            st.info("当前表已经包含两个时序深度模型的当前动态结果；两者使用同一外层阻断留出集，且固定结构不依据测试标签调参。")
-        with st.expander("查看训练期内超参数选择轨迹与逐次结果"):
-            st.dataframe(broad["tuning_trace"], width="stretch", hide_index=True)
-            st.dataframe(broad["seed_results"], width="stretch", hide_index=True)
-    elif broad is not None:
-        st.warning("当前序列长度、lag、留出区或测试比例已变化，请重新运行Benchmark。")
-
-    st.markdown("##### 轻量TCN容量试验")
-    with st.expander("查看5随机种子结果"):
-        st.caption("固定配置：720天、seed 42、预算8、留出Region D、前向25%；与当前动态Benchmark分开记录。")
-        tcn_row = model_complexity_summary[
-            model_complexity_summary["model"].eq("轻量TCN")
-        ].iloc[0]
-        classical_ap = float(model_complexity_summary[
-            model_complexity_summary["model"].ne("轻量TCN")
-        ]["ap_median"].max())
-        audit_result = "稳定增益" if model_complexity_card["stable_improvement"] else "未见稳定增益"
+        st.markdown("##### STS-Interaction GLM 结构")
         st.write(
-            f"容量试验结果：{audit_result}。轻量TCN中位AP {float(tcn_row['ap_median']):.3f}，"
-            f"经典模型最佳中位AP {classical_ap:.3f}。"
+            "模型包含上游滞后热异常、输运门控、营养背景及其显式交互项；正则参数仅在训练时段内选择。"
+        )
+        st.markdown("##### 完整模型Benchmark")
+        st.caption(
+            "Benchmark覆盖规则/统计基线、非线性统计、经典机器学习、树集成、Boosting、神经网络和STS结构模型。所有方法使用相同lag、留出海区和前向测试窗；超参数仅在训练时段内部选择。"
         )
         st.caption(
-            f"TCN结构和训练轮数仅使用外层训练区内部数据选择；最终结构为"
-            f"{model_complexity_card['tcn']['configuration']}，"
-            f"共{model_complexity_card['tcn']['parameter_count']}个可训练参数。"
+            "上方Logistic/RF为候选搜索中的固定配置；完整Benchmark允许在训练时段内进行小型超参数选择，因此同名模型的数值可能略有不同。"
         )
-        complexity_display = model_complexity_summary[[
-            "model", "ap_median", "ap_sd", "brier_mean", "ece_mean",
-            "fit_seconds_mean", "complexity",
-        ]].rename(columns={
-            "model": "模型", "ap_median": "AP中位数", "ap_sd": "AP标准差",
-            "brier_mean": "Brier均值", "ece_mean": "ECE均值",
-            "fit_seconds_mean": "平均拟合秒数", "complexity": "规模",
-        })
-        st.dataframe(complexity_display, width="stretch", hide_index=True)
-        st.dataframe(model_complexity_selection, width="stretch", hide_index=True)
-        st.dataframe(model_complexity_seeds, width="stretch", hide_index=True)
-        d1, d2 = st.columns(2)
-        with d1:
-            st.download_button(
-                "下载逐种子结果", model_complexity_seeds.to_csv(index=False).encode("utf-8-sig"),
-                "model_complexity_seed_results.csv", "text/csv",
+        catalogue_view = benchmark_catalogue()
+        with st.expander(f"查看将参与比较的 {len(catalogue_view)} 种方法", expanded=False):
+            research_table(catalogue_view, width="stretch", hide_index=True)
+
+        benchmark_key = (
+            int(active_config["days"]), int(active_config["seed"]), int(best["lag_days"]),
+            active_config["holdout_region"], float(active_config["test_fraction"])
+        )
+        b1, b2 = st.columns([1, 1])
+        with b1:
+            run_core_benchmark = st.button(
+                "运行非深度模型Benchmark", key="run_broad_benchmark_core", type="primary"
             )
-        with d2:
-            st.download_button(
-                "下载训练区选择记录", model_complexity_selection.to_csv(index=False).encode("utf-8-sig"),
-                "model_complexity_training_selection.csv", "text/csv",
+        with b2:
+            run_deep_benchmark = st.button(
+                "加入Lightweight TCN与STS-Gated TCN", key="run_broad_benchmark_deep"
             )
+        if run_core_benchmark:
+            with st.spinner("正在相同阻断留出集上运行完整模型Benchmark……"):
+                st.session_state["broad_benchmark"] = cached_broad_benchmark(
+                    frame, int(best["lag_days"]), active_config["holdout_region"],
+                    float(active_config["test_fraction"]), False,
+                )
+                st.session_state["broad_benchmark_key"] = benchmark_key
+                st.session_state["broad_benchmark_deep"] = False
+        if run_deep_benchmark:
+            with st.spinner("正在加入两个时序深度模型的当前动态对照；该步骤比经典模型更耗时……"):
+                st.session_state["broad_benchmark"] = cached_broad_benchmark(
+                    frame, int(best["lag_days"]), active_config["holdout_region"],
+                    float(active_config["test_fraction"]), True,
+                )
+                st.session_state["broad_benchmark_key"] = benchmark_key
+                st.session_state["broad_benchmark_deep"] = True
+
+        broad = st.session_state.get("broad_benchmark")
+        broad_key = st.session_state.get("broad_benchmark_key")
+        if broad is not None and broad_key == benchmark_key:
+            bench = broad["summary"].copy()
+            card = broad["card"]
+            def _best_in(categories):
+                sub = bench[bench["category"].isin(categories)]
+                return sub.sort_values("ap", ascending=False).iloc[0] if not sub.empty else None
+            best_stat = _best_in(["规则/统计基线", "统计基线", "非线性统计"])
+            best_classic = _best_in(["经典机器学习", "树集成"])
+            best_boost = _best_in(["Boosting强基线"])
+            sts_row = bench[bench["model"].eq("STS-Interaction GLM")].iloc[0]
+            summary_cards = []
+            if best_stat is not None:
+                summary_cards.append(("最佳统计/规则方法", f"{best_stat['model']} · {best_stat['ap']:.3f}", "当前严格留出AP"))
+            if best_classic is not None:
+                summary_cards.append(("最佳经典机器学习", f"{best_classic['model']} · {best_classic['ap']:.3f}", "同一测试集"))
+            if best_boost is not None:
+                summary_cards.append(("最佳Boosting", f"{best_boost['model']} · {best_boost['ap']:.3f}", "当前留出集"))
+            summary_cards.append(("STS-Interaction GLM", f"{sts_row['ap']:.3f}", "当前留出集"))
+            kpi_grid(summary_cards)
+
+            st.caption(
+                f"测试集一致性：{int(card['model_count'])}种方法；测试集 {int(card['test_rows'])} 条记录 / "
+                f"{int(card['test_events'])} 个事件；完全留出 {active_holdout}；前向切分日期 {card['cut_date']}。"
+            )
+
+            # 图1：完整性能排名。标题与图例均放在绘图区之外，避免与条形内容争抢顶部空间。
+            chart_data = bench.sort_values("ap", ascending=True).copy()
+            st.markdown("##### 模型性能排名")
+            st.caption("同一严格留出集上的 Average Precision；所有方法使用完全相同的测试记录与事件。")
+            fig_bench = px.bar(
+                chart_data, x="ap", y="model", color="category", orientation="h",
+                labels={"ap": "Average Precision", "model": "模型", "category": "方法类别"},
+                text_auto=".3f",
+            )
+            fig_bench.update_traces(textposition="outside", cliponaxis=False)
+            # Plotly Express按颜色拆成多个trace后可能重新分组；显式固定全局AP排序。
+            fig_bench.update_yaxes(
+                categoryorder="array",
+                categoryarray=chart_data["model"].tolist(),
+                title_text="",
+            )
+            fig_bench.update_layout(
+                height=max(590, 36 * len(chart_data)),
+                margin={"l": 10, "r": 230, "t": 20, "b": 40},
+                legend_title_text="方法类别",
+                legend={
+                    "orientation": "v",
+                    "yanchor": "top", "y": 1.0,
+                    "xanchor": "left", "x": 1.01,
+                    "itemsizing": "constant",
+                },
+            )
+            research_plot(fig_bench, width="stretch", config={"displayModeBar": False})
+
+            # 图2：性能—成本权衡。所有模型保留为点，但只给少数关键模型加文字；
+            # 标题和类别图例继续放到绘图区之外，其余模型通过悬停查看。
+            st.markdown("##### 性能—计算成本权衡")
+            st.caption("横轴为平均拟合时间（对数轴），纵轴为Average Precision；虚线表示当前Pareto前沿。")
+            scatter = bench.dropna(subset=["fit_seconds"]).copy()
+            scatter["fit_seconds_plot"] = scatter["fit_seconds"].clip(lower=0.001)
+            fig_eff = px.scatter(
+                scatter,
+                x="fit_seconds_plot",
+                y="ap",
+                color="category",
+                log_x=True,
+                hover_name="model",
+                hover_data={
+                    "fit_seconds_plot": ":.4f",
+                    "ap": ":.3f",
+                    "brier_skill": ":.3f",
+                    "ece": ":.3f",
+                    "category": True,
+                },
+                labels={
+                    "fit_seconds_plot": "平均拟合时间（秒，对数轴）",
+                    "ap": "Average Precision",
+                    "category": "方法类别",
+                },
+            )
+            fig_eff.update_traces(marker={"size": 10, "opacity": 0.72}, text=None)
+
+            # 动态计算Pareto前沿：更高AP、更低拟合时间为优。
+            pareto = scatter.sort_values(["fit_seconds_plot", "ap"], ascending=[True, False]).copy()
+            running_best = float("-inf")
+            keep = []
+            for idx, row in pareto.iterrows():
+                if float(row["ap"]) > running_best + 1e-12:
+                    keep.append(idx)
+                    running_best = float(row["ap"])
+            pareto = pareto.loc[keep].sort_values("fit_seconds_plot")
+            if len(pareto) >= 2:
+                fig_eff.add_scatter(
+                    x=pareto["fit_seconds_plot"],
+                    y=pareto["ap"],
+                    mode="lines",
+                    name="Pareto前沿",
+                    hoverinfo="skip",
+                    line={"width": 2, "dash": "dot"},
+                )
+
+            # 只标注少量关键点：当前最优、最佳经典/Boosting，以及两个STS模型。
+            key_models = set()
+            if not scatter.empty:
+                key_models.add(str(scatter.sort_values("ap", ascending=False).iloc[0]["model"]))
+            classic_pool = scatter[scatter["category"].isin(["经典机器学习", "树集成", "Boosting强基线"])]
+            if not classic_pool.empty:
+                key_models.add(str(classic_pool.sort_values("ap", ascending=False).iloc[0]["model"]))
+            for name in ["STS-Interaction GLM", "STS-Gated TCN"]:
+                if name in set(scatter["model"]):
+                    key_models.add(name)
+            labels_df = scatter[scatter["model"].isin(key_models)].copy()
+            if not labels_df.empty:
+                fig_eff.add_scatter(
+                    x=labels_df["fit_seconds_plot"],
+                    y=labels_df["ap"],
+                    mode="markers+text",
+                    text=labels_df["model"],
+                    textposition="top center",
+                    name="关键模型",
+                    marker={"size": 14, "symbol": "diamond"},
+                    hoverinfo="skip",
+                )
+
+            # 给顶部关键模型名称留出余量，避免文字触碰绘图区上边缘。
+            if not scatter.empty:
+                y_min = float(scatter["ap"].min())
+                y_max = float(scatter["ap"].max())
+                y_pad = max(0.025, 0.10 * max(y_max - y_min, 0.05))
+                fig_eff.update_yaxes(range=[max(0.0, y_min - y_pad), min(1.0, y_max + 1.8 * y_pad)])
+            fig_eff.update_layout(
+                height=550,
+                margin={"l": 10, "r": 230, "t": 25, "b": 55},
+                legend_title_text="方法类别",
+                legend={
+                    "orientation": "v",
+                    "yanchor": "top", "y": 1.0,
+                    "xanchor": "left", "x": 1.01,
+                    "itemsizing": "constant",
+                },
+            )
+            research_plot(fig_eff, width="stretch", config={"displayModeBar": False})
+            st.caption("未直接标注的模型可悬停查看名称、AP、Brier Skill、ECE与拟合时间。")
+
+            display_bench = bench.rename(columns={
+                "model": "模型", "category": "方法类别", "ap": "AP", "ap_sd": "AP标准差",
+                "brier_skill": "Brier Skill", "ece": "ECE", "top20_recall": "Top20事件覆盖",
+                "top20_precision": "Top20精度", "fit_seconds": "拟合秒数", "repeats": "重复次数",
+                "complexity": "模型规模", "test_rows": "测试记录", "test_events": "测试事件",
+            })
+            research_table(display_bench, width="stretch", hide_index=True)
+
+            logistic_row = bench[bench["model"].eq("Logistic")].iloc[0]
+            delta = float(sts_row["ap"] - logistic_row["ap"] )
+            st.caption(
+                f"当前同一留出集上，STS-Interaction GLM 相对 Logistic 的 AP 变化为 {delta:+.3f}。"
+                "所有模型均使用同一测试集；需要选参的方法只在训练期内部选择。"
+            )
+            if bool(st.session_state.get("broad_benchmark_deep")):
+                st.info("当前表已经包含两个时序深度模型的当前动态结果；两者使用同一外层阻断留出集，且固定结构不依据测试标签调参。")
+            with st.expander("查看训练期内超参数选择轨迹与逐次结果"):
+                research_table(broad["tuning_trace"], width="stretch", hide_index=True)
+                research_table(broad["seed_results"], width="stretch", hide_index=True)
+        elif broad is not None:
+            st.warning("当前序列长度、lag、留出区或测试比例已变化，请重新运行Benchmark。")
+
+        st.markdown("##### 轻量TCN容量试验")
+        with st.expander("查看5随机种子结果"):
+            st.caption("固定配置：720天、seed 42、预算8、留出Region D、前向25%；与当前动态Benchmark分开记录。")
+            tcn_row = model_complexity_summary[
+                model_complexity_summary["model"].eq("轻量TCN")
+            ].iloc[0]
+            classical_ap = float(model_complexity_summary[
+                model_complexity_summary["model"].ne("轻量TCN")
+            ]["ap_median"].max())
+            audit_result = "稳定增益" if model_complexity_card["stable_improvement"] else "未见稳定增益"
+            st.write(
+                f"容量试验结果：{audit_result}。轻量TCN中位AP {float(tcn_row['ap_median']):.3f}，"
+                f"经典模型最佳中位AP {classical_ap:.3f}。"
+            )
+            st.caption(
+                f"TCN结构和训练轮数仅使用外层训练区内部数据选择；最终结构为"
+                f"{model_complexity_card['tcn']['configuration']}，"
+                f"共{model_complexity_card['tcn']['parameter_count']}个可训练参数。"
+            )
+            complexity_display = model_complexity_summary[[
+                "model", "ap_median", "ap_sd", "brier_mean", "ece_mean",
+                "fit_seconds_mean", "complexity",
+            ]].rename(columns={
+                "model": "模型", "ap_median": "AP中位数", "ap_sd": "AP标准差",
+                "brier_mean": "Brier均值", "ece_mean": "ECE均值",
+                "fit_seconds_mean": "平均拟合秒数", "complexity": "规模",
+            })
+            research_table(complexity_display, width="stretch", hide_index=True)
+            research_table(model_complexity_selection, width="stretch", hide_index=True)
+            research_table(model_complexity_seeds, width="stretch", hide_index=True)
+            d1, d2 = st.columns(2)
+            with d1:
+                st.download_button(
+                    "下载逐种子结果", model_complexity_seeds.to_csv(index=False).encode("utf-8-sig"),
+                    "model_complexity_seed_results.csv", "text/csv",
+                )
+            with d2:
+                st.download_button(
+                    "下载训练区选择记录", model_complexity_selection.to_csv(index=False).encode("utf-8-sig"),
+                    "model_complexity_training_selection.csv", "text/csv",
+                )
 
 with tab_evidence:
-    current_case = get_case(st.session_state.get("active_case_id"), ROOT)
-    if current_case:
-        st.markdown("### 当前Case证据链")
-        st.caption("研究候选、现场视觉、专业/实验室确认和大模型解释分别登记；后加入的证据不会覆盖上游原始结果。")
-        rows = evidence_rows(current_case)
-        if rows:
-            st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
-        ec1, ec2, ec3 = st.columns(3)
-        ec1.metric("Case", str(current_case.get("case_id")))
-        ec2.metric("状态", str(current_case.get("status")))
-        ec3.metric("证据条数", len(rows))
-        b1, b2 = st.columns(2)
-        b1.download_button(
-            "下载当前Case JSON", export_case_json(current_case["case_id"], ROOT),
-            file_name=f"{current_case['case_id']}.json", mime="application/json", use_container_width=True,
+    with st.container(border=True, key="research_section_tab_evidence_0"):
+        current_case = get_case(st.session_state.get("active_case_id"), ROOT)
+        if current_case:
+            st.markdown("### 当前Case证据链")
+            st.caption("研究候选、现场视觉、专业/实验室确认和大模型解释分别登记；后加入的证据不会覆盖上游原始结果。")
+            rows = evidence_rows(current_case)
+            if rows:
+                research_table(pd.DataFrame(rows), width="stretch", hide_index=True)
+            ec1, ec2, ec3 = st.columns(3)
+            ec1.metric("Case", str(current_case.get("case_id")))
+            ec2.metric("状态", str(current_case.get("status")))
+            ec3.metric("证据条数", len(rows))
+            b1, b2 = st.columns(2)
+            b1.download_button(
+                "下载当前Case JSON", export_case_json(current_case["case_id"], ROOT),
+                file_name=f"{current_case['case_id']}.json", mime="application/json", use_container_width=True,
+            )
+            if b2.button("送入大模型综合解读", use_container_width=True, key="evidence_case_to_llm"):
+                st.session_state["_workspace_jump"] = "模型解读"
+                st.session_state["_llm_source_jump"] = "当前完整Case（推荐）"
+                st.rerun()
+            st.divider()
+    with st.container(border=True, key="research_section_tab_evidence_1"):
+        st.markdown("### 数据融合与质量控制")
+        st.write(
+            "环境冲击（SST/MHW/NO₃/PO₄/Si） → 输运背景（停留/汇聚代理） → "
+            "真实生物危害（qPCR/长期监测） → 养殖脆弱性（DO/密度/响应情景）。"
         )
-        if b2.button("送入大模型综合解读", use_container_width=True, key="evidence_case_to_llm"):
-            st.session_state["_workspace_jump"] = "模型解读"
-            st.session_state["_llm_source_jump"] = "当前完整Case（推荐）"
-            st.rerun()
-        st.divider()
-    st.markdown("### 数据融合与质量控制")
-    st.write(
-        "环境冲击（SST/MHW/NO₃/PO₄/Si） → 输运背景（停留/汇聚代理） → "
-        "真实生物危害（qPCR/长期监测） → 养殖脆弱性（DO/密度/响应情景）。"
-    )
-    numeric_quality = [
-        "mhw_intensity_c", "nitrate_mmol_m3", "phosphate_mmol_m3",
-        "silicate_mmol_m3", "circulation_residence_proxy", "hab_event",
-    ]
-    completeness_now = 1.0 - float(frame[numeric_quality].isna().mean().mean())
-    event_rate_now = float(frame["hab_event"].mean())
-    mhw_day_rate = float(frame["is_mhw"].mean())
-    anomaly_day_rate = float(anomaly_daily["anomaly_event"].mean())
-    dates_per_region = frame.groupby("region")["date"].nunique()
-    continuity_now = float(dates_per_region.min() / max(1, active_config["days"]))
-    kpi_grid([
-        ("当前融合记录", f"{len(frame):,}", f"{frame['region'].nunique()}个匿名海区 × {active_config['days']}天"),
-        ("核心变量完整度", f"{completeness_now:.1%}", "当前运行的非缺失比例"),
-        ("日序列连续度", f"{continuity_now:.1%}", "按当前最短海区序列计算"),
-        ("MHW日占比", f"{mhw_day_rate:.1%}", "超过季节p90后才计为MHW"),
-        ("多尺度异常日", f"{anomaly_day_rate:.1%}", "7/14/30/60天MAD稳健异常"),
-        ("HAB事件率", f"{event_rate_now:.1%}", "当前seed生成的合成标签比例"),
-    ])
-    quality_flow = pd.DataFrame([
-        ["时间/空间对齐", "统一日尺度与海区索引", "不满足则不进入跨区比较"],
-        ["异常识别", "季节p90 + 7/14/30/60天MAD", "至少2个尺度一致"],
-        ["缺失与连续性", "完整度、连续性、样本/事件支持", "不满足阈值时降级或DEFER"],
-        ["标签/留出质量", "测试窗必须同时含事件与非事件", "不满足时不计算验证指标"],
-        ["数据用途", "合成真值 / 事件回放 / 前向监测分层", "各数据层独立报告"],
-    ], columns=["质量环节", "处理方法", "判定规则"])
-    st.dataframe(quality_flow, width="stretch", hide_index=True)
+        numeric_quality = [
+            "mhw_intensity_c", "nitrate_mmol_m3", "phosphate_mmol_m3",
+            "silicate_mmol_m3", "circulation_residence_proxy", "hab_event",
+        ]
+        completeness_now = 1.0 - float(frame[numeric_quality].isna().mean().mean())
+        event_rate_now = float(frame["hab_event"].mean())
+        mhw_day_rate = float(frame["is_mhw"].mean())
+        anomaly_day_rate = float(anomaly_daily["anomaly_event"].mean())
+        dates_per_region = frame.groupby("region")["date"].nunique()
+        continuity_now = float(dates_per_region.min() / max(1, active_config["days"]))
+        kpi_grid([
+            ("当前融合记录", f"{len(frame):,}", f"{frame['region'].nunique()}个匿名海区 × {active_config['days']}天"),
+            ("核心变量完整度", f"{completeness_now:.1%}", "当前运行的非缺失比例"),
+            ("日序列连续度", f"{continuity_now:.1%}", "按当前最短海区序列计算"),
+            ("MHW日占比", f"{mhw_day_rate:.1%}", "超过季节p90后才计为MHW"),
+            ("多尺度异常日", f"{anomaly_day_rate:.1%}", "7/14/30/60天MAD稳健异常"),
+            ("HAB事件率", f"{event_rate_now:.1%}", "当前seed生成的合成标签比例"),
+        ])
+        quality_flow = pd.DataFrame([
+            ["时间/空间对齐", "统一日尺度与海区索引", "不满足则不进入跨区比较"],
+            ["异常识别", "季节p90 + 7/14/30/60天MAD", "至少2个尺度一致"],
+            ["缺失与连续性", "完整度、连续性、样本/事件支持", "不满足阈值时降级或DEFER"],
+            ["标签/留出质量", "测试窗必须同时含事件与非事件", "不满足时不计算验证指标"],
+            ["数据用途", "合成真值 / 事件回放 / 前向监测分层", "各数据层独立报告"],
+        ], columns=["质量环节", "处理方法", "判定规则"])
+        research_table(quality_flow, width="stretch", hide_index=True)
 
-    st.markdown("### 数据来源与结果复核")
-    st.caption("现场观测用于事件回放，全球数据用于背景校准，公开研究用于补充预警信号。")
-    case_columns = st.columns(4)
-    for column, case_row in zip(case_columns, evidence_cases.to_dict("records")):
-        with column:
-            st.markdown(
-                '<div class="case-card">'
-                f'<span class="case-badge">{case_row["product_status"]}</span><br>'
-                f'<b>{case_row["case"]}</b><br>'
-                f'<span class="small-muted">{case_row["journal"]}<br>'
-                f'{case_row["period"]} · {case_row["records"]}</span></div>',
-                unsafe_allow_html=True,
-            )
-            st.markdown(f'[论文]({case_row["url"]}) · [开放数据]({case_row["data_url"]})')
+    with st.container(border=True, key="research_section_tab_evidence_2"):
+        st.markdown("### 数据来源与结果复核")
+        st.caption("现场观测用于事件回放，全球数据用于背景校准，公开研究用于补充预警信号。")
+        case_columns = st.columns(4)
+        for column, case_row in zip(case_columns, evidence_cases.to_dict("records")):
+            with column:
+                st.markdown(
+                    '<div class="case-card">'
+                    f'<span class="case-badge">{case_row["product_status"]}</span><br>'
+                    f'<b>{case_row["case"]}</b><br>'
+                    f'<span class="small-muted">{case_row["journal"]}<br>'
+                    f'{case_row["period"]} · {case_row["records"]}</span></div>',
+                    unsafe_allow_html=True,
+                )
+                st.markdown(f'[论文]({case_row["url"]}) · [开放数据]({case_row["data_url"]})')
 
-    st.markdown("### 结果与证据")
-    claim_ledger = pd.DataFrame([
-        ["14天沿流模式可被重新识别", "匿名合成真值", "完整留区+前向阻断；随机搜索与时间置换", "仅用于方法验证"],
-        ["前向监测排序具有有限区分能力", "挪威2006–2019开放监测", "训练期内层选择；四个前向窗；AP区间；容量/误报分解", "不作为业务报警"],
-        ["南澳qPCR可定位时间、地点和藻种", "115条现场qPCR", "原始工作簿、派生表、哈希与事件卡", "峰值仅对应采样记录"],
-        ["丰度与暴露参数可形成复核排序", "真实丰度+设定暴露/脆弱性参数", "观测、参数与缺失项分开记录", "不对应损失概率、毒素阈值或监管指令"],
-        ["网箱鱼干预存在压力—摄食权衡", "公开方程与参数设定", "±15%参数包络+81个邻近输入情景", "尚无物种/场站标定，不预测死亡率"],
-        ["传播方向与邻区影响可分解", "合成基准", "TE/CTE置换、BH-FDR与Durbin效应分解", "关联分析，不作因果解释"],
-    ], columns=["结果", "证据来源", "检查方式", "适用边界"])
-    st.dataframe(
-        claim_ledger, width="stretch", hide_index=True,
-        column_config={
-            "结果": st.column_config.TextColumn("结果", width="large"),
-            "证据来源": st.column_config.TextColumn("证据来源", width="medium"),
-            "检查方式": st.column_config.TextColumn("检查方式", width="large"),
-            "适用边界": st.column_config.TextColumn("适用边界", width="large"),
-        },
-    )
+    with st.container(border=True, key="research_section_tab_evidence_3"):
+        st.markdown("### 结果与证据")
+        claim_ledger = pd.DataFrame([
+            ["14天沿流模式可被重新识别", "匿名合成真值", "完整留区+前向阻断；随机搜索与时间置换", "仅用于方法验证"],
+            ["前向监测排序具有有限区分能力", "挪威2006–2019开放监测", "训练期内层选择；四个前向窗；AP区间；容量/误报分解", "不作为业务报警"],
+            ["南澳qPCR可定位时间、地点和藻种", "115条现场qPCR", "原始工作簿、派生表、哈希与事件卡", "峰值仅对应采样记录"],
+            ["丰度与暴露参数可形成复核排序", "真实丰度+设定暴露/脆弱性参数", "观测、参数与缺失项分开记录", "不对应损失概率、毒素阈值或监管指令"],
+            ["网箱鱼干预存在压力—摄食权衡", "公开方程与参数设定", "±15%参数包络+81个邻近输入情景", "尚无物种/场站标定，不预测死亡率"],
+            ["传播方向与邻区影响可分解", "合成基准", "TE/CTE置换、BH-FDR与Durbin效应分解", "关联分析，不作因果解释"],
+        ], columns=["结果", "证据来源", "检查方式", "适用边界"])
+        research_table(
+            claim_ledger, width="stretch", hide_index=True,
+            column_config={
+                "结果": st.column_config.TextColumn("结果", width="large"),
+                "证据来源": st.column_config.TextColumn("证据来源", width="medium"),
+                "检查方式": st.column_config.TextColumn("检查方式", width="large"),
+                "适用边界": st.column_config.TextColumn("适用边界", width="large"),
+            },
+        )
 
-    st.markdown("### 环境变量与风险表征")
-    st.markdown(
-        """
-        <div class="product-grid">
-          <div class="product-card"><b>海温异常识别</b><p>基于逐日季节气候态和高温阈值，
-          量化海表温度偏离正常背景的幅度、持续时间与累积影响。</p></div>
-          <div class="product-card"><b>营养盐背景</b><p>分别保留硝酸盐、磷酸盐和硅酸盐信息，
-          描述不同营养条件对藻华形成与物种竞争的支持背景。</p></div>
-          <div class="product-card"><b>输运与汇聚代理</b><p>利用微塑料浓度的有界代理表达水团停留、
-          汇聚与输运背景，作为跨区域分析的辅助变量。</p></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    with st.container(border=True, key="research_section_tab_evidence_4"):
+        st.markdown("### 环境变量与风险表征")
+        st.markdown(
+            """
+            <div class="product-grid">
+              <div class="product-card"><b>海温异常识别</b><p>基于逐日季节气候态和高温阈值，
+              量化海表温度偏离正常背景的幅度、持续时间与累积影响。</p></div>
+              <div class="product-card"><b>营养盐背景</b><p>分别保留硝酸盐、磷酸盐和硅酸盐信息，
+              描述不同营养条件对藻华形成与物种竞争的支持背景。</p></div>
+              <div class="product-card"><b>输运与汇聚代理</b><p>利用微塑料浓度的有界代理表达水团停留、
+              汇聚与输运背景，作为跨区域分析的辅助变量。</p></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-    st.markdown("### 下载结果与复核材料")
-    card_bytes = json.dumps(card, ensure_ascii=False, indent=2, default=str).encode("utf-8")
-    d1, d2 = st.columns(2)
-    d1.download_button("下载结果摘要 JSON", card_bytes, "discovery_card.json", "application/json")
-    evidence_bundle = {
-        "discovery_card": card,
-        "south_australia_external_evidence": SOUTH_AUSTRALIA_CASE,
-        "baselines": baselines.to_dict("records"),
-        "negative_controls": controls.to_dict("records"),
-        "adaptive_router": router_trace.to_dict("records"),
-        "te_cte_lag_summary": te_cte_lag_summary.to_dict("records"),
-        "spatial_durbin_effects": spatial_effects.to_dict("records"),
-        "south_australia_real_replay": real_card,
-        "south_australia_real_data_provenance": real_provenance,
-        "norway_real_replay": norway_card,
-        "norway_real_data_provenance": norway_provenance,
-        "norway_forward_benchmark": norway_benchmark["summary"],
-        "norway_forward_benchmark_folds": norway_benchmark["folds"].to_dict("records"),
-        "cage_fish_robustness": robustness_card,
-        "claim_ledger": claim_ledger.to_dict("records"),
-        "global_nature_portfolio_evidence": evidence_cases.to_dict("records"),
-        "current_data_quality": {
-            "completeness": completeness_now, "continuity": continuity_now,
-            "mhw_day_rate": mhw_day_rate, "multiscale_anomaly_day_rate": anomaly_day_rate,
-            "hab_event_rate": event_rate_now,
-        },
-        "dynamic_model_comparison": (
-            st.session_state.get("broad_benchmark", {}).get("summary").to_dict("records")
-            if st.session_state.get("broad_benchmark") is not None
-            and st.session_state.get("broad_benchmark_key") == (
-                int(active_config["days"]), int(active_config["seed"]), int(best["lag_days"]),
-                active_config["holdout_region"], float(active_config["test_fraction"])
-            )
-            else None
-        ),
-    }
-    d2.download_button(
-        "下载证据包 JSON",
-        json.dumps(evidence_bundle, ensure_ascii=False, indent=2, default=str).encode("utf-8"),
-        "evidence_bundle.json",
-        "application/json",
-    )
-    with st.expander("查看结构化结果"):
-        st.json(card)
+    with st.container(border=True, key="research_section_tab_evidence_5"):
+        st.markdown("### 下载结果与复核材料")
+        card_bytes = json.dumps(card, ensure_ascii=False, indent=2, default=str).encode("utf-8")
+        d1, d2 = st.columns(2)
+        d1.download_button("下载结果摘要 JSON", card_bytes, "discovery_card.json", "application/json")
+        evidence_bundle = {
+            "discovery_card": card,
+            "south_australia_external_evidence": SOUTH_AUSTRALIA_CASE,
+            "baselines": baselines.to_dict("records"),
+            "negative_controls": controls.to_dict("records"),
+            "adaptive_router": router_trace.to_dict("records"),
+            "te_cte_lag_summary": te_cte_lag_summary.to_dict("records"),
+            "spatial_durbin_effects": spatial_effects.to_dict("records"),
+            "south_australia_real_replay": real_card,
+            "south_australia_real_data_provenance": real_provenance,
+            "norway_real_replay": norway_card,
+            "norway_real_data_provenance": norway_provenance,
+            "norway_forward_benchmark": norway_benchmark["summary"],
+            "norway_forward_benchmark_folds": norway_benchmark["folds"].to_dict("records"),
+            "cage_fish_robustness": robustness_card,
+            "claim_ledger": claim_ledger.to_dict("records"),
+            "global_nature_portfolio_evidence": evidence_cases.to_dict("records"),
+            "current_data_quality": {
+                "completeness": completeness_now, "continuity": continuity_now,
+                "mhw_day_rate": mhw_day_rate, "multiscale_anomaly_day_rate": anomaly_day_rate,
+                "hab_event_rate": event_rate_now,
+            },
+            "dynamic_model_comparison": (
+                st.session_state.get("broad_benchmark", {}).get("summary").to_dict("records")
+                if st.session_state.get("broad_benchmark") is not None
+                and st.session_state.get("broad_benchmark_key") == (
+                    int(active_config["days"]), int(active_config["seed"]), int(best["lag_days"]),
+                    active_config["holdout_region"], float(active_config["test_fraction"])
+                )
+                else None
+            ),
+        }
+        d2.download_button(
+            "下载证据包 JSON",
+            json.dumps(evidence_bundle, ensure_ascii=False, indent=2, default=str).encode("utf-8"),
+            "evidence_bundle.json",
+            "application/json",
+        )
+        with st.expander("查看结构化结果"):
+            st.json(card)
 
 st.divider()
 st.markdown(

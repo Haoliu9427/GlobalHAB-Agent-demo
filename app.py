@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF3.9.2-RESEARCH-LABELS-20260920"
+BUILD_ID = "HF3.9.3-LABEL-SYNC-20260920"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -705,10 +705,43 @@ render_workspace_header(
     "选择研究任务，查看地图、实验与验证结果",
     kicker="Research & validation",
 )
-from globalhab_demo.research_entry import select_mode, MODES as controller_options
+# Display-only compatibility: use current source, with labels governed by this
+# entrypoint, even when a deployment retains an older view module. Execute in
+# an isolated namespace; do not replace shared modules or touch model logic.
+def _research_view(module_name):
+    import types
+    if module_name not in {"research_entry", "scientific_agent_ui"}:
+        raise ValueError("Unknown research view")
+    view_path = ROOT / "src" / "globalhab_demo" / (module_name + ".py")
+    source = view_path.read_text(encoding="utf-8")
+    replacements = {
+        "平台模型 · 智能研究": "模型驱动 · 智能研究",
+        "内置大模型 · 智能研究": "模型驱动 · 智能研究",
+        "大模型驱动 · 智能研究": "模型驱动 · 智能研究",
+        "自选模型 · 连接服务": "自主接入 · 智能研究",
+        "平台提供的模型": "选择大模型",
+        "Agent 内置大模型": "选择大模型",
+        "平台统一提供服务，你无需填写密钥。": "已配置大模型，可直接选择使用。",
+        "由 Agent 统一连接大模型，你无需填写密钥。": "已配置大模型，可直接选择使用。",
+        "选择选择大模型，由模型规划、工具检验。": "选择已配置的大模型，由模型规划、工具检验。",
+    }
+    for old, new in replacements.items():
+        source = source.replace(old, new)
+    if module_name == "scientific_agent_ui":
+        source = source.replace('if manual else "智能研究"', 'if manual else "模型驱动 · 智能研究"')
+    view = types.ModuleType("globalhab_demo._current_" + module_name)
+    view.__package__ = "globalhab_demo"
+    view.__file__ = str(view_path)
+    exec(compile(source, str(view_path), "exec"), view.__dict__)
+    return view
+
+_research_entry = _research_view("research_entry")
+_research_entry.MODES = ["模型驱动 · 智能研究", "自主接入 · 智能研究", "规则驱动 · 科学检验"]
+_research_entry.DESCRIPTIONS[0] = "选择已配置的大模型，由模型规划、工具检验。"
+select_mode, controller_options = _research_entry.select_mode, _research_entry.MODES
 research_controller = select_mode()
 if research_controller != controller_options[2]:
-    from globalhab_demo.scientific_agent_ui import render as render_scientific_agent
+    render_scientific_agent = _research_view("scientific_agent_ui").render
     render_scientific_agent(manual=research_controller == controller_options[1])
     st.stop()
 st.caption("以下由规则控制器组织合成实验与科学检验，与大模型规划的运行记录分别展示。")

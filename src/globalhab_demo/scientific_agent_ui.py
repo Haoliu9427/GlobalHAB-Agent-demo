@@ -29,7 +29,7 @@ def render(manual=False):
                 config = by_id[selected]["config"]
                 st.caption("平台统一提供服务，你无需填写密钥。")
             else:
-                st.info("平台模型尚未开放。管理员接通服务后，这里会显示可选模型，你无需填写密钥。")
+                st.info("平台模型尚未配置。请由网站维护者在 Streamlit Secrets 添加 [modelscope] 和 api_key；保存后自动显示三个 Qwen 模型。访客无需填写密钥。")
         fingerprint = connection_id(config)
         verified = st.session_state.get("science_connection", {})
         connected = verified.get("id") == fingerprint and time.time()-verified.get("at", 0) < 600

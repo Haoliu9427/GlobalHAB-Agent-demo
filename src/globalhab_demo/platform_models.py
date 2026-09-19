@@ -14,6 +14,16 @@ def catalog(secrets=None, environ=None):
             secrets = {}
     env = os.environ if environ is None else environ
     entries = []
+    # Dedicated ModelScope section supplies verified provider defaults.
+    ms = secrets.get("modelscope", {})
+    token = str(ms.get("api_key", "")).strip()
+    if token:
+        defaults = ["Qwen/Qwen3.5-35B-A3B", "Qwen/Qwen3.5-122B-A10B", "Qwen/Qwen3.5-397B-A17B"]
+        models = ms.get("models", defaults)
+        if isinstance(models, list):
+            for mid in models:
+                if isinstance(mid, str) and mid.strip():
+                    entries.append({"id": "modelscope_"+mid, "label": mid.split("/")[-1], "config": {"base_url":"https://api-inference.modelscope.cn/v1", "api_key":token, "model":mid}})
     # Explicit platform catalog supports several providers and model choices.
     for index, row in enumerate(secrets.get("platform_models", [])):
         if not isinstance(row, dict) or not row.get("enabled", True):

@@ -343,7 +343,7 @@ def make_prompt(
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
-def render(root: Path) -> None:
+def render(root: Path, result_selection_renderer=None) -> None:
     import hashlib
     from globalhab_demo.display_locale import st
 
@@ -365,8 +365,10 @@ def render(root: Path) -> None:
         split = "test"
         summary = ""
         if source == "本会话结果汇总":
-            from globalhab_demo.release_ui import load_view
-            render_selection = load_view("result_pool", (Path(__file__).resolve().parents[3] / "BUILD_ID.txt").read_text(encoding="utf-8").strip()).render_selection
+            if result_selection_renderer is None:
+                from globalhab_demo.result_pool import render_selection
+            else:
+                render_selection = result_selection_renderer
             summary=render_selection()
         elif source == "项目核心发现（合成探索 + 负对照）":
             summary = core_discovery_summary(root)
@@ -643,3 +645,5 @@ def render(root: Path) -> None:
                     st.error(str(exc))
     elif decoded:
         st.info("结果来源、解读方式或模型配置已经改变，旧解读已隐藏。")
+
+UI_REVISION = 'HF3.9.9-BEIJING-RENDER-20260920'

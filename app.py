@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF3.9.8-RESULT-TIME-20260920"
+BUILD_ID = "HF3.9.9-BEIJING-RENDER-20260920"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -207,7 +207,8 @@ from globalhab_demo.research_panels import research_plot, research_table
 # Import shared modules normally. Activate deployments by restarting the server;
 # reloading shared modules during a session rerun is not thread-safe.
 import globalhab_demo.ui_system as _ui_system
-from globalhab_demo.release_ui import load_view
+import runpy
+load_view = runpy.run_path(str(ROOT / "src/globalhab_demo/release_ui.py"))["load_view"]
 _homepage_hifi = load_view("homepage_hifi", BUILD_ID)
 import globalhab_demo.research_figures as _research_figures
 install_plotly_theme = _ui_system.install_plotly_theme
@@ -697,8 +698,8 @@ if workspace_mode == "影像识别":
     _field_visual.render(ROOT)
     st.stop()
 if workspace_mode == "模型解读":
-    from globalhab_demo.real_training.result_interpreter import render as render_result_interpreter
-    render_result_interpreter(ROOT)
+    render_result_interpreter = load_view("real_training.result_interpreter", BUILD_ID).render
+    render_result_interpreter(ROOT, result_selection_renderer=load_view("result_pool", BUILD_ID).render_selection)
     st.stop()
 
 render_workspace_header(

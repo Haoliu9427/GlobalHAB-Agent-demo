@@ -102,9 +102,11 @@ def main() -> None:
     app_build = next(ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "BUILD_ID" for t in n.targets))
     if not build or build != app_build or build not in version_text:
         raise SystemExit("Release versions disagree between app.py, BUILD_ID.txt and VERSION.md")
-    for name in ("homepage_hifi", "research_entry", "scientific_agent_ui", "scientific_agent_results", "ui_system"):
+    for name in ("homepage_hifi", "research_entry", "scientific_agent_ui", "scientific_agent_results", "ui_system", "result_pool", "real_training.result_interpreter"):
         from globalhab_demo.release_ui import load_view
-        load_view(name, build)
+        view = load_view(name, build)
+        if getattr(view, "UI_REVISION", None) != build:
+            raise SystemExit("Release page revision differs: " + name)
     for name in ("agent_log.csv", "discovery_card.json", "te_cte_lag_summary.csv", "norway_forward_benchmark_card.json"):
         if not (ROOT / "outputs" / name).is_file():
             raise SystemExit("Missing homepage evidence: " + name)

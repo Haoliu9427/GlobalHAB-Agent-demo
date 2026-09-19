@@ -510,7 +510,7 @@ def render(root: Any) -> None:
         [data-testid="stSidebarCollapsedControl"] {display:none !important;}
         [data-testid="stAppViewContainer"] > .main {margin-left:0 !important;}
         </style>
-        <div id="globalhab-build-hf2" data-build="HF3.9.11-CAMERA-INPUT-20260920"></div>
+        <div id="globalhab-build-hf2" data-build="HF3.9.12-CAMERA-RELEASE-20260920"></div>
         """,
         unsafe_allow_html=True,
     )
@@ -657,4 +657,4 @@ def _evidence_figure(root,mode='lag'):
     fig.update_yaxes(gridcolor='#edf2f3',zeroline=False)
     return fig
 
-UI_REVISION = 'HF3.9.11-CAMERA-INPUT-20260920'
+UI_REVISION = 'HF3.9.12-CAMERA-RELEASE-20260920'

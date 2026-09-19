@@ -35,4 +35,4 @@ def select_mode():
                     st.rerun()
     return st.session_state["research_controller_mode"]
 
-UI_REVISION = 'HF3.9.11-CAMERA-INPUT-20260920'
+UI_REVISION = 'HF3.9.12-CAMERA-RELEASE-20260920'

@@ -646,4 +646,4 @@ def render(root: Path, result_selection_renderer=None) -> None:
     elif decoded:
         st.info("结果来源、解读方式或模型配置已经改变，旧解读已隐藏。")
 
-UI_REVISION = 'HF3.9.11-CAMERA-INPUT-20260920'
+UI_REVISION = 'HF3.9.12-CAMERA-RELEASE-20260920'

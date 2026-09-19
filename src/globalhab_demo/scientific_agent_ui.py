@@ -7,6 +7,37 @@ from .real_training.remote_qwen import ready, chat
 from .platform_models import catalog, connection_id, probe
 
 
+def _publish_scientific_result(result):
+    """Publish evidence through the stable session record schema, not a cached
+    helper import. No provider credentials are accepted or copied here."""
+    import json
+    import hashlib
+    import datetime
+    fields = ("model", "goal", "status", "seed", "data_sha256", "experimental_budget",
+              "experiments_executed", "known_total_tokens", "elapsed_seconds",
+              "candidates", "controls", "final")
+    payload = {key: result.get(key) for key in fields}
+    payload["planning_record"] = [{key: row[key] for key in
+        ("step", "tool", "arguments", "rationale", "status") if key in row}
+        for row in result.get("audit", [])]
+    payload["scope"] = "合成实验；验证阶段与独立测试分别记录。不得把候选相关性当作因果，未完成的检验不能视为通过。"
+    text = json.dumps(payload, ensure_ascii=False, default=str)
+    source, kind = "智能研究", "大模型规划与科学检验（合成）"
+    rid = hashlib.sha256((source + kind + text).encode()).hexdigest()[:16]
+    pool = st.session_state.setdefault("result_pool", {})
+    if rid not in pool:
+        pool[rid] = {"id": rid, "source": source, "evidence_type": kind,
+                     "time": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+                     "summary": text}
+        while len(pool) > 30:
+            pool.pop(next(iter(pool)))
+        st.session_state["_llm_source_jump"] = "本会话结果汇总"
+        st.session_state["_pool_selection_jump"] = rid
+        # Older result-pool renderers also honor this established widget key.
+        st.session_state["pool_selection"] = [rid]
+    return rid
+
+
 def render(manual=False):
     st.markdown("### " + ("自主接入 · 智能研究" if manual else "模型驱动 · 智能研究"))
     st.caption("合成实验 · 模型提出下一步，工具计算证据，你复核结论。")
@@ -98,8 +129,7 @@ def render(manual=False):
         st.write(f"冻结方案：{final['action_id']}；独立测试 AP {final['candidate']['pr_auc']:.3f}，季节参照 AP {final['seasonal_reference']['pr_auc']:.3f}。")
     else:
         st.warning("本轮未形成完成复核的冻结方案，保留已有记录。状态：" + result["status"])
-    from .result_pool import publish_scientific_result
-    publish_scientific_result(result)
+    _publish_scientific_result(result)
     st.caption("本轮结果已同步至“模型解读”，打开后可直接选取并解读。")
     from .scientific_agent_results import render_results
     render_results(result)

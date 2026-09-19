@@ -1,9 +1,9 @@
 """Responsive research-mode cards using native accessible Streamlit buttons."""
 from .display_locale import st
 
-MODES = ["平台模型 · 智能研究", "自选模型 · 连接服务", "规则驱动 · 科学检验"]
+MODES = ["模型驱动 · 智能研究", "自主接入 · 智能研究", "规则驱动 · 科学检验"]
 ICONS = ["account_tree", "link", "fact_check"]
-DESCRIPTIONS = ["选择平台提供的模型，由模型规划、工具检验。", "连接你自己的模型服务，沿用同一套科学工具。", "按明确规则组织实验，对照与验证过程可复核。"]
+DESCRIPTIONS = ["选择已配置的大模型，由模型规划、工具检验。", "连接你自己的模型服务，沿用同一套科学工具。", "按明确规则组织实验，对照与验证过程可复核。"]
 PATHS = [
     '<rect x="8" y="2" width="8" height="6" rx="2"/><path d="M12 8v5M5 13h14M5 13v3M19 13v3"/><rect x="2" y="16" width="6" height="6" rx="2"/><rect x="16" y="16" width="6" height="6" rx="2"/>',
     '<path d="m10 14 4-4M9 7l2-2a5 5 0 0 1 7 7l-2 2M15 17l-2 2a5 5 0 0 1-7-7l2-2"/>',
@@ -13,7 +13,7 @@ PATHS = [
 def select_mode():
     prior = st.session_state.get("research_controller_mode", MODES[0])
     if prior not in MODES:
-        prior = MODES[2] if "规则" in prior else MODES[1] if "API" in prior else MODES[0]
+        prior = MODES[2] if "规则" in prior else MODES[1] if "API" in prior or "自选" in prior else MODES[0]
     st.session_state["research_controller_mode"] = prior
     st.markdown("""<style>
     .st-key-research_modes [data-testid="stVerticalBlockBorderWrapper"]{border-radius:16px!important;}

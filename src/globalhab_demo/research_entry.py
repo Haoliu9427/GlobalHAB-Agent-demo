@@ -34,3 +34,5 @@ def select_mode():
                     st.session_state["research_controller_mode"] = MODES[i]
                     st.rerun()
     return st.session_state["research_controller_mode"]
+
+UI_REVISION = 'HF3.9.7-HOME-RELEASE-20260920'

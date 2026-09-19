@@ -1,0 +1,21 @@
+{
+  "mode": "real_event_replay_not_supervised_training",
+  "event": "South Australia complex Karenia bloom, 2025",
+  "observations": 115,
+  "sampling_dates": 22,
+  "locations": 22,
+  "date_range": [
+    "2025-03-18",
+    "2025-09-13"
+  ],
+  "peak_k_cristata": {
+    "date": "2025-07-07",
+    "location": "Stansbury (slick on water)",
+    "cells_l": 15015439.54,
+    "latitude": -34.889408333333336,
+    "longitude": 137.84047222222222
+  },
+  "k_cristata_detected_samples": 100,
+  "k_cristata_detection_share": 0.8695652173913043,
+  "interpretation": "Descriptive replay of non-uniform event sampling. Detection shares and abundance bands are not prevalence estimates or regulatory thresholds."
+}

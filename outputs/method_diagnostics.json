@@ -1,0 +1,34 @@
+{
+  "router": {
+    "completeness": 1.0,
+    "sample_support": 1.0,
+    "temporal_dependence": 0.9659287028707721,
+    "spatial_support": 1.0,
+    "event_support": 1.0,
+    "scale_consistency": 0.7017374517374517,
+    "rows": 2880.0,
+    "regions": 4.0,
+    "events": 487.0
+  },
+  "spatial_durbin": {
+    "rho": 0.0,
+    "bic": -5821.72498920781,
+    "pseudo_r2": 0.0879843471767775,
+    "design_condition_number": 6.308175641324863,
+    "observations": 2880,
+    "dates": 720,
+    "regions": [
+      "Synthetic_Region_A",
+      "Synthetic_Region_B",
+      "Synthetic_Region_C",
+      "Synthetic_Region_D"
+    ],
+    "bootstrap_repeats": 39,
+    "bootstrap_block_days": 21,
+    "weight_matrix_definition": "row-standardised abstract directed upstream graph",
+    "spatial_exposure_lag_days": 14,
+    "lag_choice_basis": "Agent/TE-CTE synthetic signal recovery; fixed before SDM effect display",
+    "outcome_model": "linear-probability SDM; exploratory association, not causal effect"
+  },
+  "te_cte_peak_lag_days": 14
+}

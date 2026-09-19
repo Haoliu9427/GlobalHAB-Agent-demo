@@ -198,7 +198,7 @@ def _workspace_flow_html(own_runs: int, library_count: int) -> str:
     nodes: list[str] = []
     for idx, (icon, title, sub, accent) in enumerate(items):
         nodes.append(
-            f'<a href="?workspace={quote(title)}" target="_self" class="hf-workspace-node hf-workspace-{accent}"><div class="hf-workspace-icon">{_svg_icon(icon)}</div>'
+            f'<a href="?workspace={quote(title)}{("&controller=rules" if title == "研究验证" else "")}" target="_self" class="hf-workspace-node hf-workspace-{accent}"><div class="hf-workspace-icon">{_svg_icon(icon)}</div>'
             f'<div><b>{title}</b><span>{sub}</span></div></a>'
         )
         if idx < len(items) - 1:
@@ -491,10 +491,10 @@ def _norway_panel_html(root: Path) -> str:
     </div>'''
 
 def _panel_header(title: str, action: str = "", section: str = "") -> None:
-    hints={"Agent探索轨迹":"规则控制器历史参照，不是本轮大模型执行结果。每个点代表一次试验。", "南澳真实事件回放":"灰格表示无有效记录，浅绿表示0；细胞/升，对数色阶；站点和日期为展示子集。", "环境因子与迁移验证":"上图为合成机制检验；下图为独立挪威真实观测任务，两者不能合并解释为实海因果证明。"}
+    hints={"Agent探索轨迹":"合成实验：每个点代表一次试验。", "南澳真实事件回放":"灰格表示无有效记录，浅绿表示0；细胞/升，对数色阶；站点和日期为展示子集。", "环境因子与迁移验证":"上图为合成机制检验；下图为独立挪威真实观测任务，两者不能合并解释为实海因果证明。"}
     tooltip=html.escape(hints.get(title,"查看对应工作区了解完整结果"))
     action_html = f'<a href="?workspace={quote("研究验证")}&section={quote(section)}" target="_self">查看详情 →</a>' if section else (f'<span>{html.escape(action)}</span>' if action else "")
-    notes = {'Agent探索轨迹': '规则控制器历史参照 · 合成实验', '南澳真实事件回放': '真实观测 · 细胞/升（对数色阶）· 灰格缺测', '环境因子与迁移验证': '上：合成机制检验　下：真实观测验证'}
+    notes = {'Agent探索轨迹': '合成实验 · 虚线为简单基线', '南澳真实事件回放': '真实观测 · 细胞/升（对数色阶）· 灰格缺测', '环境因子与迁移验证': '上：合成机制检验　下：真实观测验证'}
     note = f'<div class="hf-figure-note">{notes[title]}</div>' if title in notes else ''
     st.markdown(f'<div class="hf-viz-title"><b title="{tooltip}">{html.escape(title)} ⓘ</b>{action_html}</div>{note}', unsafe_allow_html=True)
 
@@ -510,7 +510,7 @@ def render(root: Any) -> None:
         [data-testid="stSidebarCollapsedControl"] {display:none !important;}
         [data-testid="stAppViewContainer"] > .main {margin-left:0 !important;}
         </style>
-        <div id="globalhab-build-hf2" data-build="HF3.7.3-LLM-SCIENTIFIC-20260919"></div>
+        <div id="globalhab-build-hf2" data-build="HF3.9.7-HOME-RELEASE-20260920"></div>
         """,
         unsafe_allow_html=True,
     )
@@ -656,3 +656,5 @@ def _evidence_figure(root,mode='lag'):
     fig.update_xaxes(showgrid=False,zeroline=False)
     fig.update_yaxes(gridcolor='#edf2f3',zeroline=False)
     return fig
+
+UI_REVISION = 'HF3.9.7-HOME-RELEASE-20260920'

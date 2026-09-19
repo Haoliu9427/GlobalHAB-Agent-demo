@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF3.9.6-CHART-ALIGNMENT-20260920"
+BUILD_ID = "HF3.9.7-HOME-RELEASE-20260920"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -207,7 +207,8 @@ from globalhab_demo.research_panels import research_plot, research_table
 # Import shared modules normally. Activate deployments by restarting the server;
 # reloading shared modules during a session rerun is not thread-safe.
 import globalhab_demo.ui_system as _ui_system
-import globalhab_demo.homepage_hifi as _homepage_hifi
+from globalhab_demo.release_ui import load_view
+_homepage_hifi = load_view("homepage_hifi", BUILD_ID)
 import globalhab_demo.research_figures as _research_figures
 install_plotly_theme = _ui_system.install_plotly_theme
 render_top_navigation = _ui_system.render_top_navigation
@@ -545,7 +546,7 @@ def real_qpcr_map(frame: pd.DataFrame) -> go.Figure:
 
 
 WORKSPACES = ["项目总览", "研究验证", "数据分析", "影像识别", "模型解读"]
-workspace_mode = render_top_navigation(WORKSPACES)
+workspace_mode = load_view("ui_system", BUILD_ID).render_top_navigation(WORKSPACES)
 with st.container(key="top_controls"):
     control_panel = st.popover("", icon=":material/settings:", help="地图、Case与运行参数")
 
@@ -705,10 +706,11 @@ render_workspace_header(
     "选择研究任务，查看地图、实验与验证结果",
     kicker="Research & validation",
 )
-from globalhab_demo.research_entry import select_mode, MODES as controller_options
+_entry = load_view("research_entry", BUILD_ID)
+select_mode, controller_options = _entry.select_mode, _entry.MODES
 research_controller = select_mode()
 if research_controller != controller_options[2]:
-    from globalhab_demo.scientific_agent_ui import render as render_scientific_agent
+    render_scientific_agent = load_view("scientific_agent_ui", BUILD_ID).render
     render_scientific_agent(manual=research_controller == controller_options[1])
     st.stop()
 st.caption("以下由规则控制器组织合成实验与科学检验，与大模型规划的运行记录分别展示。")

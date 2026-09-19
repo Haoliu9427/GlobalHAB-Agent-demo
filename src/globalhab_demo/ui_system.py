@@ -77,6 +77,9 @@ def render_top_navigation(options):
     if pending in options:st.session_state["workspace_mode"]=pending
     current=st.session_state.setdefault("workspace_mode",options[0])
     if current not in options:current=options[0]
+    if st.query_params.get("controller") == "rules":
+        st.session_state["research_controller_mode"]="规则驱动 · 科学检验"
+        del st.query_params["controller"]
     section=st.query_params.get("section")
     if section:
         st.session_state["research_section"]=section
@@ -122,3 +125,5 @@ def render_workspace_header(title: str, subtitle: str, *, kicker: str = "GlobalH
 def compact_section_label(title: str, subtitle: str = "") -> str:
     sub = f'<div class="section-subtitle">{subtitle}</div>' if subtitle else ""
     return f'<div class="section-heading"><div class="section-title">{title}</div>{sub}</div>'
+
+UI_REVISION = 'HF3.9.7-HOME-RELEASE-20260920'

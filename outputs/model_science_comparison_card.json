@@ -1,0 +1,24 @@
+{
+  "model": "STS-Gated-TCN-241",
+  "parameter_count": 241,
+  "window_days": 14,
+  "lag_days": 14,
+  "epochs_selected_inside_training_window": 35,
+  "random_seeds": [
+    17,
+    42,
+    73,
+    101,
+    149
+  ],
+  "holdout_region": "Synthetic_Region_D",
+  "test_fraction": 0.25,
+  "cut_date": "2025-06-27",
+  "test_rows": 177,
+  "test_events": 26,
+  "ap_gain_vs_best_classical_median": -0.17154092984090707,
+  "interaction_glm_C_selected_inside_training": 1.0,
+  "interaction_glm_ap_gain_vs_best_classical_median": 0.027499477107065795,
+  "result": "未获得稳定AP增益，保留为结构改进的负结果",
+  "boundary": "This current-run synthetic comparison tests whether a science-structured dual-branch temporal model adds value on the same blocked holdout. It does not change the Agent search or transfer synthetic performance to real cases."
+}

@@ -1,0 +1,5 @@
+case,region,latitude,longitude,period,journal,evidence,product_status,records,url,data_url
+南澳大利亚复杂Karenia事件,澳大利亚 · Gulf St Vincent,-34.7,138.0,2025,Nature Ecology & Evolution,qPCR物种丰度与事件影响,完整观测回放,115条样本,https://doi.org/10.1038/s41559-026-03115-0,https://doi.org/10.5281/zenodo.20227730
+挪威沿岸有毒藻监测,挪威 · 58–71°N沿岸,64.0,10.5,2006–2019,Communications Earth & Environment,周尺度藻细胞计数与海洋环境,完整观测回放,"5,919条观测",https://doi.org/10.1038/s43247-025-02421-y,https://doi.org/10.5281/zenodo.10958487
+Orcas Island藻华前置信号,美国 · Salish Sea,48.6,-122.9,高频时间序列,Nature Communications,海洋微生物组与蛋白组前置信号,研究证据接口,开放组学数据与代码,https://doi.org/10.1038/s41467-025-59250-y,https://doi.org/10.6084/m9.figshare.27166347
+全球HAB事件与监测强度,全球海岸带,8.0,-20.0,1985–2018,Communications Earth & Environment,HAEDAT、OBIS与养殖监测强度,全球背景证据,多区域事件数据库,https://doi.org/10.1038/s43247-021-00178-8,https://github.com/iobis/paper-hab-trends

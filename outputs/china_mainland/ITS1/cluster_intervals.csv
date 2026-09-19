@@ -1,0 +1,4 @@
+sea,model,seed,clusters,AP_low,AP_high,valid_replicates
+全部,HistGradientBoosting,17,30,0.12827858982126336,0.30127599893012086,200
+黄海,HistGradientBoosting,17,9,0.404873496154685,0.8148721216455475,200
+东海,HistGradientBoosting,17,21,0.0730090912160751,0.21269266136879295,200

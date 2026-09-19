@@ -1,0 +1,10 @@
+variable,effect_type,effect_per_1sd,ci90_lower,ci90_upper,interpretation
+multiscale_anomaly_score_lag14,direct,-0.017377298523980747,-0.04026971807536275,-0.0010078195749650032,association-scale change in synthetic HAB probability per 1 SD
+multiscale_anomaly_score_lag14,indirect,0.10066029854067926,0.08010004093552663,0.1252800302540265,association-scale change in synthetic HAB probability per 1 SD
+multiscale_anomaly_score_lag14,total,0.08328300001669851,0.05419908587444473,0.11696189186405594,association-scale change in synthetic HAB probability per 1 SD
+nutrient_context,direct,0.011873230213922328,-0.014962625534725004,0.036088443165769556,association-scale change in synthetic HAB probability per 1 SD
+nutrient_context,indirect,-0.04258586901453574,-0.0601423505255633,-0.021742159886424046,association-scale change in synthetic HAB probability per 1 SD
+nutrient_context,total,-0.03071263880061341,-0.06385421103958894,0.00723327774641501,association-scale change in synthetic HAB probability per 1 SD
+circulation_residence_proxy,direct,0.004155999918756364,-0.01290410755079036,0.025537208538621223,association-scale change in synthetic HAB probability per 1 SD
+circulation_residence_proxy,indirect,0.01838013530752318,0.00507745533515227,0.04157108818127794,association-scale change in synthetic HAB probability per 1 SD
+circulation_residence_proxy,total,0.022536135226279543,0.007718760935093174,0.049066087791558397,association-scale change in synthetic HAB probability per 1 SD

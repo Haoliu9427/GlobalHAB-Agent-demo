@@ -109,3 +109,5 @@ def render_results(result):
             with st.expander(title):
                 st.write(row.get("rationale",row.get("message","调用格式未通过校验")))
                 st.json({"参数":row.get("arguments",{}),"工具证据":row.get("result",{})})
+
+UI_REVISION = 'HF3.9.7-HOME-RELEASE-20260920'

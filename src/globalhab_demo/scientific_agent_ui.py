@@ -69,6 +69,7 @@ def connection_error_hint(exc):
 def render(manual=False):
     st.markdown("### " + ("自主接入 · 智能研究" if manual else "模型驱动 · 智能研究"))
     st.caption("合成实验 · 模型提出下一步，工具计算证据，你复核结论。")
+    st.caption("页面版本：" + UI_REVISION)
     config = {}
     with st.container(border=True):
         st.markdown("**01　选择模型**")
@@ -167,6 +168,9 @@ def render(manual=False):
         st.warning("本轮未形成完成复核的冻结方案，保留已有记录。状态：" + result["status"])
     _publish_scientific_result(result)
     st.caption("本轮结果已同步至“模型解读”，打开后可直接选取并解读。")
-    from .scientific_agent_results import render_results
+    from .release_ui import load_view
+    render_results = load_view("scientific_agent_results", UI_REVISION).render_results
     render_results(result)
     st.download_button("下载本轮可审计实验记录", dumps(result).encode("utf-8"), "scientific_agent_audit.json", "application/json", key="science_download")
+
+UI_REVISION = 'HF3.9.7-HOME-RELEASE-20260920'

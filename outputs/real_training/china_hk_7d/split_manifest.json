@@ -1,0 +1,41 @@
+{
+  "cutoffs": [
+    "2013-01-01",
+    "2017-01-01",
+    "2020-01-01"
+  ],
+  "held_out_sites": [],
+  "counts": {
+    "train": 1905,
+    "validation": 207,
+    "calibration": 156,
+    "test": 312
+  },
+  "purge_rule": "label_date strictly before next partition start",
+  "task": "china_hk_7d",
+  "note": "Next calendar week contains >=1 AFCD red-tide report. A zero means no report in this archive, not monitored biological absence. Retrospective as-of report date; historical publication revisions unknown. China Hong Kong waters only; not a validation for all Chinese seas.",
+  "sha256": {
+    "train": "18193b89f6a3b7587ee6780ce35277b7446c7a4a4305340160b38fb47167f775",
+    "validation": "96042979ee9fc9a8b5070e137eddf44ca1b406205905819a2e6b981982b2dbd8",
+    "calibration": "33d989ca2ca87093b30c5545f80fd26032b8b84eae4de239d45f98571373ba0d",
+    "test": "41398bbff4ea2d50b5f0409cfdcfa5d140ec0d1e0e12cc1e2faaf080dba367c3"
+  },
+  "features": [
+    "log_reports",
+    "season_sin",
+    "season_cos"
+  ],
+  "sequence_length": 26,
+  "raw_data_hash": "0f5461fbf0856062a3b477c508e8f57a7db4b325ded375628ab235772c9ae55d",
+  "seeds": [
+    17,
+    42,
+    73
+  ],
+  "environment": {
+    "python": "3.12.14",
+    "platform": "Linux-6.18.35-x86_64-with-glibc2.39"
+  },
+  "parameter_cap": 50000,
+  "evaluation": "Retrospective frozen test; no test-based tuning; rolling histories include only already observed outcomes."
+}

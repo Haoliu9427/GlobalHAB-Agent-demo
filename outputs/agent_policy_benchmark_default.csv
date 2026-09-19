@@ -1,0 +1,6 @@
+policy,recovery_rate,median_first_hidden_step,median_best_utility,repeats,policy_label
+current_heuristic,1.0,4.0,0.4220628502725338,1,当前受约束策略
+bayesian_eig,1.0,7.0,0.3906671178118299,1,Bayesian Information Gain
+bayesian_ei,1.0,8.0,0.3906671178118299,1,Bayesian Expected Improvement
+thompson,0.7,5.5,0.4220628502725338,40,Thompson Sampling
+random,0.5,5.0,0.17900138439725538,40,Random

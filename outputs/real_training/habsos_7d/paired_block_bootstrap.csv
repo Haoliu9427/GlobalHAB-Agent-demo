@@ -1,0 +1,7 @@
+model,seed,reference,delta_ap_low,delta_ap_high,valid_replicates
+EcoTemporalNet,17,HistGradientBoosting,-0.00782976936434388,0.08880884970851931,200
+EcoFusion,17,HistGradientBoosting,-0.0058474871307762945,0.04366280864104323,200
+EcoTemporalNet,42,HistGradientBoosting,-0.02202484628998335,0.05719000905040746,200
+EcoFusion,42,HistGradientBoosting,-0.0060601954019497695,0.03320179867883432,200
+EcoTemporalNet,73,HistGradientBoosting,-0.0007154413953814649,0.08771743195165414,200
+EcoFusion,73,HistGradientBoosting,-0.00013131869015136328,0.04871276097702087,200

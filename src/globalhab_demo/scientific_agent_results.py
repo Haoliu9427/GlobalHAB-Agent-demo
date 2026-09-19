@@ -110,4 +110,4 @@ def render_results(result):
                 st.write(row.get("rationale",row.get("message","调用格式未通过校验")))
                 st.json({"参数":row.get("arguments",{}),"工具证据":row.get("result",{})})
 
-UI_REVISION = 'HF3.9.9-BEIJING-RENDER-20260920'
+UI_REVISION = 'HF3.9.11-CAMERA-INPUT-20260920'

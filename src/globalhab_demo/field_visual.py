@@ -510,18 +510,12 @@ def _render_screening_tab(root: Any = None) -> None:
         st.markdown("### 拍照或上传")
         source_mode = st.radio("图像来源", ["现场拍照", "上传图片"], horizontal=True, key="vision_source_mode")
         image_file = None
-        native_camera = "GlobalHABAndroid/1.2" in st.context.headers.get("User-Agent", "")
-        if source_mode == "现场拍照" and native_camera:
-            st.caption("点击下方选择文件按钮，再选择“打开系统相机拍照”。拍摄确认后，照片会返回此处供识别。")
-            image_file = st.file_uploader("拍照并添加照片", type=["jpg", "jpeg", "png"], key="vision_native_camera")
-        elif source_mode == "现场拍照":
-            st.markdown(
-                '<div class="camera-permission-cn">需要使用摄像头。若浏览器尚未授权，请在站点权限中允许摄像头访问后再拍摄。</div>',
-                unsafe_allow_html=True,
-            )
+        if source_mode == "现场拍照":
+            st.caption("允许使用摄像头后，对准海面，点击取景框中的拍照按钮。照片预览出现后再开始识别。")
             image_file = st.camera_input("对准海面拍摄", key="vision_camera")
         else:
-            image_file = st.file_uploader("上传JPG / JPEG / PNG", type=["jpg", "jpeg", "png"], key="vision_upload")
+            st.caption("选择已经拍好的海面照片，确认预览后再开始识别。")
+            image_file = st.file_uploader("从本机相册选择图片", type=["jpg", "jpeg", "png"], key="vision_upload")
         vision_mode = st.selectbox(
             "视觉推理模式",
             ["自适应路由（推荐）", "多模型一致性", "EfficientNet", "ConvNeXt", "DINOv2", "安全规则基线"],
@@ -537,6 +531,20 @@ def _render_screening_tab(root: Any = None) -> None:
                 st.session_state['vision_file_fingerprint'] = fingerprint
                 st.session_state.pop('field_visual_result', None)
             st.caption(f'图片已收到：{getattr(image_file, "name", "现场照片")}。请选择下面的识别方式。')
+            try:
+                raw_preview = image_file.getvalue()
+                if len(raw_preview) > MAX_IMAGE_BYTES:
+                    raise ValueError("照片超过12MB，请使用普通拍照分辨率或选择较小图片。")
+                with Image.open(BytesIO(raw_preview)) as preview:
+                    preview.draft("RGB", (1200, 1200))
+                    if preview.width * preview.height > 40_000_000:
+                        raise ValueError("照片分辨率过高，请使用普通拍照模式后重试。")
+                    preview = ImageOps.exif_transpose(preview).convert("RGB")
+                    preview.thumbnail((1200, 1200))
+                    st.image(preview, caption="待识别照片", width="stretch")
+            except Exception:
+                st.warning("照片暂不可处理。请使用普通分辨率、12MB以内的 JPG 或 PNG 图片重试。")
+                image_file = None
         run = st.button("开始影像识别", type="primary", use_container_width=True, key="vision_run")
         quick = st.button("快速规则筛查（无需下载模型）", use_container_width=True, key="vision_quick_run")
         st.caption('快速筛查分析水色、纹理与照片质量，不调用深度模型，也不能识别藻种或毒素。')

@@ -76,4 +76,4 @@ def publish_scientific_result(result):
         st.session_state['_pool_selection_jump']=rid
     return rid
 
-UI_REVISION = 'HF3.9.9-BEIJING-RENDER-20260920'
+UI_REVISION = 'HF3.9.11-CAMERA-INPUT-20260920'

@@ -76,4 +76,4 @@ def publish_scientific_result(result):
         st.session_state['_pool_selection_jump']=rid
     return rid
 
-UI_REVISION = 'HF3.9.12-CAMERA-RELEASE-20260920'
+UI_REVISION = 'HF3.9.13-LIVE-CAMERA-20260920'

@@ -126,4 +126,4 @@ def compact_section_label(title: str, subtitle: str = "") -> str:
     sub = f'<div class="section-subtitle">{subtitle}</div>' if subtitle else ""
     return f'<div class="section-heading"><div class="section-title">{title}</div>{sub}</div>'
 
-UI_REVISION = 'HF3.9.12-CAMERA-RELEASE-20260920'
+UI_REVISION = 'HF3.9.13-LIVE-CAMERA-20260920'

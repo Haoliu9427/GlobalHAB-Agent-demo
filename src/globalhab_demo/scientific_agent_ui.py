@@ -174,4 +174,4 @@ def render(manual=False):
     render_results(result)
     st.download_button("下载本轮可审计实验记录", dumps(result).encode("utf-8"), "scientific_agent_audit.json", "application/json", key="science_download")
 
-UI_REVISION = 'HF3.9.12-CAMERA-RELEASE-20260920'
+UI_REVISION = 'HF3.9.13-LIVE-CAMERA-20260920'

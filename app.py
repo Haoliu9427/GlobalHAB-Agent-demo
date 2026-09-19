@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF3.9.12-CAMERA-RELEASE-20260920"
+BUILD_ID = "HF3.9.13-LIVE-CAMERA-20260920"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -694,7 +694,7 @@ if workspace_mode == "数据分析":
         render_own_observations()
     st.stop()
 if workspace_mode == "影像识别":
-    import globalhab_demo.field_visual as _field_visual
+    _field_visual = load_view("field_visual", BUILD_ID)
     _field_visual.render(ROOT)
     st.stop()
 if workspace_mode == "模型解读":

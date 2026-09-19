@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF3.9.3-LABEL-SYNC-20260920"
+BUILD_ID = "HF3.9.4-RESULT-SYNC-20260920"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -708,6 +708,36 @@ render_workspace_header(
 # Display-only compatibility: use current source, with labels governed by this
 # entrypoint, even when a deployment retains an older view module. Execute in
 # an isolated namespace; do not replace shared modules or touch model logic.
+def _publish_scientific_result(result):
+    """Publish evidence through the stable session record schema, not a cached
+    helper import. No provider credentials are accepted or copied here."""
+    import hashlib
+    import datetime
+    fields = ("model", "goal", "status", "seed", "data_sha256", "experimental_budget",
+              "experiments_executed", "known_total_tokens", "elapsed_seconds",
+              "candidates", "controls", "final")
+    payload = {key: result.get(key) for key in fields}
+    payload["planning_record"] = [{key: row[key] for key in
+        ("step", "tool", "arguments", "rationale", "status") if key in row}
+        for row in result.get("audit", [])]
+    payload["scope"] = "合成实验；验证阶段与独立测试分别记录。不得把候选相关性当作因果，未完成的检验不能视为通过。"
+    text = json.dumps(payload, ensure_ascii=False, default=str)
+    source, kind = "智能研究", "大模型规划与科学检验（合成）"
+    rid = hashlib.sha256((source + kind + text).encode()).hexdigest()[:16]
+    pool = st.session_state.setdefault("result_pool", {})
+    if rid not in pool:
+        pool[rid] = {"id": rid, "source": source, "evidence_type": kind,
+                     "time": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+                     "summary": text}
+        while len(pool) > 30:
+            pool.pop(next(iter(pool)))
+        st.session_state["_llm_source_jump"] = "本会话结果汇总"
+        st.session_state["_pool_selection_jump"] = rid
+        # Older result-pool renderers also honor this established widget key.
+        st.session_state["pool_selection"] = [rid]
+    return rid
+
+
 def _research_view(module_name):
     import types
     if module_name not in {"research_entry", "scientific_agent_ui"}:
@@ -729,9 +759,12 @@ def _research_view(module_name):
         source = source.replace(old, new)
     if module_name == "scientific_agent_ui":
         source = source.replace('if manual else "智能研究"', 'if manual else "模型驱动 · 智能研究"')
+    if module_name == "scientific_agent_ui":
+        source = source.replace("    from .result_pool import publish_scientific_result\n", "")
     view = types.ModuleType("globalhab_demo._current_" + module_name)
     view.__package__ = "globalhab_demo"
     view.__file__ = str(view_path)
+    view.__dict__["publish_scientific_result"] = _publish_scientific_result
     exec(compile(source, str(view_path), "exec"), view.__dict__)
     return view
 

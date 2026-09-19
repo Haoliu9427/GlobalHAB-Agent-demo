@@ -1,0 +1,11 @@
+{
+  "reproduced_original_import_error": true,
+  "cached_legacy_result_pool": true,
+  "charts": 3,
+  "audit_download": true,
+  "evidence_sync": true,
+  "deduplication": true,
+  "interpretation_autoselect": true,
+  "new_model_calls": 0,
+  "cloud_deployment_tested": false
+}

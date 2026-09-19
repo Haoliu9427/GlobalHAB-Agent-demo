@@ -126,6 +126,9 @@ def chat(c, messages, max_tokens=800, thinking_mode="stable"):
         "max_tokens": int(max_tokens),
         "stream": False,
     }
+    # ModelScope Qwen supports non-thinking output for bounded JSON planning.
+    if urlsplit(endpoint).hostname == "api-inference.modelscope.cn" and str(c["model"]).startswith("Qwen/") and thinking_mode == "stable":
+        payload["enable_thinking"] = False
     deepseek = _is_deepseek(c)
     mode = str(thinking_mode or "stable").lower()
     if deepseek:
@@ -163,6 +166,15 @@ def chat(c, messages, max_tokens=800, thinking_mode="stable"):
             raise ValueError("模型服务返回的Chat Completions结构无法解析，请确认该地址兼容 /chat/completions。") from None
 
     response = _post_chat(endpoint, c, payload)
+    # Some ModelScope responses acknowledge the request but contain no completion
+    # and explicitly report zero tokens. Retry only that no-work response once.
+    if urlsplit(endpoint).hostname == "api-inference.modelscope.cn" and response.status_code == 200:
+        try:
+            empty = response.json()
+            if empty.get("choices") is None and empty.get("usage", {}).get("total_tokens") == 0:
+                response = _post_chat(endpoint, c, payload)
+        except (ValueError, AttributeError):
+            pass
     text, usage, finish_reason, has_reasoning = parse_response(response)
 
     # DeepSeek V4 enables thinking by default.  A short max_tokens budget can be

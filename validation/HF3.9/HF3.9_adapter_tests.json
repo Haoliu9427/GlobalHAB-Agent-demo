@@ -1,0 +1,77 @@
+[
+  {
+    "model": "Logistic",
+    "passed": true,
+    "ap": 0.6116398733043524
+  },
+  {
+    "model": "GAM (Spline Logistic)",
+    "passed": true,
+    "ap": 0.6042603452447673
+  },
+  {
+    "model": "Gaussian Naive Bayes",
+    "passed": true,
+    "ap": 0.5812588476614439
+  },
+  {
+    "model": "kNN",
+    "passed": true,
+    "ap": 0.48760989713422814
+  },
+  {
+    "model": "RBF-SVM",
+    "passed": true,
+    "ap": 0.5570005545173395
+  },
+  {
+    "model": "Decision Tree",
+    "passed": true,
+    "ap": 0.5133571155578494
+  },
+  {
+    "model": "Random Forest",
+    "passed": true,
+    "ap": 0.5960511101724922
+  },
+  {
+    "model": "Extra Trees",
+    "passed": true,
+    "ap": 0.6060789582528984
+  },
+  {
+    "model": "AdaBoost",
+    "passed": true,
+    "ap": 0.5554008996283687
+  },
+  {
+    "model": "Gradient Boosting",
+    "passed": true,
+    "ap": 0.5954147310001472
+  },
+  {
+    "model": "HistGradientBoosting",
+    "passed": true,
+    "ap": 0.5699034894229446
+  },
+  {
+    "model": "MLP",
+    "passed": true,
+    "ap": 0.5953268535909453
+  },
+  {
+    "model": "XGBoost",
+    "passed": true,
+    "ap": 0.5185601314949237
+  },
+  {
+    "model": "LightGBM",
+    "passed": true,
+    "ap": 0.5596488230669149
+  },
+  {
+    "model": "STS-Interaction GLM",
+    "passed": true,
+    "ap": 0.523842817821294
+  }
+]

@@ -1,3 +1,0 @@
-sea,model,seed,clusters,AP_low,AP_high,valid_replicates
-全部,HistGradientBoosting,17,60,0.655172839050802,0.6962627745118666,200
-南海,HistGradientBoosting,17,60,0.6565689257731533,0.6976659048513453,200

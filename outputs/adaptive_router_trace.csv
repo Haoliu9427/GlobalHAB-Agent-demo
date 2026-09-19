@@ -1,5 +1,0 @@
-branch,compatibility_score,routing_probability,selected,decision,reason,gate_completeness,gate_sample_support,gate_temporal_dependence,gate_spatial_support,gate_event_support,gate_scale_consistency
-blocked_prediction,0.9713590879637624,0.2652627087981271,True,run,样本与事件支持足够，保留时空阻断预测路径,1.0,1.0,0.9659287028707721,1.0,1.0,0.7017374517374517
-spatial_durbin,0.9709913472617802,0.26497022648004215,True,run,多海区覆盖与邻接矩阵支持直接/间接影响分解,1.0,1.0,0.9659287028707721,1.0,1.0,0.7017374517374517
-te_cte_network,0.9602958083035267,0.2566031812727127,True,run,时间依赖、事件数和有向空间图支持方向性检验,1.0,1.0,0.9659287028707721,1.0,1.0,0.7017374517374517
-multiscale_anomaly,0.8984726169165185,0.213163883449118,True,run,时间依赖与跨尺度一致性支持事件检测,1.0,1.0,0.9659287028707721,1.0,1.0,0.7017374517374517

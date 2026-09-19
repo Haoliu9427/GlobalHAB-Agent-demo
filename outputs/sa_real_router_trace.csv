@@ -1,7 +1,0 @@
-branch,decision,data_support,reason
-spatiotemporal_qpcr_replay,run,1.0,115条qPCR观测、22个日期、22个地点支持描述性回放
-species_composition,run,1.0,同一工作表提供7种Karenia的qPCR细胞丰度
-multiscale_environmental_anomaly,defer,0.25,需要连续日尺度SST/营养盐历史；当前包保留OISST适配器
-te_cte_network,defer,0.2,22个非均匀采样日期和单次事件不足以支持稳健方向性网络检验
-spatial_durbin,defer,0.2,缺少规则空间面板及可独立验证的邻接权重矩阵
-supervised_hab_classifier,defer,0.1,单次事件且采样努力不均；Not detected不能解释为完整生态负样本

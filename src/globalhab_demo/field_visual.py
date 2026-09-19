@@ -511,10 +511,8 @@ def _render_screening_tab(root: Any = None) -> None:
         source_mode = st.radio("图像来源", ["现场拍照", "上传图片"], horizontal=True, key="vision_source_mode")
         image_file = None
         if source_mode == "现场拍照":
-            st.caption("允许使用摄像头后，对准海面，点击取景框中的拍照按钮。照片预览出现后再开始识别。")
             image_file = st.camera_input("对准海面拍摄", key="vision_camera")
         else:
-            st.caption("选择已经拍好的海面照片，确认预览后再开始识别。")
             image_file = st.file_uploader("从本机相册选择图片", type=["jpg", "jpeg", "png"], key="vision_upload")
         vision_mode = st.selectbox(
             "视觉推理模式",
@@ -523,14 +521,12 @@ def _render_screening_tab(root: Any = None) -> None:
             help="自适应模式会按水色、纹理和不确定性选择深度视觉分支；若当前运行环境无法真正执行所选分支，则返回DEFER。",
         )
         sea_surface = st.checkbox("照片主体是海面/水体，而不是天空、岸边或人物", value=True, key="vision_surface_confirm")
-        st.caption("建议避开逆光，尽量让海面占画面大部分；同一点位最好从不同角度拍2–3张。图像只在当前会话中分析，不默认上传到远程大模型。")
         if image_file is not None:
             import hashlib
             fingerprint = hashlib.sha256(image_file.getvalue()).hexdigest()
             if st.session_state.get('vision_file_fingerprint') != fingerprint:
                 st.session_state['vision_file_fingerprint'] = fingerprint
                 st.session_state.pop('field_visual_result', None)
-            st.caption(f'图片已收到：{getattr(image_file, "name", "现场照片")}。请选择下面的识别方式。')
             try:
                 raw_preview = image_file.getvalue()
                 if len(raw_preview) > MAX_IMAGE_BYTES:

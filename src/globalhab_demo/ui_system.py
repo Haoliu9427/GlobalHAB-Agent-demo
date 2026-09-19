@@ -80,6 +80,7 @@ def render_top_navigation(options):
     section=st.query_params.get("section")
     if section:
         st.session_state["research_section"]=section
+        st.session_state["research_controller_mode"]="基于规则的科学检验与验证"
         del st.query_params["section"]
     icons=[":material/home:",":material/science:",":material/query_stats:",":material/photo_camera:",":material/psychology:"]
     links=''.join(f'<a class="nav-link {"active" if v==current else ""}" href="?workspace={quote(v)}" target="_self">{escape(v)}</a>' for v in options)

@@ -15,7 +15,7 @@ import streamlit as st
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "HF3.6.2-NATIVE-CAMERA-20260918"
+BUILD_ID = "HF3.7.3-LLM-SCIENTIFIC-20260919"
 sys.path.insert(0, str(ROOT / "src"))
 
 from globalhab_demo.aquaculture import (  # noqa: E402
@@ -705,6 +705,16 @@ render_workspace_header(
     "选择研究任务，查看地图、实验与验证结果",
     kicker="Research & validation",
 )
+controller_options = ["使用网站已有模型（qwen）", "自行配置 API", "基于规则的科学检验与验证"]
+previous_controller = st.session_state.get("research_controller_mode")
+if previous_controller and previous_controller not in controller_options:
+    st.session_state["research_controller_mode"] = controller_options[2] if "规则" in previous_controller else controller_options[0]
+research_controller = st.radio("研究方式", controller_options, horizontal=True, key="research_controller_mode")
+if research_controller != controller_options[2]:
+    from globalhab_demo.scientific_agent_ui import render as render_scientific_agent
+    render_scientific_agent(manual=research_controller == controller_options[1])
+    st.stop()
+st.caption("以下由规则控制器组织合成实验与科学检验，与大模型规划的运行记录分别展示。")
 with control_panel:
     st.markdown("## 运行设置")
     days = st.number_input(

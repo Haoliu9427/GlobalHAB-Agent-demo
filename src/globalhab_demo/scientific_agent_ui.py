@@ -7,7 +7,7 @@ from .real_training.remote_qwen import ready, chat
 from .platform_models import catalog, connection_id, probe
 
 
-def _publish_scientific_result(result):
+def _publish_scientific_result(result, manual=False):
     """Publish evidence through the stable session record schema, not a cached
     helper import. No provider credentials are accepted or copied here."""
     import json
@@ -22,13 +22,14 @@ def _publish_scientific_result(result):
         for row in result.get("audit", [])]
     payload["scope"] = "合成实验；验证阶段与独立测试分别记录。不得把候选相关性当作因果，未完成的检验不能视为通过。"
     text = json.dumps(payload, ensure_ascii=False, default=str)
-    source, kind = "智能研究", "大模型规划与科学检验（合成）"
+    source = "自主接入" if manual else "模型驱动"
+    kind = "大模型规划与科学检验"
     rid = hashlib.sha256((source + kind + text).encode()).hexdigest()[:16]
     pool = st.session_state.setdefault("result_pool", {})
     if rid not in pool:
         pool[rid] = {"id": rid, "source": source, "evidence_type": kind,
                      "time": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-                     "summary": text}
+                     "summary": text, "data_type": "模拟数据"}
         while len(pool) > 30:
             pool.pop(next(iter(pool)))
         st.session_state["_llm_source_jump"] = "本会话结果汇总"
@@ -166,11 +167,11 @@ def render(manual=False):
         st.write(f"冻结方案：{final['action_id']}；独立测试 AP {final['candidate']['pr_auc']:.3f}，季节参照 AP {final['seasonal_reference']['pr_auc']:.3f}。")
     else:
         st.warning("本轮未形成完成复核的冻结方案，保留已有记录。状态：" + result["status"])
-    _publish_scientific_result(result)
+    _publish_scientific_result(result, manual=manual)
     st.caption("本轮结果已同步至“模型解读”，打开后可直接选取并解读。")
     from .release_ui import load_view
     render_results = load_view("scientific_agent_results", UI_REVISION).render_results
     render_results(result)
     st.download_button("下载本轮可审计实验记录", dumps(result).encode("utf-8"), "scientific_agent_audit.json", "application/json", key="science_download")
 
-UI_REVISION = 'HF3.9.7-HOME-RELEASE-20260920'
+UI_REVISION = 'HF3.9.8-RESULT-TIME-20260920'

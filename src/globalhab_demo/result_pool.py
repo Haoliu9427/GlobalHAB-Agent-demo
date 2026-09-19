@@ -16,6 +16,37 @@ def collect():
     if r:register('影像识别','视觉筛查；非藻种或毒素确诊',r)
     return st.session_state.get('result_pool',{})
 
+def beijing_time(value):
+    """Legacy timezone-less records were UTC; retain UTC in stored evidence."""
+    try:
+        stamp = datetime.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if stamp.tzinfo is None:
+            stamp = stamp.replace(tzinfo=datetime.timezone.utc)
+        return stamp.astimezone(datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
+    except (ValueError, TypeError):
+        return "时间未记录"
+
+
+def display_record(item):
+    kind = item.get("evidence_type", "")
+    data_type = item.get("data_type", "")
+    if kind == "大模型规划与科学检验（合成）":
+        kind, data_type = "大模型规划与科学检验", "模拟数据"
+    if not data_type:
+        if "合成" in kind or "情景" in kind:
+            data_type = "模拟数据 / 情景模拟"
+        elif "真实观测" in kind:
+            data_type = "真实观测"
+        elif item.get("source") == "影像识别":
+            data_type = "上传影像"
+        else:
+            data_type = "见结果说明"
+    kind = kind.replace("合成", "模拟")
+    data_type = data_type.replace("合成", "模拟")
+    return {"来源": item.get("source", "智能研究"), "证据类型": kind,
+            "数据类型": data_type, "记录时间（北京时间 UTC+8）": beijing_time(item.get("time"))}
+
+
 def render_selection():
     import pandas as pd
     pool=collect()
@@ -27,8 +58,8 @@ def render_selection():
         st.session_state['pool_selection']=[pending]
     elif 'pool_selection' in st.session_state:
         st.session_state['pool_selection']=[k for k in st.session_state['pool_selection'] if k in pool]
-    ids=st.multiselect('选择需要一起解读的结果',list(pool),default=None if "pool_selection" in st.session_state else list(pool)[-3:],format_func=lambda k:pool[k]['source']+' · '+pool[k]['time'][11:19]+' · '+pool[k]['evidence_type'],key='pool_selection')
-    st.dataframe(pd.DataFrame([{'来源':item['source'],'证据类型':item['evidence_type'],'记录时间（UTC）':item['time']} for item in pool.values()]),hide_index=True)
+    ids=st.multiselect('选择需要一起解读的结果',list(pool),default=None if "pool_selection" in st.session_state else list(pool)[-3:],format_func=lambda k:display_record(pool[k])['来源']+' · '+beijing_time(pool[k].get('time')),key='pool_selection')
+    st.dataframe(pd.DataFrame([display_record(item) for item in pool.values()]),hide_index=True)
     st.download_button('下载本会话结果汇总',json.dumps(list(pool.values()),ensure_ascii=False,indent=2),file_name='session_result_pool.json')
     return '\n\n'.join('来源：'+pool[k]['source']+'\n证据类型：'+pool[k]['evidence_type']+'\n'+pool[k]['summary'] for k in ids)
 
@@ -44,3 +75,5 @@ def publish_scientific_result(result):
         st.session_state['_llm_source_jump']='本会话结果汇总'
         st.session_state['_pool_selection_jump']=rid
     return rid
+
+UI_REVISION = 'HF3.9.8-RESULT-TIME-20260920'

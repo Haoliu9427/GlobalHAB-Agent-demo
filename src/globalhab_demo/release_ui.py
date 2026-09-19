@@ -3,7 +3,7 @@ from pathlib import Path
 import types
 
 def load_view(name, revision):
-    if name not in {"homepage_hifi", "research_entry", "scientific_agent_ui", "scientific_agent_results", "ui_system"}:
+    if name not in {"homepage_hifi", "research_entry", "scientific_agent_ui", "scientific_agent_results", "ui_system", "result_pool"}:
         raise ValueError("Unknown view")
     path = Path(__file__).parent / (name + ".py")
     view = types.ModuleType("globalhab_demo._release_" + name)

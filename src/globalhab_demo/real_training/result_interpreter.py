@@ -365,7 +365,8 @@ def render(root: Path) -> None:
         split = "test"
         summary = ""
         if source == "本会话结果汇总":
-            from globalhab_demo.result_pool import render_selection
+            from globalhab_demo.release_ui import load_view
+            render_selection = load_view("result_pool", (Path(__file__).resolve().parents[3] / "BUILD_ID.txt").read_text(encoding="utf-8").strip()).render_selection
             summary=render_selection()
         elif source == "项目核心发现（合成探索 + 负对照）":
             summary = core_discovery_summary(root)

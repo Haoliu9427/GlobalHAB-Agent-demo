@@ -38,18 +38,49 @@ def _publish_scientific_result(result):
     return rid
 
 
+def connection_error_hint(exc):
+    """Describe known failures without reflecting provider bodies or credentials."""
+    import re
+    text = str(exc)
+    match = re.search(r"HTTP\s*(\d{3})", text)
+    if match:
+        code = match.group(1)
+        reasons = {
+            "400": "请求参数不被服务接受，请核对模型名称及 Chat Completions 兼容性。",
+            "401": "密钥无效或已失效，请使用当前服务商签发的 API Key。",
+            "402": "账户余额或可用额度不足，请在服务商控制台检查。",
+            "403": "当前账户没有调用权限，请检查服务是否开通及模型授权。",
+            "404": "接口路径或模型不存在，请核对 API 地址和模型名称。",
+            "429": "调用过于频繁或额度受限，请稍后重试并检查服务额度。",
+        }
+        reason = reasons.get(code, "服务暂时不可用，请稍后重试或检查服务商状态。")
+        return "连接未通过（HTTP " + code + "）：" + reason
+    if "HTTPS" in text or "内网" in text or "本地" in text:
+        return "连接未通过：请填写公网 HTTPS 服务地址，不能使用本地或内网地址。"
+    if "解析" in text and "域名" in text:
+        return "连接未通过：无法解析 API 域名，请检查地址拼写。"
+    if "超时" in text or "网络" in text:
+        return "连接未通过：请求超时或网络不可达，请稍后重试。"
+    if "结构" in text or "空的" in text or "响应" in text:
+        return "连接未通过：服务未返回可用的 Chat Completions 文本，请核对接口和模型。"
+    return "连接未通过：服务未返回有效响应，请检查接口兼容性或稍后重试。"
+
+
 def render(manual=False):
     st.markdown("### " + ("自主接入 · 智能研究" if manual else "模型驱动 · 智能研究"))
     st.caption("合成实验 · 模型提出下一步，工具计算证据，你复核结论。")
     config = {}
     with st.container(border=True):
         st.markdown("**01　选择模型**")
+        check_requested = False
         if manual:
-            endpoint = st.text_input("模型 API 地址", key="science_api_url", placeholder="https://服务商地址/v1")
-            model = st.text_input("模型名称", key="science_api_model")
-            key = st.text_input("API Key（仅本次会话）", type="password", key="science_api_key")
+            with st.form("science_manual_connection"):
+                endpoint = st.text_input("模型 API 地址", key="science_api_url", placeholder="https://api.deepseek.com")
+                model = st.text_input("模型名称", key="science_api_model", placeholder="例如 deepseek-flash")
+                key = st.text_input("API Key（仅本次会话）", type="password", key="science_api_key")
+                st.caption("填写后点击下方按钮提交并验证，无需在 Secrets 中重复配置。使用该服务商自己的密钥和额度。")
+                check_requested = st.form_submit_button("保存并检查连接", icon=":material/wifi:")
             config = {"base_url": endpoint.strip(), "model": model.strip(), "api_key": key.strip()}
-            st.caption("使用你自己的服务配置和额度。内置大模型的密钥不会填入此处。")
         else:
             entries = catalog()
             if entries:
@@ -64,23 +95,28 @@ def render(manual=False):
         fingerprint = connection_id(config)
         verified = st.session_state.get("science_connection", {})
         connected = verified.get("id") == fingerprint and time.time()-verified.get("at", 0) < 600
-        if ready(config):
-            if st.button("重新检查连接" if connected else "检查模型连接", key="science_probe", icon=":material/wifi:"):
+        if not manual and ready(config):
+            check_requested = st.button("重新检查连接" if connected else "检查模型连接", key="science_probe", icon=":material/wifi:")
+        if check_requested:
+            st.session_state.pop("science_connection", None)
+            connected = False
+            missing = [label for field, label in (("base_url", "模型 API 地址"), ("model", "模型名称"), ("api_key", "API Key")) if not config.get(field)]
+            if missing:
+                st.error("请填写：" + "、".join(missing) + "。无需添加 Secrets。")
+            else:
                 try:
                     with st.spinner("正在请求模型确认连接……"):
                         probe(config)
                     st.session_state["science_connection"] = {"id": fingerprint, "at": time.time()}
                     connected = True
                 except Exception as exc:
-                    import logging
-                    logging.getLogger(__name__).warning("Model connection check: %s", str(exc).replace(config.get("api_key", "NEVER_MATCH"), "[REDACTED]"))
-                    st.session_state.pop("science_connection", None)
-                    connected = False
-                    st.error("模型连接未通过。请由服务配置者检查权限、额度或服务状态；本次没有启动研究。")
-            if connected:
-                st.success("模型连接已通过 · 研究结果仍需本轮实际检验")
-            else:
-                st.caption("服务已配置，尚未验证当前连接。先检查连接，再启动研究。")
+                    st.error(connection_error_hint(exc))
+        if connected:
+            st.success("模型连接已通过 · 可以开始研究")
+        elif ready(config):
+            st.caption("配置已填写，尚未通过连接检查。请先检查连接，再启动研究。")
+        elif manual:
+            st.caption("请填写三项配置，然后点击“保存并检查连接”。")
     from .planning_models import inventory
     import pandas as pd
     model_rows = inventory()
